@@ -5,7 +5,7 @@ import streamlit as st
 from chatbot import curate_trip
 from database import get_all_spots, init_db
 from gangwon_content import get_region_intro
-from kakao_map import get_kakao_app_key, render_kakao_map
+from kakao_map import build_route_markers, get_kakao_app_key, render_kakao_map
 from ui import (
     inject_styles,
     render_app_header,
@@ -138,10 +138,36 @@ else:
 
     render_featured_trip(curated[0], meta)
 
+    route_for_map = build_route_markers(curated, steps)
+    focus_spot = next(
+        (m for m in route_for_map if m["order"] == st.session_state.focus_order),
+        route_for_map[0] if route_for_map else None,
+    )
+    focus_label = (
+        f"STEP {focus_spot['order']} · {focus_spot['name']}" if focus_spot else ""
+    )
+
     left, right = st.columns([1, 1.1], gap="large")
 
     with left:
         st.markdown("#### Popular Trip · AI 추천")
+        st.caption("STEP 버튼 또는 카드의 **지도에 표시**를 누르면 오른쪽 지도가 해당 장소로 이동합니다.")
+
+        if steps:
+            pill_cols = st.columns(min(len(steps), 4))
+            for i, step in enumerate(steps):
+                with pill_cols[i % len(pill_cols)]:
+                    if st.button(
+                        f"STEP {step['order']}",
+                        key=f"pill_{step['order']}",
+                        type="primary"
+                        if step["order"] == st.session_state.focus_order
+                        else "secondary",
+                        use_container_width=True,
+                    ):
+                        st.session_state.focus_order = step["order"]
+                        st.rerun()
+
         for step in steps:
             spot = next((s for s in curated if s["name"] == step["spot_name"]), None)
             is_active = step["order"] == st.session_state.focus_order
@@ -150,8 +176,9 @@ else:
             c1, c2 = st.columns(2)
             with c1:
                 if st.button(
-                    "지도에서 보기",
+                    "📍 지도에 표시",
                     key=f"focus_{step['order']}",
+                    type="primary" if is_active else "secondary",
                     use_container_width=True,
                 ):
                     st.session_state.focus_order = step["order"]
@@ -174,12 +201,17 @@ else:
             center_lng=center_lng,
             app_key=kakao_key,
             height=540,
-            route_spots=curated,
-            show_route=len(curated) > 1,
+            route_spots=route_for_map,
+            show_route=len(route_for_map) > 1,
             focus_order=st.session_state.focus_order,
+            focus_label=focus_label,
             title="Live Kakao Map",
+            map_key=f"trip_map_{st.session_state.focus_order}",
         )
-        st.caption("번호 마커 · 틸색 동선 · 카드를 누르면 해당 장소로 포커스")
+        st.caption(
+            "번호 마커 · 틸 동선 · **STEP / 지도에 표시** 클릭 시 확대·상세 팝업 · "
+            "좌표는 앱 DB 기준(실제 위치와 수십~수백 m 차이 가능)"
+        )
 
     if st.button("다른 조건으로 새로 검색", use_container_width=True):
         st.session_state.screen = "home"
