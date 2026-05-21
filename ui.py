@@ -582,12 +582,11 @@ def render_clickable_spot_card(step: dict, spot: dict, active: bool) -> bool:
     """카드 UI + 투명 버튼 오버레이. 클릭 시 True 반환."""
     order = int(step["order"])
     st.markdown(_trip_card_html(step, spot, active), unsafe_allow_html=True)
+    # label_visibility는 Streamlit 1.56+ 전용 — Cloud 1.55 호환을 위해 CSS로 버튼 숨김
     clicked = st.button(
-        " ",
+        "지도에서 보기",
         key=f"spot_card_{order}",
-        label_visibility="collapsed",
-        use_container_width=True,
-        type="primary" if active else "secondary",
+        help=str(step.get("spot_name", "")),
     )
     return clicked
 
