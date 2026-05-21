@@ -5,53 +5,51 @@ from typing import Any
 
 import config  # noqa: F401 — .env 로드
 
-CURATION_SCHEMA_HINT = """
-반드시 아래 JSON만 출력하세요(마크다운·코드블록·설명 금지):
-{
-  "itinerary_title": "코스 한 줄 제목",
-  "summary": "이 코스를 추천하는 이유 1~2문장",
-  "recommended_spots": ["DB 장소명 정확히", "..."],
-  "route_order": ["1번째 방문 장소명", "2번째...", "3번째..."],
-  "route_steps": [
-    {
-      "order": 1,
-      "spot_name": "DB 장소명",
-      "stay_minutes": 90,
-      "why": "이 장소에서 할 일·분위기 (1문장)",
-      "move_to_next": "다음 장소까지 이동 팁 (도로/시간 느낌)"
-    }
-  ],
-  "total_duration": "반나절|당일|2시간 등",
-  "map_tip": "지도 주황 동선을 보며 드라이브할 때 참고할 한 줄"
-}
+MAX_SPOTS_IN_PROMPT = 28
+MAX_HISTORY_MSGS = 2
+MAX_HISTORY_CHARS = 350
 
-규칙:
-- recommended_spots·route_order·route_steps의 spot_name은 아래 강원도 관광지 목록 이름만 정확히 사용 (1~4곳).
-- route_order는 지리적으로 묶인 실제 방문 순서.
-- route_steps는 route_order와 동일 순서·개수.
-- 사용자 질문(동반자·시간·테마·이동수단)을 반영한 당일/반나절 코스.
-- 목록에 없는 장소명은 만들지 마세요.
-""".strip()
+# English instructions → fewer tokens; user-facing JSON values stay Korean.
+CURATION_SCHEMA = (
+    "Output JSON only. Fields itinerary_title, summary, why, move_to_next, "
+    "total_duration, map_tip: Korean, brief. "
+    '{"itinerary_title":"","summary":"","recommended_spots":[],"route_order":[],'
+    '"route_steps":[{"order":1,"spot_name":"","stay_minutes":60,"why":"","move_to_next":""}],'
+    '"total_duration":"","map_tip":""}. '
+    "1-4 spots; spot_name must copy catalog names exactly; route_steps same order as route_order."
+)
 
 
-def _build_system_prompt(spots: list[dict[str, Any]], for_curation: bool = False) -> str:
-    spot_lines = "\n".join(
-        [
-            f"- {s['name']} | {s['region']} | {s['theme']} | ({s['lat']}, {s['lng']}) | {s['description']}"
-            for s in spots[:45]
-        ]
+def _compact_spot_catalog(spots: list[dict[str, Any]], user_message: str = "") -> str:
+    if not spots:
+        return ""
+    pool = spots
+    msg = user_message.strip()
+    if msg:
+        kws = [w for w in re.split(r"\s+", msg) if len(w) >= 2]
+        if kws:
+            ranked: list[tuple[int, dict[str, Any]]] = []
+            for s in spots:
+                blob = f"{s['name']} {s['region']} {s['theme']}"
+                score = sum(1 for kw in kws if kw in blob)
+                ranked.append((score, s))
+            ranked.sort(key=lambda x: (-x[0], x[1]["name"]))
+            matched = [s for sc, s in ranked if sc > 0][:MAX_SPOTS_IN_PROMPT]
+            pool = matched if len(matched) >= 6 else [s for _, s in ranked][:MAX_SPOTS_IN_PROMPT]
+    return "\n".join(f"{s['name']}|{s['region']}|{s['theme']}" for s in pool[:MAX_SPOTS_IN_PROMPT])
+
+
+def _build_system_prompt(
+    spots: list[dict[str, Any]],
+    for_curation: bool = False,
+    user_message: str = "",
+) -> str:
+    catalog = _compact_spot_catalog(spots, user_message)
+    base = (
+        "Gangwon (Korea) trip planner. Pick spots from catalog; user text fields in Korean.\n"
+        f"Catalog name|region|theme:\n{catalog or '(none)'}"
     )
-    base = f"""
-당신은 '샤이한 열정 감자들' 앱의 강원도 여행 플래너입니다.
-강원도 **전역 관광지** 목록에서 사용자 취향에 맞는 곳을 골라 방문 순서가 있는 동선을 짭니다.
-말투: 친근한 한국어, 실용적.
-
-강원도 관광지 목록 (이름을 글자 그대로 복사, 필터 없음):
-{spot_lines if spot_lines else "(목록 없음)"}
-""".strip()
-    if for_curation:
-        return f"{base}\n\n{CURATION_SCHEMA_HINT}"
-    return base
+    return f"{base}\n{CURATION_SCHEMA}" if for_curation else base
 
 
 def _spots_from_names(spots: list[dict[str, Any]], names: list[str]) -> list[dict[str, Any]]:
@@ -213,15 +211,21 @@ def _call_openai_curation(
 
         client = OpenAI(api_key=api_key)
         model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-        messages = [{"role": "system", "content": _build_system_prompt(spots, for_curation=True)}]
-        for m in chat_history[-6:]:
+        messages = [
+            {
+                "role": "system",
+                "content": _build_system_prompt(spots, for_curation=True, user_message=user_message),
+            }
+        ]
+        for m in chat_history[-MAX_HISTORY_MSGS:]:
             if m["role"] in ("user", "assistant"):
-                messages.append({"role": m["role"], "content": m["content"][:2000]})
-        messages.append({"role": "user", "content": user_message})
+                messages.append({"role": m["role"], "content": m["content"][:MAX_HISTORY_CHARS]})
+        messages.append({"role": "user", "content": user_message[:800]})
         response = client.chat.completions.create(
             model=model_name,
             messages=messages,
-            temperature=0.55,
+            temperature=0.5,
+            max_tokens=1024,
             response_format={"type": "json_object"},
         )
         return _parse_curation_json((response.choices[0].message.content or "").strip())
@@ -242,33 +246,24 @@ def _call_google_curation(
 
         genai.configure(api_key=api_key)
         model_name = os.getenv("GOOGLE_MODEL", "gemini-2.5-flash")
-        model = genai.GenerativeModel(
-            model_name,
-            system_instruction=_build_system_prompt(spots, for_curation=True),
-        )
-        context = "\n".join(
-            [f"{m['role']}: {m['content'][:1500]}" for m in chat_history[-4:] if m["role"] in ("user", "assistant")]
-        )
-        prompt = f"대화 맥락:\n{context}\n\n이번 사용자 요청:\n{user_message}"
+        sys_prompt = _build_system_prompt(spots, for_curation=True, user_message=user_message)
+        model = genai.GenerativeModel(model_name, system_instruction=sys_prompt)
+        prompt_parts = [user_message[:800]]
+        hist = [m for m in chat_history[-MAX_HISTORY_MSGS:] if m["role"] in ("user", "assistant")]
+        if hist:
+            ctx = " | ".join(f"{m['role'][0]}:{m['content'][:MAX_HISTORY_CHARS]}" for m in hist)
+            prompt_parts.insert(0, f"Context:{ctx}")
         response = model.generate_content(
-            prompt,
+            "\n".join(prompt_parts),
             generation_config=genai.GenerationConfig(
-                temperature=0.55,
+                temperature=0.5,
                 response_mime_type="application/json",
+                max_output_tokens=1024,
             ),
         )
         return _parse_curation_json((response.text or "").strip())
     except Exception:
-        try:
-            import google.generativeai as genai
-
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel(model_name)
-            prompt = f"{_build_system_prompt(spots, for_curation=True)}\n\n사용자:\n{user_message}"
-            response = model.generate_content(prompt)
-            return _parse_curation_json((response.text or "").strip())
-        except Exception:
-            return None
+        return None
 
 
 def _finalize_curation(parsed: dict[str, Any], spots: list[dict[str, Any]]) -> dict[str, Any]:

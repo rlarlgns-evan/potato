@@ -2,6 +2,7 @@
 
 import html
 import json
+from typing import Any
 from urllib.parse import quote
 
 import streamlit as st
@@ -164,74 +165,40 @@ div.stLinkButton > a {{
 }}
 .section-sub {{ margin: 0 0 1rem 0; font-size: 0.82rem; color: #64748B; }}
 
-/* MY TRIP — 일정 카드 (HTML) + 투명 클릭 레이어 */
-div[data-testid="stVerticalBlock"]:has(.trip-card-visual) {{
-  position: relative !important;
-  margin-bottom: 0.75rem !important;
+/* MY TRIP — 일정 pills (세로 카드, 별도 버튼 없음) */
+.mytrip-route-block {{ margin-bottom: 1rem; }}
+div[data-testid="stPills"] [data-baseweb="button-group"] {{
+  display: flex !important; flex-direction: column !important;
+  width: 100% !important; gap: 0.65rem !important;
 }}
-div[data-testid="stVerticalBlock"]:has(.trip-card-visual) div[data-testid="stButton"] {{
-  position: absolute !important; inset: 0 !important; z-index: 5 !important;
-  margin: 0 !important; height: 100% !important;
+div[data-testid="stPills"] [data-baseweb="button-group"] > button {{
+  width: 100% !important; min-height: 4.25rem !important; height: auto !important;
+  justify-content: flex-start !important; text-align: left !important;
+  padding: 0.85rem 1rem !important; border-radius: 16px !important;
+  white-space: pre-wrap !important; line-height: 1.45 !important;
+  font-size: 0.84rem !important; font-weight: 600 !important;
 }}
-div[data-testid="stVerticalBlock"]:has(.trip-card-visual) div[data-testid="stButton"] > button {{
-  width: 100% !important; height: 100% !important; min-height: 100% !important;
-  opacity: 0 !important; border: none !important; background: transparent !important;
-  padding: 0 !important; cursor: pointer !important;
+div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="true"] {{
+  background: linear-gradient(135deg, {TEAL_DARK}, {TEAL}) !important;
+  color: #fff !important; border-color: transparent !important;
+  box-shadow: 0 8px 22px rgba(13, 148, 136, 0.35) !important;
 }}
 
-.trip-card-visual {{
-  position: relative; border-radius: 20px; overflow: hidden;
-  background: #fff; border: 1px solid #E2E8F0;
-  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+.route-detail-panel {{
+  background: linear-gradient(145deg, #0F766E 0%, {TEAL_DARK} 45%, {TEAL} 100%);
+  color: #fff; border-radius: 22px; padding: 1.25rem 1.35rem; margin-bottom: 1rem;
+  box-shadow: 0 16px 40px rgba(13, 148, 136, 0.28);
 }}
-.trip-card-visual.is-active {{
-  border-color: {TEAL};
-  box-shadow: 0 12px 32px rgba(20, 184, 166, 0.22);
-  transform: translateY(-2px);
+.route-detail-panel .rd-tag {{
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em; opacity: 0.88;
 }}
-.trip-card-glow {{
-  position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
-  background: linear-gradient(180deg, {TEAL}, #2DD4BF);
-  opacity: 0; transition: opacity 0.2s;
+.route-detail-panel h3 {{ margin: 0.4rem 0 0.35rem; font-size: 1.2rem; font-weight: 800; }}
+.route-detail-panel .rd-meta {{ margin: 0; font-size: 0.82rem; opacity: 0.92; }}
+.route-detail-panel .rd-body {{ margin: 0.65rem 0 0; font-size: 0.9rem; line-height: 1.6; opacity: 0.96; }}
+.route-detail-panel .rd-move {{
+  margin: 0.75rem 0 0; padding: 0.5rem 0.65rem; border-radius: 12px;
+  background: rgba(255,255,255,0.15); font-size: 0.82rem;
 }}
-.trip-card-visual.is-active .trip-card-glow {{ opacity: 1; }}
-.trip-card-inner {{ padding: 1.1rem 1.2rem 1rem; }}
-.trip-card-head {{
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 0.55rem;
-}}
-.trip-num {{
-  font-size: 1.5rem; font-weight: 800; color: #E2E8F0; line-height: 1;
-  font-variant-numeric: tabular-nums;
-}}
-.trip-card-visual.is-active .trip-num {{ color: {TEAL}; }}
-.trip-pill {{
-  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.06em; color: {TEAL_DARK}; background: #F0FDFA;
-  border: 1px solid #CCFBF1; padding: 0.2rem 0.55rem; border-radius: 999px;
-}}
-.trip-title {{
-  margin: 0 0 0.35rem; font-size: 1.05rem; font-weight: 800; color: #134E4A;
-  line-height: 1.3;
-}}
-.trip-meta {{ margin: 0 0 0.5rem; font-size: 0.78rem; color: #64748B; }}
-.trip-why {{
-  margin: 0 0 0.45rem; font-size: 0.86rem; color: #334155; line-height: 1.55;
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-}}
-.trip-move {{
-  margin: 0 0 0.55rem; font-size: 0.78rem; color: {TEAL_DARK};
-  background: #F0FDFA; border-radius: 10px; padding: 0.35rem 0.55rem;
-}}
-.trip-tap-hint {{
-  display: inline-block; font-size: 0.72rem; font-weight: 700; color: {TEAL};
-}}
-.trip-ext-link {{
-  display: inline-block; margin-left: 0.65rem; font-size: 0.72rem;
-  color: #64748B; text-decoration: none; pointer-events: auto; position: relative; z-index: 6;
-}}
-.trip-ext-link:hover {{ color: {TEAL_DARK}; text-decoration: underline; }}
 
 .trip-info-box {{
   background: #fff; border-radius: 20px; padding: 1.25rem 1.35rem;
@@ -543,54 +510,112 @@ def render_featured_trip(spot: dict, meta: dict) -> None:
     )
 
 
-def _trip_card_html(step: dict, spot: dict, active: bool) -> str:
+def _pill_step_label(step: dict) -> str:
     order = int(step["order"])
-    active_cls = " is-active" if active else ""
     stay = step.get("stay_minutes")
     stay_txt = f" · 약 {stay}분" if stay else ""
-    theme = html.escape(step.get("theme", "") or "여행")
-    move = (step.get("move_to_next") or "").strip()
-    move_html = (
-        f'<p class="trip-move">🚗 {html.escape(move)}</p>' if move else ""
+    theme = step.get("theme", "여행")
+    return f"{order:02d}  {step['spot_name']}\n{step.get('region', '')} · {theme}{stay_txt}"
+
+
+def _normalize_pill_selection(sel: Any, fallback: int) -> int:
+    if sel is None:
+        return fallback
+    if isinstance(sel, list):
+        return int(sel[0]) if sel else fallback
+    return int(sel)
+
+
+def render_route_picker(steps: list[dict]) -> int:
+    """일정 박스 = Streamlit pills (CSS 해킹·숨김 버튼 없음)."""
+    orders = [int(s["order"]) for s in steps]
+    if not orders:
+        return 1
+    by_order = {int(s["order"]): s for s in steps}
+    focus = int(st.session_state.get("focus_order") or orders[0])
+    if focus not in orders:
+        focus = orders[0]
+
+    st.markdown('<div class="mytrip-route-block">', unsafe_allow_html=True)
+    if hasattr(st, "pills"):
+        picked = st.pills(
+            "일정",
+            options=orders,
+            format_func=lambda o: _pill_step_label(by_order[o]),
+            selection_mode="single",
+            default=focus,
+            key="mytrip_route_pills",
+            label_visibility="collapsed",
+        )
+    else:
+        picked = st.selectbox(
+            "일정",
+            options=orders,
+            index=orders.index(focus),
+            format_func=lambda o: _pill_step_label(by_order[o]),
+            key="mytrip_route_select",
+            label_visibility="collapsed",
+        )
+    st.markdown("</div>", unsafe_allow_html=True)
+    return _normalize_pill_selection(picked, focus)
+
+
+def render_route_detail_panel(step: dict, spot: dict, meta: dict) -> None:
+    """선택한 일정 상세 (박스 탭 시 여기만 갱신)."""
+    order = int(step["order"])
+    stay = step.get("stay_minutes")
+    stay_txt = f" · 약 {stay}분" if stay else ""
+    why = html.escape((step.get("why") or spot.get("description") or "").strip())
+    move = html.escape((step.get("move_to_next") or "").strip())
+    move_html = f'<p class="rd-move">🚗 {move}</p>' if move else ""
+    trip_title = html.escape(meta.get("title") or "오늘의 코스")
+    st.markdown(
+        f"""
+<div class="route-detail-panel">
+  <span class="rd-tag">{trip_title}</span>
+  <h3>{order}. {html.escape(step['spot_name'])}</h3>
+  <p class="rd-meta">{html.escape(step.get('region', spot.get('region', '')))} · {html.escape(step.get('theme', spot.get('theme', '')))}{html.escape(stay_txt)}</p>
+  <p class="rd-body">{why}</p>
+  {move_html}
+</div>
+        """,
+        unsafe_allow_html=True,
     )
-    ext = ""
     if spot.get("name") and spot.get("lat") is not None and spot.get("lng") is not None:
         name_q = quote(str(spot["name"]))
         url = f"https://map.kakao.com/link/map/{name_q},{spot['lat']},{spot['lng']}"
-        ext = (
-            f'<a class="trip-ext-link" href="{html.escape(url, quote=True)}" '
-            f'target="_blank" rel="noopener">카카오맵 ↗</a>'
-        )
-    return f"""
-<div class="trip-card-visual{active_cls}">
-  <div class="trip-card-glow"></div>
-  <div class="trip-card-inner">
-    <div class="trip-card-head">
-      <span class="trip-num">{order:02d}</span>
-      <span class="trip-pill">{theme}</span>
-    </div>
-    <h3 class="trip-title">{html.escape(step['spot_name'])}</h3>
-    <p class="trip-meta">{html.escape(step.get('region', ''))}{html.escape(stay_txt)}</p>
-    <p class="trip-why">{html.escape(step.get('why', ''))}</p>
-    {move_html}
-    <span class="trip-tap-hint">탭하여 지도에서 보기</span>{ext}
-  </div>
-</div>"""
+        st.link_button("카카오맵에서 이 장소 열기 ↗", url, use_container_width=True)
 
 
-def render_clickable_spot_card(step: dict, spot: dict, active: bool) -> bool:
-    """카드 UI + 투명 버튼 오버레이. 클릭 시 True 반환."""
-    order = int(step["order"])
-    st.markdown(_trip_card_html(step, spot, active), unsafe_allow_html=True)
-    # label_visibility는 Streamlit 1.56+ 전용 — Cloud 1.55 호환을 위해 CSS로 버튼 숨김
-    clicked = st.button(
-        "지도에서 보기",
-        key=f"spot_card_{order}",
-        help=str(step.get("spot_name", "")),
+def render_my_trip_route_column(
+    steps: list[dict],
+    curated: list[dict],
+    meta: dict,
+) -> tuple[int, dict | None, dict | None]:
+    """MY TRIP 왼쪽: 상세 패널 + 일정 pills + 코스 요약."""
+    st.markdown(
+        '<p class="section-head">Your Route</p>'
+        '<p class="section-sub"><strong>일정 박스</strong>를 누르면 아래 상세·오른쪽 지도가 바뀝니다.</p>',
+        unsafe_allow_html=True,
     )
-    return clicked
 
+    picked = render_route_picker(steps)
+    st.session_state.focus_order = picked
 
+    focus_step = next((s for s in steps if int(s["order"]) == picked), steps[0] if steps else None)
+    focus_db = None
+    if focus_step:
+        focus_db = next((s for s in curated if s["name"] == focus_step["spot_name"]), curated[0] if curated else None)
+        st.markdown("##### 선택한 장소")
+        render_route_detail_panel(focus_step, focus_db or {}, meta)
+
+    trip_text = meta.get("message") or meta.get("summary") or get_region_intro()
+    if meta.get("map_tip"):
+        trip_text += f"\n\n🗺️ {meta['map_tip']}"
+    with st.expander("코스 전체 설명", expanded=False):
+        render_trip_information(trip_text[:1200])
+
+    return picked, focus_step, focus_db
 
 
 def render_trip_information(text: str) -> None:

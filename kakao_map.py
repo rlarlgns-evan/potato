@@ -248,7 +248,12 @@ def render_kakao_map(
         title=title,
         height=height,
     )
-    components.html(html_page, height=height + 88, scrolling=False)
+    components.html(
+        html_page,
+        height=height + 88,
+        scrolling=False,
+        key=f"kakao_map_focus_{focus_order}",
+    )
 
     if not app_key:
         st.info("Secrets에 `KAKAO_MAP_APP_KEY`(JavaScript 키)를 설정하세요.")

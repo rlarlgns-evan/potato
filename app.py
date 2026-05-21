@@ -14,12 +14,10 @@ from kakao_map import (
 from ui import (
     inject_styles,
     render_app_header,
-    render_featured_trip,
     render_gangwon_dashboard,
     render_home_search_hero,
     render_screen_steps,
-    render_clickable_spot_card,
-    render_trip_information,
+    render_my_trip_route_column,
 )
 
 st.set_page_config(
@@ -141,40 +139,27 @@ else:
         if meta.get("total_duration"):
             st.caption(f"⏱ {meta['total_duration']}")
 
-    render_featured_trip(curated[0], meta)
-
     route_for_map = build_route_markers(curated, steps)
+
+    left, right = st.columns([1, 1.1], gap="large")
+
+    with left:
+        focus_order, focus_step, _focus_db = render_my_trip_route_column(steps, curated, meta)
+
     focus_spot = next(
-        (m for m in route_for_map if m["order"] == st.session_state.focus_order),
+        (m for m in route_for_map if m["order"] == focus_order),
         route_for_map[0] if route_for_map else None,
     )
     focus_label = (
         f"STEP {focus_spot['order']} · {focus_spot['name']}" if focus_spot else ""
     )
 
-    left, right = st.columns([1, 1.1], gap="large")
-
-    with left:
-        st.markdown(
-            '<p class="section-head">Your Route</p>'
-            '<p class="section-sub">카드를 탭하면 오른쪽 지도가 해당 장소로 이동합니다.</p>',
-            unsafe_allow_html=True,
-        )
-
-        for step in steps:
-            spot = next((s for s in curated if s["name"] == step["spot_name"]), None)
-            is_active = step["order"] == st.session_state.focus_order
-            if render_clickable_spot_card(step, spot or {}, is_active):
-                st.session_state.focus_order = step["order"]
-                st.rerun()
-
-        trip_text = meta.get("message") or meta.get("summary") or get_region_intro()
-        if meta.get("map_tip"):
-            trip_text += f"\n\n🗺️ {meta['map_tip']}"
-        render_trip_information(trip_text[:1200])
-
     with right:
+        if focus_label:
+            st.markdown(f"**🗺️ {focus_label}**")
         center_lat, center_lng = _map_center(curated)
+        if focus_spot:
+            center_lat, center_lng = float(focus_spot["lat"]), float(focus_spot["lng"])
         route_url = build_kakao_route_url(route_for_map)
         if route_url:
             st.link_button("🗺️ 카카오맵에서 전체 동선 보기", route_url, use_container_width=True)
@@ -186,7 +171,7 @@ else:
             height=540,
             route_spots=route_for_map,
             show_route=len(route_for_map) > 1,
-            focus_order=st.session_state.focus_order,
+            focus_order=focus_order,
             focus_label=focus_label,
             title="Live Kakao Map",
         )
