@@ -1,8 +1,10 @@
 """STAR TRAVEL 스타일 · 틸(teal) 테마 UI."""
 
 import html
+import json
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from gangwon_content import (
     FESTIVAL_ICONS,
@@ -14,6 +16,21 @@ from gangwon_content import (
 
 TEAL = "#14B8A6"
 TEAL_DARK = "#0D9488"
+
+# Tip 박스와 동일 — iframe·fragment에서도 깨지지 않도록 인라인
+BOX_STYLE = (
+    "background:#fff;border-radius:18px;padding:1rem 1.1rem;"
+    "box-shadow:0 6px 20px rgba(13,148,136,0.08);border:1px solid #CCFBF1;"
+    "min-height:152px;box-sizing:border-box;"
+)
+LBL_STYLE = (
+    f"margin:0 0 0.65rem 0;font-size:0.72rem;font-weight:700;color:{TEAL_DARK};"
+    "text-transform:uppercase;font-family:'Plus Jakarta Sans',sans-serif;"
+)
+SUB_STYLE = (
+    "margin:0.5rem 0 0;font-size:0.78rem;color:#64748B;line-height:1.55;"
+    "font-family:'Plus Jakarta Sans',sans-serif;"
+)
 
 
 def inject_styles() -> None:
@@ -230,125 +247,140 @@ def _cached_weather_cities() -> list[dict]:
     return get_weather_cities()
 
 
-def _icon_thumb(icon: str, thumb_bg: str) -> str:
+def _icon_thumb_html(icon: str, thumb_bg: str) -> str:
     return (
-        f'<div class="ui-icon-thumb" style="background:{html.escape(thumb_bg)};">'
-        f"{html.escape(icon)}</div>"
+        f'<div style="flex-shrink:0;width:52px;height:52px;border-radius:14px;display:flex;'
+        f"align-items:center;justify-content:center;font-size:1.35rem;font-weight:800;"
+        f'color:#fff;background:{thumb_bg};">{html.escape(icon)}</div>'
     )
 
 
-def _weather_dots(cities: list[dict], active_idx: int) -> str:
-    return "".join(
-        f'<span class="{"active" if j == active_idx else ""}"></span>'
-        for j in range(len(cities))
-    )
-
-
-def _build_festival_rows() -> str:
+def _build_festival_rows_html() -> str:
     festivals = get_festivals()
     rows = []
+    grads = [
+        "linear-gradient(135deg,#0D9488,#14B8A6)",
+        "linear-gradient(135deg,#0891B2,#22D3EE)",
+        "linear-gradient(135deg,#0284C7,#38BDF8)",
+        "linear-gradient(135deg,#7C3AED,#A78BFA)",
+    ]
     for i, f in enumerate(festivals):
         icon = FESTIVAL_ICONS[i % len(FESTIVAL_ICONS)]
-        grad = [
-            "linear-gradient(135deg,#0D9488,#14B8A6)",
-            "linear-gradient(135deg,#0891B2,#22D3EE)",
-            "linear-gradient(135deg,#0284C7,#38BDF8)",
-            "linear-gradient(135deg,#7C3AED,#A78BFA)",
-        ][i % 4]
         rows.append(
-            f"""
-<div class="fest-row">
-  {_icon_thumb(icon, grad)}
-  <div><strong>{html.escape(f['title'])}</strong><span>{html.escape(f['place'])} · {html.escape(f['period'])}</span></div>
-</div>
-            """
+            f'<div style="display:flex;align-items:center;gap:10px;padding:6px 0;">'
+            f"{_icon_thumb_html(icon, grads[i % 4])}"
+            f'<div><strong style="display:block;font-size:0.8rem;color:#134E4A;">'
+            f"{html.escape(f['title'])}</strong>"
+            f'<span style="font-size:0.72rem;color:#64748B;">'
+            f"{html.escape(f['place'])} · {html.escape(f['period'])}</span></div></div>"
         )
     return "".join(rows) * 2
 
 
-@st.fragment(run_every=5)
-def _weather_panel() -> None:
-    cities = _cached_weather_cities()
-    if not cities:
-        st.markdown(
-            '<div class="dash-box"><p class="dash-label">Weather</p>'
-            '<p class="dash-sub">날씨 정보를 불러오지 못했습니다.</p></div>',
-            unsafe_allow_html=True,
-        )
-        return
-
-    if "weather_i" not in st.session_state:
-        st.session_state.weather_i = 0
-    idx = st.session_state.weather_i % len(cities)
-    c = cities[idx]
-    st.session_state.weather_i = idx + 1
-
-    meta = html.escape(c["label"])
-    if c.get("temp_range"):
-        meta += f" · {html.escape(c['temp_range'])}"
-
-    st.markdown(
-        f"""
-<div class="dash-box">
-  <p class="dash-label">Weather</p>
-  <div class="dash-inner">
-    {_icon_thumb(c['icon'], c.get('thumb_bg', 'linear-gradient(135deg,#CCFBF1,#99F6E4)'))}
-    <div>
-      <p class="w-city">{html.escape(c['city'])}</p>
-      <p class="w-temp">{html.escape(c['temp_display'])}</p>
-      <p class="w-meta">{meta}</p>
-    </div>
-  </div>
-  <p class="dash-sub">{html.escape(c.get('tip', ''))}</p>
-  <div class="dash-dots">{_weather_dots(cities, idx)}</div>
-</div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def render_weather_box() -> None:
-    _weather_panel()
-
-
-def render_festival_box() -> None:
-    fest_html = _build_festival_rows()
-    st.markdown(
-        f"""
-<div class="dash-box">
-  <p class="dash-label">Festival</p>
-  <div class="fest-viewport"><div class="fest-track">{fest_html}</div></div>
-</div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def render_tip_box() -> None:
-    st.markdown(
-        """
-<div class="dash-box">
-  <p class="dash-label">Tip</p>
-  <p class="dash-sub">AI가 <b>강원도 전역</b> 관광지에서 맞춤 동선을 골라 드려요.</p>
-</div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 def render_gangwon_dashboard() -> None:
-    col_weather, col_festival, col_tip = st.columns(3, gap="medium")
+    cities = _cached_weather_cities()
+    cities_json = json.dumps(cities, ensure_ascii=False)
+    fest_html = _build_festival_rows_html()
+    tip_text = "AI가 <b>강원도 전역</b> 관광지에서 맞춤 동선을 골라 드려요."
 
-    with col_weather:
-        render_weather_box()
-    with col_festival:
-        render_festival_box()
-    with col_tip:
-        render_tip_box()
+    html_page = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * {{ box-sizing: border-box; }}
+  body {{
+    margin: 0; padding: 0; background: transparent;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }}
+  .grid {{
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; width: 100%;
+  }}
+  .box {{ {BOX_STYLE} }}}
+  .lbl {{ {LBL_STYLE} }}}
+  .sub {{ {SUB_STYLE} }}}
+  .w-row {{ display: flex; align-items: center; gap: 12px; }}
+  .w-city {{ margin: 0; font-size: 0.95rem; font-weight: 700; color: #134E4A; }}
+  .w-temp {{ margin: 4px 0 0; font-size: 1.2rem; font-weight: 800; color: {TEAL_DARK}; }}
+  .w-meta {{ margin: 0; font-size: 0.78rem; color: #64748B; }}
+  .dots {{ display: flex; gap: 5px; margin-top: 10px; }}
+  .dots i {{
+    width: 6px; height: 6px; border-radius: 50%; background: #E2E8F0;
+    display: inline-block; font-style: normal;
+  }}
+  .dots i.on {{ background: {TEAL}; }}
+  .fest-vp {{ height: 108px; overflow: hidden; position: relative; }}
+  .fest-vp::after {{
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22px;
+    background: linear-gradient(transparent, #fff);
+  }}
+  .fest-tr {{ animation: scrollUp 22s linear infinite; }}
+  .fest-tr:hover {{ animation-play-state: paused; }}
+  @keyframes scrollUp {{
+    0% {{ transform: translateY(0); }}
+    100% {{ transform: translateY(-50%); }}
+  }}
+</style>
+</head>
+<body>
+<div class="grid">
+  <div class="box">
+    <p class="lbl">Weather</p>
+    <div id="wx-body"></div>
+    <div class="dots" id="wx-dots"></div>
+  </div>
+  <div class="box">
+    <p class="lbl">Festival</p>
+    <div class="fest-vp"><div class="fest-tr">{fest_html}</div></div>
+  </div>
+  <div class="box">
+    <p class="lbl">Tip</p>
+    <p class="sub">{tip_text}</p>
+  </div>
+</div>
+<script>
+const cities = {cities_json};
+let wi = 0;
+
+function thumb(bg, icon) {{
+  return '<div style="flex-shrink:0;width:52px;height:52px;border-radius:14px;display:flex;'
+    + 'align-items:center;justify-content:center;font-size:1.35rem;font-weight:800;color:#fff;background:'
+    + bg + ';">' + icon + '</div>';
+}}
+
+function paintWeather() {{
+  if (!cities.length) {{
+    document.getElementById('wx-body').innerHTML = '<p class="sub">날씨를 불러오지 못했습니다.</p>';
+    return;
+  }}
+  const idx = wi;
+  const c = cities[idx];
+  let meta = c.label || '';
+  if (c.temp_range) meta += ' · ' + c.temp_range;
+  document.getElementById('wx-body').innerHTML =
+    '<div class="w-row">' + thumb(c.thumb_bg, c.icon) +
+    '<div><p class="w-city">' + c.city + '</p>' +
+    '<p class="w-temp">' + c.temp_display + '</p>' +
+    '<p class="w-meta">' + meta + '</p></div></div>' +
+    '<p class="sub">' + (c.tip || '') + '</p>';
+  document.getElementById('wx-dots').innerHTML = cities.map((_, j) =>
+    '<i class="' + (j === idx ? 'on' : '') + '"></i>').join('');
+  wi = (wi + 1) % cities.length;
+}}
+
+paintWeather();
+setInterval(paintWeather, 5000);
+</script>
+</body>
+</html>
+    """
+    components.html(html_page, height=178, scrolling=False)
 
     st.caption(
-        "날씨: [Open-Meteo](https://open-meteo.com) 실시간 (10분마다 API 갱신 · 화면은 5초마다 도시 전환) "
-        "| 축제: 앱 내 목록 (한국관광공사 API 연동 예정)"
+        "날씨: [Open-Meteo](https://open-meteo.com) 실시간 · 5초마다 도시 전환 "
+        "| 축제: 앱 내 목록"
     )
 
     highlights = get_highlights()
