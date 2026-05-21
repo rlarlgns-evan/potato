@@ -308,9 +308,12 @@ def render_gangwon_dashboard() -> None:
   .dots {{ display: flex; gap: 5px; margin-top: 10px; }}
   .dots i {{
     width: 6px; height: 6px; border-radius: 50%; background: #E2E8F0;
-    display: inline-block; font-style: normal;
+    display: inline-block; font-style: normal; cursor: pointer;
+    padding: 4px; margin: -4px; box-sizing: content-box;
   }}
   .dots i.on {{ background: {TEAL}; }}
+  .dots i:hover {{ background: #94A3B8; }}
+  .dots i.on:hover {{ background: {TEAL}; }}
   .fest-vp {{ height: 108px; overflow: hidden; position: relative; }}
   .fest-vp::after {{
     content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22px;
@@ -342,7 +345,9 @@ def render_gangwon_dashboard() -> None:
 </div>
 <script>
 const cities = {cities_json};
+const WX_MS = 3000;
 let wi = 0;
+let wxTimer = null;
 
 function thumb(bg, icon) {{
   return '<div style="flex-shrink:0;width:52px;height:52px;border-radius:14px;display:flex;'
@@ -350,12 +355,7 @@ function thumb(bg, icon) {{
     + bg + ';">' + icon + '</div>';
 }}
 
-function paintWeather() {{
-  if (!cities.length) {{
-    document.getElementById('wx-body').innerHTML = '<p class="sub">날씨를 불러오지 못했습니다.</p>';
-    return;
-  }}
-  const idx = wi;
+function renderWeatherAt(idx) {{
   const c = cities[idx];
   let meta = c.label || '';
   if (c.temp_range) meta += ' · ' + c.temp_range;
@@ -366,22 +366,42 @@ function paintWeather() {{
     '<p class="w-meta">' + meta + '</p></div></div>' +
     '<p class="sub">' + (c.tip || '') + '</p>';
   document.getElementById('wx-dots').innerHTML = cities.map((_, j) =>
-    '<i class="' + (j === idx ? 'on' : '') + '"></i>').join('');
+    '<i class="' + (j === idx ? 'on' : '') + '" data-idx="' + j + '" role="button" '
+    + 'aria-label="' + cities[j].city + '"></i>').join('');
+  document.querySelectorAll('#wx-dots i').forEach((dot) => {{
+    dot.addEventListener('click', () => goToWeather(parseInt(dot.dataset.idx, 10)));
+  }});
+}}
+
+function advanceWeather() {{
+  if (!cities.length) {{
+    document.getElementById('wx-body').innerHTML = '<p class="sub">날씨를 불러오지 못했습니다.</p>';
+    return;
+  }}
+  renderWeatherAt(wi);
   wi = (wi + 1) % cities.length;
 }}
 
-paintWeather();
-setInterval(paintWeather, 5000);
+function goToWeather(idx) {{
+  if (!cities.length || idx < 0 || idx >= cities.length) return;
+  wi = idx;
+  renderWeatherAt(wi);
+  wi = (wi + 1) % cities.length;
+  resetWeatherTimer();
+}}
+
+function resetWeatherTimer() {{
+  if (wxTimer) clearInterval(wxTimer);
+  wxTimer = setInterval(advanceWeather, WX_MS);
+}}
+
+advanceWeather();
+resetWeatherTimer();
 </script>
 </body>
 </html>
     """
     components.html(html_page, height=178, scrolling=False)
-
-    st.caption(
-        "날씨: [Open-Meteo](https://open-meteo.com) 실시간 · 5초마다 도시 전환 "
-        "| 축제: 앱 내 목록"
-    )
 
     highlights = get_highlights()
     cards = []
