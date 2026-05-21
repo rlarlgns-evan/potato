@@ -10,8 +10,9 @@ from dotenv import load_dotenv
 from config import get_env
 
 _DOMAIN_HINT = (
-    "Kakao Developers → 앱 → JavaScript 키 → Web 플랫폼에 "
-    "`http://localhost:8501` 과 Streamlit 배포 주소(예: `https://xxxx.streamlit.app`)를 등록하세요."
+    "Kakao Developers → 앱 → <b>JavaScript 키</b> → Web 플랫폼에 "
+    "<code>http://localhost:8501</code> 과 "
+    "<code>https://본인앱이름.streamlit.app</code> (배포 URL 전체)를 등록하세요."
 )
 
 
@@ -46,13 +47,6 @@ def render_kakao_map(
     focus_order: int = 0,
     title: str = "Live Kakao Map",
 ) -> None:
-    if not app_key:
-        st.warning(
-            "카카오 지도 API 키가 없습니다. `.env` 또는 Streamlit Secrets에 "
-            "`KAKAO_MAP_APP_KEY`(JavaScript 키)를 설정해 주세요."
-        )
-        return
-
     display_spots = route_spots if route_spots else spots
     if not display_spots:
         display_spots = [
@@ -85,15 +79,17 @@ def render_kakao_map(
     show_polyline = "true" if show_route and len(display_spots) > 1 else "false"
     has_numbered = "true" if route_spots else "false"
     focus_order = int(focus_order or 0)
-    safe_key = html_module.escape(app_key, quote=True)
+    safe_key = html_module.escape(app_key or "", quote=True)
     safe_title = html_module.escape(title)
-    shell_h = height + 56
+    shell_h = height + 72
+    domain_hint_js = json.dumps(_DOMAIN_HINT, ensure_ascii=False)
 
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
-  <meta name="referrer" content="origin"/>
+  <meta name="referrer" content="strict-origin-when-cross-origin"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
     * {{ box-sizing: border-box; }}
     html, body {{
@@ -114,40 +110,52 @@ def render_kakao_map(
       position: relative; overflow: hidden; border-radius: 14px;
       background: #E2E8F0;
     }}
-    #map {{ width: 100%; height: {height}px; }}
+    #map {{ width: 100%; height: {height}px; z-index: 1; }}
     #map-error {{
-      display: none; padding: 12px; color: #b42318; font-size: 13px;
-      line-height: 1.55; background: #FEF2F2; border-radius: 12px;
-      margin-bottom: 8px;
+      display: none; padding: 10px 12px; color: #92400E; font-size: 12px;
+      line-height: 1.5; background: #FFFBEB; border-radius: 12px;
+      margin-bottom: 8px; border: 1px solid #FDE68A;
     }}
     #map-loading {{
-      position: absolute; inset: 0; display: flex; align-items: center;
+      position: absolute; inset: 0; z-index: 2; display: flex; align-items: center;
       justify-content: center; color: #64748B; font-size: 0.85rem;
-      pointer-events: none;
+      background: #E2E8F0; pointer-events: none;
+    }}
+    .leaflet-popup-content {{ font-size: 13px; line-height: 1.45; margin: 8px 10px; }}
+    .order-pin {{
+      background: #14B8A6; color: #fff; font-weight: 700; font-size: 12px;
+      width: 26px; height: 26px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center;
+      border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
     }}
   </style>
 </head>
 <body>
   <div class="map-shell">
-    <div class="map-label">{safe_title}</div>
+    <div class="map-label" id="map-title">{safe_title}</div>
     <div id="map-error"></div>
     <div id="map-wrap">
       <div id="map-loading">지도 불러오는 중…</div>
       <div id="map"></div>
     </div>
   </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const APPKEY = "{safe_key}";
     const markers = {markers_json};
     const showRoute = {show_polyline};
     const showNumbers = {has_numbered};
     const focusOrder = {focus_order};
-    const domainHint = {_DOMAIN_HINT!r};
+    const centerLat = {center_lat};
+    const centerLng = {center_lng};
+    const domainHint = {domain_hint_js};
+    const hasKakaoKey = APPKEY.length > 0;
 
-    function showError(msg) {{
+    let mapReady = false;
+    let fallbackDone = false;
+
+    function showWarn(msg) {{
       const el = document.getElementById('map-error');
-      const loading = document.getElementById('map-loading');
-      if (loading) loading.style.display = 'none';
       el.style.display = 'block';
       el.innerHTML = msg;
     }}
@@ -157,105 +165,206 @@ def render_kakao_map(
       if (loading) loading.style.display = 'none';
     }}
 
-    function initMap() {{
-      try {{
-        const container = document.getElementById('map');
-        const map = new kakao.maps.Map(container, {{
-          center: new kakao.maps.LatLng({center_lat}, {center_lng}),
-          level: 8
-        }});
+    function popupHtml(spot) {{
+      return '<strong>' + (showNumbers ? spot.order + '. ' : '') + spot.name + '</strong><br/>'
+        + (spot.region ? spot.region + ' · ' : '')
+        + (spot.theme || '') + '<br/>' + (spot.description || '');
+    }}
 
-        const bounds = new kakao.maps.LatLngBounds();
-        const path = [];
+    function initLeaflet() {{
+      if (fallbackDone) return;
+      fallbackDone = true;
+      hideLoading();
+      document.getElementById('map-title').textContent = 'Trip Map';
 
-        markers.forEach(function(spot) {{
-          const pos = new kakao.maps.LatLng(spot.lat, spot.lng);
-          bounds.extend(pos);
-          path.push(pos);
+      const container = document.getElementById('map');
+      container.innerHTML = '';
 
-          const marker = new kakao.maps.Marker({{ position: pos }});
-          marker.setMap(map);
+      const map = L.map(container, {{ zoomControl: true }}).setView([centerLat, centerLng], 9);
+      L.tileLayer('https://tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+        maxZoom: 18,
+        attribution: '&copy; OpenStreetMap'
+      }}).addTo(map);
 
-          if (showNumbers && spot.order > 0) {{
-            const label = '<div style="padding:4px 8px;background:#14B8A6;color:#fff;border-radius:4px;font-size:12px;font-weight:700;">'
-              + spot.order + '</div>';
-            new kakao.maps.CustomOverlay({{
-              position: pos, content: label, yAnchor: 1.4
-            }}).setMap(map);
-          }}
-
-          const content = '<div style="padding:8px;min-width:180px;line-height:1.5;">'
-            + '<strong>' + (showNumbers ? spot.order + '. ' : '') + spot.name + '</strong><br/>'
-            + (spot.region ? '지역: ' + spot.region + '<br/>' : '')
-            + (spot.theme ? '테마: ' + spot.theme + '<br/>' : '')
-            + spot.description + '</div>';
-          const infowindow = new kakao.maps.InfoWindow({{ content: content }});
-          kakao.maps.event.addListener(marker, 'click', function() {{
-            infowindow.open(map, marker);
+      const latlngs = [];
+      markers.forEach(function(spot) {{
+        const ll = [spot.lat, spot.lng];
+        latlngs.push(ll);
+        let icon;
+        if (showNumbers && spot.order > 0) {{
+          icon = L.divIcon({{
+            html: '<div class="order-pin">' + spot.order + '</div>',
+            className: '', iconSize: [26, 26], iconAnchor: [13, 13]
           }});
+        }} else {{
+          icon = L.divIcon({{
+            html: '<div class="order-pin" style="width:14px;height:14px;padding:0;"></div>',
+            className: '', iconSize: [14, 14], iconAnchor: [7, 7]
+          }});
+        }}
+        const m = L.marker(ll, {{ icon: icon }}).addTo(map);
+        m.bindPopup(popupHtml(spot));
+        if (focusOrder > 0 && spot.order === focusOrder) {{
+          map.setView(ll, 11);
+          m.openPopup();
+        }}
+      }});
 
-          if (focusOrder > 0 && spot.order === focusOrder) {{
-            infowindow.open(map, marker);
-            map.setCenter(pos);
-            map.setLevel(6);
-          }}
-        }});
+      if (showRoute && latlngs.length > 1) {{
+        L.polyline(latlngs, {{ color: '#14B8A6', weight: 4, opacity: 0.85 }}).addTo(map);
+      }}
+      if (latlngs.length > 1) {{
+        map.fitBounds(latlngs, {{ padding: [36, 36] }});
+      }} else if (latlngs.length === 1) {{
+        map.setView(latlngs[0], 11);
+      }}
 
-        if (showRoute && path.length > 1) {{
-          new kakao.maps.Polyline({{
-            path: path, strokeWeight: 4, strokeColor: '#14B8A6',
-            strokeOpacity: 0.85, strokeStyle: 'solid'
+      mapReady = true;
+      setTimeout(function() {{ map.invalidateSize(); }}, 150);
+      setTimeout(function() {{ map.invalidateSize(); }}, 600);
+      if (typeof ResizeObserver !== 'undefined') {{
+        new ResizeObserver(function() {{ map.invalidateSize(); }}).observe(document.getElementById('map-wrap'));
+      }}
+    }}
+
+    function startFallback(reason) {{
+      if (mapReady || fallbackDone) return;
+      if (reason) {{
+        showWarn(reason + '<br/><small>' + domainHint + '</small>');
+      }}
+      if (typeof L === 'undefined') {{
+        showWarn('지도 라이브러리 로드 실패. 네트워크를 확인해 주세요.');
+        hideLoading();
+        return;
+      }}
+      initLeaflet();
+    }}
+
+    function initKakaoMap() {{
+      const container = document.getElementById('map');
+      const map = new kakao.maps.Map(container, {{
+        center: new kakao.maps.LatLng(centerLat, centerLng),
+        level: 8
+      }});
+
+      const bounds = new kakao.maps.LatLngBounds();
+      const path = [];
+
+      markers.forEach(function(spot) {{
+        const pos = new kakao.maps.LatLng(spot.lat, spot.lng);
+        bounds.extend(pos);
+        path.push(pos);
+
+        const marker = new kakao.maps.Marker({{ position: pos }});
+        marker.setMap(map);
+
+        if (showNumbers && spot.order > 0) {{
+          const label = '<div style="padding:4px 8px;background:#14B8A6;color:#fff;border-radius:4px;font-size:12px;font-weight:700;">'
+            + spot.order + '</div>';
+          new kakao.maps.CustomOverlay({{
+            position: pos, content: label, yAnchor: 1.4
           }}).setMap(map);
         }}
 
-        if (markers.length > 1) {{
-          map.setBounds(bounds);
-        }} else if (markers.length === 1) {{
-          map.setCenter(new kakao.maps.LatLng(markers[0].lat, markers[0].lng));
-          map.setLevel(7);
-        }}
+        const content = '<div style="padding:8px;min-width:180px;line-height:1.5;">' + popupHtml(spot) + '</div>';
+        const infowindow = new kakao.maps.InfoWindow({{ content: content }});
+        kakao.maps.event.addListener(marker, 'click', function() {{
+          infowindow.open(map, marker);
+        }});
 
-        function relayout() {{ map.relayout(); }}
-        hideLoading();
-        setTimeout(relayout, 100);
-        setTimeout(relayout, 400);
-        setTimeout(relayout, 1200);
-        if (typeof ResizeObserver !== 'undefined') {{
-          new ResizeObserver(relayout).observe(document.getElementById('map-wrap'));
+        if (focusOrder > 0 && spot.order === focusOrder) {{
+          infowindow.open(map, marker);
+          map.setCenter(pos);
+          map.setLevel(6);
         }}
-        window.addEventListener('resize', relayout);
-      }} catch (e) {{
-        showError('지도 초기화 실패: ' + e.message + '<br/><small>' + domainHint + '</small>');
+      }});
+
+      if (showRoute && path.length > 1) {{
+        new kakao.maps.Polyline({{
+          path: path, strokeWeight: 4, strokeColor: '#14B8A6',
+          strokeOpacity: 0.85, strokeStyle: 'solid'
+        }}).setMap(map);
+      }}
+
+      if (markers.length > 1) {{
+        map.setBounds(bounds);
+      }} else if (markers.length === 1) {{
+        map.setCenter(new kakao.maps.LatLng(markers[0].lat, markers[0].lng));
+        map.setLevel(7);
+      }}
+
+      function relayout() {{ map.relayout(); }}
+      mapReady = true;
+      fallbackDone = true;
+      hideLoading();
+      setTimeout(relayout, 100);
+      setTimeout(relayout, 500);
+      if (typeof ResizeObserver !== 'undefined') {{
+        new ResizeObserver(relayout).observe(document.getElementById('map-wrap'));
       }}
     }}
 
-    function bootKakao() {{
-      if (typeof kakao === 'undefined' || !kakao.maps) {{
-        showError(
-          '카카오 지도 SDK를 불러오지 못했습니다.<br/>'
-          + '① JavaScript 키가 맞는지 ② Web 도메인 등록 여부를 확인하세요.<br/>'
-          + '<small>' + domainHint + '</small>'
-        );
+    function tryKakao() {{
+      if (!hasKakaoKey) {{
+        startFallback('카카오 API 키가 없어 OpenStreetMap으로 표시합니다.');
         return;
       }}
-      kakao.maps.load(initMap);
+
+      const loadTimeout = setTimeout(function() {{
+        if (!mapReady) {{
+          startFallback(
+            '카카오 지도가 응답하지 않습니다 (도메인 미등록·키 오류 가능). OpenStreetMap으로 표시합니다.'
+          );
+        }}
+      }}, 4500);
+
+      function onKakaoReady() {{
+        try {{
+          initKakaoMap();
+          clearTimeout(loadTimeout);
+        }} catch (e) {{
+          clearTimeout(loadTimeout);
+          startFallback('카카오 지도 초기화 실패: ' + e.message);
+        }}
+      }}
+
+      if (typeof kakao !== 'undefined' && kakao.maps) {{
+        kakao.maps.load(onKakaoReady);
+        return;
+      }}
+
+      const sdk = document.createElement('script');
+      sdk.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent(APPKEY) + '&autoload=false';
+      sdk.async = true;
+      sdk.onload = function() {{
+        if (typeof kakao === 'undefined' || !kakao.maps) {{
+          clearTimeout(loadTimeout);
+          startFallback('카카오 SDK를 불러오지 못했습니다.');
+          return;
+        }}
+        kakao.maps.load(onKakaoReady);
+      }};
+      sdk.onerror = function() {{
+        clearTimeout(loadTimeout);
+        startFallback('카카오 SDK 네트워크 오류.');
+      }};
+      document.head.appendChild(sdk);
     }}
 
-    const sdk = document.createElement('script');
-    sdk.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent(APPKEY) + '&autoload=false';
-    sdk.async = true;
-    sdk.onload = bootKakao;
-    sdk.onerror = function() {{
-      showError('카카오 SDK 네트워크 로드 실패. 배포 URL이 Web 플랫폼에 등록됐는지 확인하세요.<br/><small>' + domainHint + '</small>');
-    }};
-    setTimeout(function() {{
-      if (typeof kakao === 'undefined') {{
-        showError('지도 로드 시간 초과. 카카오 JavaScript 키·도메인 설정을 확인하세요.<br/><small>' + domainHint + '</small>');
-      }}
-    }}, 12000);
-    document.head.appendChild(sdk);
+    if (typeof L !== 'undefined') {{
+      tryKakao();
+    }} else {{
+      startFallback('지도를 불러오지 못했습니다.');
+    }}
   </script>
 </body>
 </html>"""
 
     components.html(html_content, height=shell_h, scrolling=False)
+
+    if not app_key:
+        st.warning(
+            "카카오 **JavaScript** 키가 없어 OpenStreetMap으로만 표시됩니다. "
+            "카카오맵을 쓰려면 Secrets에 `KAKAO_MAP_APP_KEY`를 넣고 "
+            "Kakao Developers Web 도메인에 배포 URL을 등록하세요."
+        )

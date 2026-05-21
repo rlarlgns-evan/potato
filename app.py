@@ -168,11 +168,6 @@ else:
 
     with right:
         center_lat, center_lng = _map_center(curated)
-        if not kakao_key:
-            st.error(
-                "Streamlit Cloud → Settings → Secrets에 `KAKAO_MAP_APP_KEY` "
-                "(카카오 **JavaScript** 키)를 추가해 주세요."
-            )
         render_kakao_map(
             spots=ALL_SPOTS,
             center_lat=center_lat,
