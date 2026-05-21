@@ -155,7 +155,7 @@ def _call_google_curation(
         import google.generativeai as genai
 
         genai.configure(api_key=api_key)
-        model_name = os.getenv("GOOGLE_MODEL", "gemini-1.5-flash")
+        model_name = os.getenv("GOOGLE_MODEL", "gemini-2.5-flash")
         model = genai.GenerativeModel(model_name)
         context = "\n".join([f"{m['role']}: {m['content']}" for m in chat_history[-6:]])
         prompt = (
