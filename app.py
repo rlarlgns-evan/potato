@@ -5,7 +5,12 @@ import streamlit as st
 from chatbot import curate_trip
 from database import get_all_spots, init_db
 from gangwon_content import get_region_intro
-from kakao_map import build_route_markers, get_kakao_app_key, render_kakao_map
+from kakao_map import (
+    build_kakao_route_url,
+    build_route_markers,
+    get_kakao_app_key,
+    render_kakao_map,
+)
 from ui import (
     inject_styles,
     render_app_header,
@@ -169,21 +174,10 @@ else:
         render_trip_information(trip_text[:1200])
 
     with right:
-        if not kakao_key:
-            st.warning(
-                "카카오 **JavaScript 키**가 없어 OpenStreetMap으로 표시됩니다. "
-                "Streamlit Cloud **Secrets**에 `KAKAO_MAP_APP_KEY`를 넣어 주세요."
-            )
-        else:
-            with st.expander("OpenStreetMap만 보이나요?"):
-                st.markdown(
-                    "카카오 지도가 실패할 때만 **Leaflet · OpenStreetMap**으로 대체됩니다.\n\n"
-                    "1. [Kakao Developers](https://developers.kakao.com) → **JavaScript 키** 복사\n"
-                    "2. **JavaScript SDK 도메인**에 `https://kangwon-potato.streamlit.app` 등록\n"
-                    "3. Secrets `KAKAO_MAP_APP_KEY` 저장 후 **Reboot app**\n\n"
-                    "성공하면 지도 좌하단에 **Kakao** 로고가 보입니다."
-                )
         center_lat, center_lng = _map_center(curated)
+        route_url = build_kakao_route_url(route_for_map)
+        if route_url:
+            st.link_button("🗺️ 카카오맵에서 전체 동선 보기", route_url, use_container_width=True)
         render_kakao_map(
             spots=ALL_SPOTS,
             center_lat=center_lat,
