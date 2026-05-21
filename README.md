@@ -14,14 +14,24 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## 환경 변수 (`.env`)
+## 환경 변수 (`.env` / Streamlit Secrets)
 
 ```env
 AI_PROVIDER=google
 GOOGLE_API_KEY=
 GOOGLE_MODEL=gemini-2.5-flash
-KAKAO_MAP_APP_KEY=
+KAKAO_MAP_APP_KEY=   # 카카오 JavaScript 키 (REST API 키 아님)
 ```
+
+### 카카오 지도 (MY TRIP)
+
+1. [developers.kakao.com](https://developers.kakao.com) → 앱 → **플랫폼 키** → **JavaScript 키** 복사  
+2. **JavaScript SDK 도메인** 등록:
+   - `https://kangwon-potato.streamlit.app` (배포 앱)
+   - `http://localhost:8501` (로컬 실행)
+3. Streamlit Cloud → **Settings → Secrets**에 `KAKAO_MAP_APP_KEY` 추가 후 **Reboot app**
+
+카카오 로그인 Redirect URI는 지도만 쓸 때 **비워도 됩니다**.
 
 ## 추후 연동
 

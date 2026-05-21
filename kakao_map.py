@@ -12,11 +12,11 @@ from config import get_env
 # 카카오 지도 JS API 공식 가이드: developers.kakao.com → 플랫폼 키 → JavaScript SDK 도메인
 _DOMAIN_HINT = (
     "① <a href='https://developers.kakao.com' target='_blank'>developers.kakao.com</a> "
-    "→ 앱 → <b>플랫폼 키</b> → JavaScript 키<br/>"
-    "② <b>JavaScript SDK 도메인</b>에 "
-    "<code>http://localhost:8501</code>, "
-    "<code>https://본인앱.streamlit.app</code> 등록<br/>"
-    "③ JavaScript 키를 Secrets <code>KAKAO_MAP_APP_KEY</code>에 저장"
+    "→ 플랫폼 키 → JavaScript 키 (Default JS Key)<br/>"
+    "② JavaScript SDK 도메인: "
+    "<code>https://kangwon-potato.streamlit.app</code>, "
+    "<code>http://localhost:8501</code><br/>"
+    "③ Streamlit Cloud Secrets → <code>KAKAO_MAP_APP_KEY</code> = JavaScript 키"
 )
 
 
