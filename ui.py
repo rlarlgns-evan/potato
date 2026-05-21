@@ -1,10 +1,12 @@
 """STAR TRAVEL 스타일 · 틸(teal) 테마 UI."""
 
 import html
+import json
 
 import streamlit as st
+import streamlit.components.v1 as components
 
-from gangwon_content import get_festivals, get_highlights, get_region_intro, get_weather
+from gangwon_content import get_festivals, get_highlights, get_region_intro, get_weather_cities
 
 TEAL = "#14B8A6"
 TEAL_DARK = "#0D9488"
@@ -123,6 +125,47 @@ div.stButton > button[kind="primary"] {{
   border: 1px dashed #99F6E4; border-radius: 10px; padding: 0.5rem 0.75rem;
   margin-top: 0.75rem;
 }}
+
+.weather-rotator-wrap {{
+  background: #fff; border-radius: 18px; padding: 0.85rem 1rem;
+  border: 1px solid #CCFBF1; box-shadow: 0 6px 20px rgba(13, 148, 136, 0.08);
+  min-height: 118px;
+}}
+.weather-rotator-wrap .w-label {{
+  font-size: 0.72rem; font-weight: 700; color: {TEAL_DARK};
+  text-transform: uppercase; margin-bottom: 0.35rem;
+}}
+.weather-slide {{
+  display: none; align-items: center; gap: 1rem;
+  animation: fadeIn 0.5s ease;
+}}
+.weather-slide.active {{ display: flex; }}
+@keyframes fadeIn {{
+  from {{ opacity: 0; transform: translateY(6px); }}
+  to {{ opacity: 1; transform: translateY(0); }}
+}}
+.weather-slide .w-icon {{
+  font-size: 2.75rem; line-height: 1; width: 64px; text-align: center;
+}}
+.weather-slide .w-city {{
+  font-size: 1.05rem; font-weight: 800; color: #134E4A; margin: 0;
+}}
+.weather-slide .w-temp {{
+  font-size: 1.35rem; font-weight: 800; color: {TEAL_DARK}; margin: 0.15rem 0;
+}}
+.weather-slide .w-cond {{
+  font-size: 0.82rem; color: #64748B; margin: 0;
+}}
+.weather-dots {{
+  display: flex; gap: 0.35rem; margin-top: 0.65rem; flex-wrap: wrap;
+}}
+.weather-dots span {{
+  width: 7px; height: 7px; border-radius: 50%; background: #CBD5E1;
+  transition: background 0.3s, transform 0.3s;
+}}
+.weather-dots span.active {{
+  background: {TEAL}; transform: scale(1.2);
+}}
 </style>
         """,
         unsafe_allow_html=True,
@@ -169,8 +212,64 @@ def render_home_search_hero() -> None:
     )
 
 
+@st.cache_data(ttl=600, show_spinner=False)
+def _cached_weather_cities() -> list[dict]:
+    return get_weather_cities()
+
+
+def render_weather_rotator(interval_ms: int = 10000) -> None:
+    cities = _cached_weather_cities()
+    cities_json = json.dumps(cities, ensure_ascii=False)
+
+    slides_html = []
+    dots_html = []
+    for i, c in enumerate(cities):
+        active = "active" if i == 0 else ""
+        bg = c.get("bg", "#F0FDFA")
+        slides_html.append(
+            f"""
+<div class="weather-slide {active}" data-idx="{i}" style="background:{html.escape(bg)};border-radius:14px;padding:0.65rem 0.85rem;">
+  <div class="w-icon">{c['icon']}</div>
+  <div>
+    <p class="w-city">{html.escape(c['city'])}</p>
+    <p class="w-temp">{html.escape(c['temp_display'])}</p>
+    <p class="w-cond">{html.escape(c['label'])}</p>
+  </div>
+</div>
+            """
+        )
+        dots_html.append(f'<span class="{active}" data-dot="{i}"></span>')
+
+    html_block = f"""
+<div class="weather-rotator-wrap">
+  <div class="w-label">강원 주요 도시 날씨 · 10초마다 전환</div>
+  <div id="weather-slides">{"".join(slides_html)}</div>
+  <div class="weather-dots" id="weather-dots">{"".join(dots_html)}</div>
+</div>
+<script>
+(function() {{
+  const cities = {cities_json};
+  const slides = document.querySelectorAll('.weather-slide');
+  const dots = document.querySelectorAll('#weather-dots span');
+  let idx = 0;
+  function show(i) {{
+    slides.forEach((el, n) => el.classList.toggle('active', n === i));
+    dots.forEach((el, n) => el.classList.toggle('active', n === i));
+    if (cities[i] && slides[i]) {{
+      slides[i].style.background = cities[i].bg || '#F0FDFA';
+    }}
+  }}
+  setInterval(() => {{
+    idx = (idx + 1) % slides.length;
+    show(idx);
+  }}, {interval_ms});
+}})();
+</script>
+    """
+    components.html(html_block, height=155, scrolling=False)
+
+
 def render_gangwon_dashboard() -> None:
-    w = get_weather()
     festivals = get_festivals()
     highlights = get_highlights()
 
@@ -178,26 +277,30 @@ def render_gangwon_dashboard() -> None:
         f"<li><b>{html.escape(f['title'])}</b> · {html.escape(f['place'])} ({html.escape(f['period'])})</li>"
         for f in festivals
     )
-    st.markdown(
-        f"""
-<div class="info-grid">
-  <div class="info-card">
-    <div class="label">Weather</div>
-    <div class="value">{html.escape(w['temp'])} {html.escape(w['condition'])}</div>
-    <p class="sub">{html.escape(w['region'])} · {html.escape(w['tip'])}</p>
-  </div>
-  <div class="info-card">
-    <div class="label">Festivals</div>
-    <ul class="festival-list">{fest_html}</ul>
-  </div>
-  <div class="info-card">
-    <div class="label">Gangwon Tip</div>
-    <p class="sub">AI가 <b>강원도 전역 관광지</b>에서 동선을 골라요. 한국관광공사 API 연동 예정.</p>
-  </div>
+
+    col_w, col_f, col_t = st.columns([1.15, 1, 1])
+    with col_w:
+        render_weather_rotator()
+    with col_f:
+        st.markdown(
+            f"""
+<div class="info-card" style="height:100%;">
+  <div class="label">Festivals</div>
+  <ul class="festival-list">{fest_html}</ul>
 </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            """,
+            unsafe_allow_html=True,
+        )
+    with col_t:
+        st.markdown(
+            """
+<div class="info-card" style="height:100%;">
+  <div class="label">Gangwon Tip</div>
+  <p class="sub">AI가 <b>강원도 전역</b> 관광지에서 동선을 골라요.<br>한국관광공사 API 연동 예정.</p>
+</div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     cards = []
     for h in highlights:
