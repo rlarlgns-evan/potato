@@ -248,11 +248,11 @@ def render_kakao_map(
         title=title,
         height=height,
     )
+    # key= 는 일부 Cloud Streamlit 버전에서 TypeError → HTML에 focus 넣어 갱신
     components.html(
-        html_page,
+        f"<!-- map-focus-{int(focus_order or 0)} -->\n{html_page}",
         height=height + 88,
         scrolling=False,
-        key=f"kakao_map_focus_{focus_order}",
     )
 
     if not app_key:
