@@ -1,19 +1,26 @@
 import json
-import os
+from pathlib import Path
 from typing import Any
 
 import streamlit as st
 import streamlit.components.v1 as components
+from dotenv import load_dotenv
+
+from config import get_env
 
 
 def get_kakao_app_key() -> str:
+    # Streamlit 재실행 시에도 프로젝트 루트 .env를 확실히 읽음
+    load_dotenv(Path(__file__).resolve().parent / ".env", override=False)
+
+    key = get_env("KAKAO_MAP_APP_KEY")
+    if key:
+        return key
+
     try:
-        key = st.secrets.get("KAKAO_MAP_APP_KEY", "")
-        if key:
-            return str(key).strip()
+        return str(st.secrets["KAKAO_MAP_APP_KEY"]).strip()
     except Exception:
-        pass
-    return os.getenv("KAKAO_MAP_APP_KEY", "").strip()
+        return ""
 
 
 def render_kakao_map(

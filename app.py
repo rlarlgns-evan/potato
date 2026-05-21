@@ -1,3 +1,5 @@
+import config  # noqa: F401 — .env 로드
+
 import streamlit as st
 
 from chatbot import curate_trip

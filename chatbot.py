@@ -3,9 +3,7 @@ import os
 import re
 from typing import Any
 
-from dotenv import load_dotenv
-
-load_dotenv()
+import config  # noqa: F401 — .env 로드
 
 CURATION_SCHEMA_HINT = """
 반드시 아래 JSON만 출력하세요(다른 텍스트 금지):
