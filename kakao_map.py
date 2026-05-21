@@ -74,7 +74,7 @@ def render_kakao_map(
   <meta charset="utf-8"/>
   <style>
     html, body {{ margin: 0; padding: 0; width: 100%; height: 100%; }}
-    #map {{ width: 100%; height: {height}px; }}
+    #map {{ width: 100%; height: {height}px; border-radius: 14px; }}
     #map-error {{
       display: none;
       padding: 12px;
@@ -145,7 +145,7 @@ def render_kakao_map(
           new kakao.maps.Polyline({{
             path: path,
             strokeWeight: 4,
-            strokeColor: '#E85D04',
+            strokeColor: '#5B5FEA',
             strokeOpacity: 0.85,
             strokeStyle: 'solid'
           }}).setMap(map);
@@ -168,9 +168,4 @@ def render_kakao_map(
 </body>
 </html>"""
 
-    components.html(html_content, height=height + 24, scrolling=False)
-
-    st.caption(
-        "지도가 비어 있으면 [카카오 개발자](https://developers.kakao.com) → JavaScript SDK 도메인에 "
-        "현재 접속 주소(예: `http://localhost:8501`, `https://xxx.streamlit.app`)를 등록했는지 확인하세요."
-    )
+    components.html(html_content, height=height + 16, scrolling=False)
