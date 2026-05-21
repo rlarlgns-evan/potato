@@ -141,16 +141,11 @@ div.stButton > button[kind="primary"] {{
   margin-top: 0.75rem;
 }}
 
-.dash-grid {{
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
-  margin-bottom: 1.25rem;
-}}
-@media (max-width: 900px) {{ .dash-grid {{ grid-template-columns: 1fr; }} }}
-
 .dash-box {{
   background: #fff; border-radius: 18px; padding: 1rem 1.1rem;
   box-shadow: 0 6px 20px rgba(13, 148, 136, 0.08);
   border: 1px solid #CCFBF1; min-height: 150px;
+  width: 100%; box-sizing: border-box; margin: 0 0 1rem 0;
 }}
 .dash-box .dash-label {{
   font-size: 0.72rem; font-weight: 700; color: {TEAL_DARK};
@@ -301,27 +296,14 @@ def _build_festival_rows() -> str:
     return "".join(rows) * 2
 
 
-def render_gangwon_dashboard() -> None:
+def render_weather_box(interval_ms: int = 5000) -> None:
     cities = _cached_weather_cities()
     slides_html, dots_html = _build_weather_slides(cities)
-    fest_html = _build_festival_rows()
-    tip_text = "AI가 강원도 전역 관광지에서 동선을 골라 드려요."
-
     html_block = f"""
-<div class="dash-grid">
-  <div class="dash-box">
-    <p class="dash-label">Weather</p>
-    <div id="weather-slides">{slides_html}</div>
-    <div class="weather-dots" id="weather-dots">{dots_html}</div>
-  </div>
-  <div class="dash-box">
-    <p class="dash-label">Festival</p>
-    <div class="fest-viewport"><div class="fest-track">{fest_html}</div></div>
-  </div>
-  <div class="dash-box">
-    <p class="dash-label">Tip</p>
-    <p class="dash-sub">{html.escape(tip_text)}</p>
-  </div>
+<div class="dash-box">
+  <p class="dash-label">Weather</p>
+  <div id="weather-slides">{slides_html}</div>
+  <div class="weather-dots" id="weather-dots">{dots_html}</div>
 </div>
 <script>
 (function() {{
@@ -332,11 +314,45 @@ def render_gangwon_dashboard() -> None:
     slides.forEach((el, n) => el.classList.toggle('active', n === i));
     dots.forEach((el, n) => el.classList.toggle('active', n === i));
   }}
-  setInterval(() => {{ idx = (idx + 1) % slides.length; show(idx); }}, 5000);
+  setInterval(() => {{ idx = (idx + 1) % slides.length; show(idx); }}, {interval_ms});
 }})();
 </script>
     """
-    components.html(html_block, height=168, scrolling=False)
+    components.html(html_block, height=165, scrolling=False)
+
+
+def render_festival_box() -> None:
+    fest_html = _build_festival_rows()
+    html_block = f"""
+<div class="dash-box">
+  <p class="dash-label">Festival</p>
+  <div class="fest-viewport"><div class="fest-track">{fest_html}</div></div>
+</div>
+    """
+    components.html(html_block, height=165, scrolling=False)
+
+
+def render_tip_box() -> None:
+    st.markdown(
+        """
+<div class="dash-box">
+  <p class="dash-label">Tip</p>
+  <p class="dash-sub">AI가 <b>강원도 전역</b> 관광지에서 맞춤 동선을 골라 드려요.</p>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_gangwon_dashboard() -> None:
+    col_weather, col_festival, col_tip = st.columns(3, gap="medium")
+
+    with col_weather:
+        render_weather_box()
+    with col_festival:
+        render_festival_box()
+    with col_tip:
+        render_tip_box()
 
     highlights = get_highlights()
     cards = []
