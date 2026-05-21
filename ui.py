@@ -39,15 +39,44 @@ def inject_styles() -> None:
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 html, body, [class*="css"] {{ font-family: 'Plus Jakarta Sans', sans-serif; }}
-.stApp {{ background: #F0FDFA; }}
-.block-container {{ padding-top: 1rem; max-width: 1100px; }}
+.stApp {{
+  background: linear-gradient(180deg, #ECFDF5 0%, #F0FDFA 35%, #F8FAFC 100%);
+}}
+.block-container {{ padding-top: 1.25rem; max-width: 1080px; }}
 #MainMenu, footer, header {{ visibility: hidden; }}
+
+h1, h2, h3, h4 {{ color: #134E4A !important; letter-spacing: -0.02em; }}
+.stCaption {{ color: #64748B !important; }}
+
+div[data-testid="stTextInput"] input {{
+  border-radius: 14px !important; border: 1px solid #CCFBF1 !important;
+  padding: 0.65rem 1rem !important; background: #fff !important;
+}}
+div[data-testid="stTextInput"] input:focus {{
+  border-color: {TEAL} !important; box-shadow: 0 0 0 3px rgba(20,184,166,0.15) !important;
+}}
+div.stButton > button[kind="secondary"] {{
+  background: #fff !important; color: #475569 !important;
+  border: 1px solid #E2E8F0 !important; border-radius: 12px !important;
+  font-weight: 600 !important;
+}}
+div.stLinkButton > a {{
+  border-radius: 10px !important; font-size: 0.8rem !important;
+}}
 
 .app-top {{
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 1rem; font-weight: 800; color: {TEAL_DARK};
+  margin-bottom: 1.1rem; padding: 0.65rem 0.85rem;
+  background: rgba(255,255,255,0.75); backdrop-filter: blur(8px);
+  border-radius: 16px; border: 1px solid rgba(204,251,241,0.9);
+  box-shadow: 0 4px 20px rgba(13, 148, 136, 0.08);
 }}
-.app-top .brand {{ font-size: 1.1rem; letter-spacing: 0.04em; }}
+.app-top .brand {{
+  font-size: 1.05rem; font-weight: 800; letter-spacing: 0.06em;
+  background: linear-gradient(135deg, {TEAL_DARK}, {TEAL});
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}}
 
 .search-hero {{
   background: linear-gradient(145deg, {TEAL_DARK} 0%, {TEAL} 55%, #2DD4BF 100%);
@@ -112,49 +141,106 @@ html, body, [class*="css"] {{ font-family: 'Plus Jakarta Sans', sans-serif; }}
 .screen-step-line.done {{ background: #5EEAD4; }}
 
 .featured-trip {{
-  background: linear-gradient(145deg, {TEAL_DARK}, {TEAL});
-  border-radius: 22px; padding: 1.35rem 1.5rem; color: #fff;
-  margin-bottom: 1rem; position: relative; overflow: hidden;
+  background: linear-gradient(135deg, #0F766E 0%, {TEAL_DARK} 40%, {TEAL} 100%);
+  border-radius: 24px; padding: 1.5rem 1.65rem; color: #fff;
+  margin-bottom: 1.25rem; position: relative; overflow: hidden;
+  box-shadow: 0 20px 50px rgba(13, 148, 136, 0.28);
 }}
-.featured-trip h3 {{ margin: 0 0 0.5rem 0; font-size: 1.25rem; }}
-.featured-trip p {{ margin: 0; opacity: 0.9; font-size: 0.88rem; line-height: 1.5; }}
+.featured-trip::before {{
+  content: ''; position: absolute; right: -30px; top: -40px;
+  width: 180px; height: 180px; border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+}}
+.featured-trip::after {{
+  content: 'TRIP'; position: absolute; right: 1.2rem; top: 1rem;
+  font-size: 3.5rem; font-weight: 800; opacity: 0.08; letter-spacing: 0.1em;
+}}
+.featured-trip h3 {{ margin: 0 0 0.45rem 0; font-size: 1.35rem; font-weight: 800; position: relative; }}
+.featured-trip p {{ margin: 0; opacity: 0.92; font-size: 0.9rem; line-height: 1.55; position: relative; }}
 
-.spot-pick {{
-  background: #fff; border-radius: 18px; padding: 1rem 1.1rem;
-  border: 2px solid #E2E8F0; margin-bottom: 0.65rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+.section-head {{
+  margin: 0 0 0.35rem 0; font-size: 1.05rem; font-weight: 800; color: #134E4A;
 }}
-.spot-pick.active {{
+.section-sub {{ margin: 0 0 1rem 0; font-size: 0.82rem; color: #64748B; }}
+
+/* MY TRIP — 일정 카드 (HTML) + 투명 클릭 레이어 */
+div[data-testid="stVerticalBlock"]:has(.trip-card-visual) {{
+  position: relative !important;
+  margin-bottom: 0.75rem !important;
+}}
+div[data-testid="stVerticalBlock"]:has(.trip-card-visual) div[data-testid="stButton"] {{
+  position: absolute !important; inset: 0 !important; z-index: 5 !important;
+  margin: 0 !important; height: 100% !important;
+}}
+div[data-testid="stVerticalBlock"]:has(.trip-card-visual) div[data-testid="stButton"] > button {{
+  width: 100% !important; height: 100% !important; min-height: 100% !important;
+  opacity: 0 !important; border: none !important; background: transparent !important;
+  padding: 0 !important; cursor: pointer !important;
+}}
+
+.trip-card-visual {{
+  position: relative; border-radius: 20px; overflow: hidden;
+  background: #fff; border: 1px solid #E2E8F0;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}}
+.trip-card-visual.is-active {{
   border-color: {TEAL};
-  box-shadow: 0 8px 24px rgba(20, 184, 166, 0.2);
+  box-shadow: 0 12px 32px rgba(20, 184, 166, 0.22);
+  transform: translateY(-2px);
 }}
-.spot-pick .order {{
-  display: inline-block; background: {TEAL}; color: #fff;
-  font-weight: 800; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 8px;
+.trip-card-glow {{
+  position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: linear-gradient(180deg, {TEAL}, #2DD4BF);
+  opacity: 0; transition: opacity 0.2s;
 }}
-
-/* MY TRIP — 일정 카드 클릭 버튼 */
-[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stButton"] button {{
-  min-height: 108px;
-  height: auto !important;
-  padding: 1rem 1.1rem !important;
-  text-align: left !important;
-  justify-content: flex-start !important;
-  white-space: pre-wrap !important;
-  line-height: 1.45 !important;
-  border-radius: 16px !important;
-  font-size: 0.88rem !important;
+.trip-card-visual.is-active .trip-card-glow {{ opacity: 1; }}
+.trip-card-inner {{ padding: 1.1rem 1.2rem 1rem; }}
+.trip-card-head {{
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 0.55rem;
 }}
-[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stButton"] button p {{
-  text-align: left !important;
-  white-space: pre-wrap !important;
+.trip-num {{
+  font-size: 1.5rem; font-weight: 800; color: #E2E8F0; line-height: 1;
+  font-variant-numeric: tabular-nums;
 }}
+.trip-card-visual.is-active .trip-num {{ color: {TEAL}; }}
+.trip-pill {{
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: {TEAL_DARK}; background: #F0FDFA;
+  border: 1px solid #CCFBF1; padding: 0.2rem 0.55rem; border-radius: 999px;
+}}
+.trip-title {{
+  margin: 0 0 0.35rem; font-size: 1.05rem; font-weight: 800; color: #134E4A;
+  line-height: 1.3;
+}}
+.trip-meta {{ margin: 0 0 0.5rem; font-size: 0.78rem; color: #64748B; }}
+.trip-why {{
+  margin: 0 0 0.45rem; font-size: 0.86rem; color: #334155; line-height: 1.55;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}}
+.trip-move {{
+  margin: 0 0 0.55rem; font-size: 0.78rem; color: {TEAL_DARK};
+  background: #F0FDFA; border-radius: 10px; padding: 0.35rem 0.55rem;
+}}
+.trip-tap-hint {{
+  display: inline-block; font-size: 0.72rem; font-weight: 700; color: {TEAL};
+}}
+.trip-ext-link {{
+  display: inline-block; margin-left: 0.65rem; font-size: 0.72rem;
+  color: #64748B; text-decoration: none; pointer-events: auto; position: relative; z-index: 6;
+}}
+.trip-ext-link:hover {{ color: {TEAL_DARK}; text-decoration: underline; }}
 
 .trip-info-box {{
-  background: #fff; border-radius: 18px; padding: 1.2rem;
-  border: 1px solid #CCFBF1; margin-top: 1rem;
+  background: #fff; border-radius: 20px; padding: 1.25rem 1.35rem;
+  border: 1px solid #E2E8F0; margin-top: 1rem;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
 }}
-.trip-info-box h4 {{ margin: 0 0 0.5rem 0; color: {TEAL_DARK}; }}
+.trip-info-box h4 {{
+  margin: 0 0 0.65rem 0; color: {TEAL_DARK}; font-size: 0.8rem;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}}
 
 .map-shell {{
   background: #fff; border-radius: 20px; padding: 0.6rem;
@@ -223,8 +309,8 @@ def render_app_header() -> None:
     st.markdown(
         """
 <div class="app-top">
-  <span class="brand">🥔 SHY POTATOES TRAVEL</span>
-  <span style="font-size:1.2rem;">☰</span>
+  <span class="brand">SHY POTATOES · GANGWON</span>
+  <span style="font-size:0.72rem;font-weight:700;color:#64748B;letter-spacing:0.12em;">TRAVEL</span>
 </div>
         """,
         unsafe_allow_html=True,
@@ -456,18 +542,38 @@ def render_featured_trip(spot: dict, meta: dict) -> None:
     )
 
 
-def _spot_card_label(step: dict) -> str:
+def _trip_card_html(step: dict, spot: dict, active: bool) -> str:
+    order = int(step["order"])
+    active_cls = " is-active" if active else ""
     stay = step.get("stay_minutes")
     stay_txt = f" · 약 {stay}분" if stay else ""
-    lines = [
-        f"STEP {step['order']}   {step['spot_name']}",
-        f"{step.get('region', '')} · {step.get('theme', '')}{stay_txt}",
-        step.get("why", "") or "",
-    ]
+    theme = html.escape(step.get("theme", "") or "여행")
     move = (step.get("move_to_next") or "").strip()
-    if move:
-        lines.append(f"🚗 {move}")
-    return "\n".join(lines)
+    move_html = (
+        f'<p class="trip-move">🚗 {html.escape(move)}</p>' if move else ""
+    )
+    ext = ""
+    if spot:
+        url = f"https://map.kakao.com/link/map/{spot['name']},{spot['lat']},{spot['lng']}"
+        ext = (
+            f'<a class="trip-ext-link" href="{html.escape(url, quote=True)}" '
+            f'target="_blank" rel="noopener">카카오맵 ↗</a>'
+        )
+    return f"""
+<div class="trip-card-visual{active_cls}">
+  <div class="trip-card-glow"></div>
+  <div class="trip-card-inner">
+    <div class="trip-card-head">
+      <span class="trip-num">{order:02d}</span>
+      <span class="trip-pill">{theme}</span>
+    </div>
+    <h3 class="trip-title">{html.escape(step['spot_name'])}</h3>
+    <p class="trip-meta">{html.escape(step.get('region', ''))}{html.escape(stay_txt)}</p>
+    <p class="trip-why">{html.escape(step.get('why', ''))}</p>
+    {move_html}
+    <span class="trip-tap-hint">탭하여 지도에서 보기</span>{ext}
+  </div>
+</div>"""
 
 
 def render_clickable_spot_card(
@@ -476,20 +582,17 @@ def render_clickable_spot_card(
     active: bool,
     on_click,
 ) -> None:
-    """일정 박스 전체를 클릭하면 지도 포커스가 바뀝니다."""
+    """카드 UI + 투명 버튼 오버레이로 전체 박스 클릭."""
     order = int(step["order"])
-    with st.container(border=True):
-        st.button(
-            _spot_card_label(step),
-            key=f"spot_card_{order}",
-            type="primary" if active else "secondary",
-            use_container_width=True,
-            on_click=on_click,
-            args=(order,),
-        )
-        if spot:
-            url = f"https://map.kakao.com/link/map/{spot['name']},{spot['lat']},{spot['lng']}"
-            st.link_button("카카오맵 앱에서 열기", url, use_container_width=True)
+    st.markdown(_trip_card_html(step, spot, active), unsafe_allow_html=True)
+    st.button(
+        "select",
+        key=f"spot_card_{order}",
+        on_click=on_click,
+        args=(order,),
+        label_visibility="collapsed",
+        type="primary" if active else "secondary",
+    )
 
 
 

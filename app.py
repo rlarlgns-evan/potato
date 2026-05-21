@@ -154,8 +154,11 @@ else:
     left, right = st.columns([1, 1.1], gap="large")
 
     with left:
-        st.markdown("#### Popular Trip · AI 추천")
-        st.caption("**일정 카드를 클릭**하면 오른쪽 지도에 해당 장소가 표시됩니다.")
+        st.markdown(
+            '<p class="section-head">Your Route</p>'
+            '<p class="section-sub">카드를 탭하면 오른쪽 지도가 해당 장소로 이동합니다.</p>',
+            unsafe_allow_html=True,
+        )
 
         for step in steps:
             spot = next((s for s in curated if s["name"] == step["spot_name"]), None)
@@ -181,9 +184,10 @@ else:
             focus_label=focus_label,
             title="Live Kakao Map",
         )
-        st.caption(
-            "일정 카드 클릭 → 지도 포커스 · 마커 클릭 → 상세 팝업 · "
-            "좌표는 앱 DB 기준"
+        st.markdown(
+            '<p class="section-sub" style="margin-top:0.5rem;text-align:center;">'
+            "마커 탭 · 상세 정보 · DB 좌표 기준</p>",
+            unsafe_allow_html=True,
         )
 
     if st.button("다른 조건으로 새로 검색", use_container_width=True):

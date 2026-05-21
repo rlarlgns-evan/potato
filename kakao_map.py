@@ -146,27 +146,36 @@ def render_kakao_map(
 <html>
 <head>
   <meta charset="utf-8"/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
     * {{ box-sizing: border-box; }}
-    html, body {{ margin: 0; padding: 0; width: 100%; font-family: sans-serif; }}
+    html, body {{ margin: 0; padding: 0; width: 100%;
+      font-family: 'Plus Jakarta Sans', sans-serif; }}
     .map-shell {{
-      background: #fff; border-radius: 20px; padding: 0.6rem;
-      border: 1px solid #CCFBF1; width: 100%;
+      background: #fff; border-radius: 22px; padding: 0.75rem;
+      border: 1px solid #E2E8F0; width: 100%;
+      box-shadow: 0 12px 36px rgba(13, 148, 136, 0.12);
     }}
     .map-head {{
       display: flex; justify-content: space-between; align-items: center;
-      padding: 0.35rem 0.5rem 0.45rem; gap: 8px; flex-wrap: wrap;
+      padding: 0.25rem 0.35rem 0.55rem; gap: 10px; flex-wrap: wrap;
     }}
-    .map-label {{ font-weight: 700; color: #134E4A; font-size: 0.95rem; }}
+    .map-label {{
+      font-weight: 800; color: #134E4A; font-size: 0.88rem;
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }}
     .map-focus {{
-      font-size: 0.72rem; font-weight: 700; color: #fff; background: #14B8A6;
-      padding: 0.25rem 0.55rem; border-radius: 999px; max-width: 100%;
+      font-size: 0.7rem; font-weight: 700; color: #fff;
+      background: linear-gradient(135deg, #0D9488, #14B8A6);
+      padding: 0.35rem 0.7rem; border-radius: 999px; max-width: 72%;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      box-shadow: 0 4px 12px rgba(20, 184, 166, 0.35);
     }}
     #map-wrap {{
       width: 100%; position: relative; overflow: hidden;
-      border-radius: 14px; background: #E2E8F0;
+      border-radius: 16px; background: #F1F5F9;
+      border: 1px solid #E2E8F0;
     }}
     #map-loading {{
       position: absolute; inset: 0; z-index: 5; display: flex; align-items: center;
