@@ -6,7 +6,13 @@ import json
 import streamlit as st
 import streamlit.components.v1 as components
 
-from gangwon_content import get_festivals, get_highlights, get_region_intro, get_weather_cities
+from gangwon_content import (
+    FESTIVAL_ICONS,
+    get_festivals,
+    get_highlights,
+    get_region_intro,
+    get_weather_cities,
+)
 
 TEAL = "#14B8A6"
 TEAL_DARK = "#0D9488"
@@ -55,10 +61,19 @@ html, body, [class*="css"] {{ font-family: 'Plus Jakarta Sans', sans-serif; }}
 .highlight-scroll {{
   display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; margin-bottom: 1.25rem;
 }}
+.ui-icon-thumb {{
+  flex-shrink: 0;
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.45rem; font-weight: 800; color: #fff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}}
+
 .highlight-card {{
   flex: 0 0 200px; border-radius: 18px; padding: 1.1rem; color: #fff;
   min-height: 100px; display: flex; flex-direction: column; justify-content: flex-end;
 }}
+.highlight-card .ui-icon-thumb {{ margin-bottom: 0.5rem; width: 44px; height: 44px; font-size: 1.2rem; }}
 .highlight-card strong {{ font-size: 0.95rem; }}
 .highlight-card span {{ font-size: 0.75rem; opacity: 0.9; }}
 
@@ -136,25 +151,68 @@ div.stButton > button[kind="primary"] {{
   text-transform: uppercase; margin-bottom: 0.35rem;
 }}
 .weather-slide {{
-  display: none; align-items: center; gap: 1rem;
-  animation: fadeIn 0.5s ease;
+  display: none; align-items: flex-start; gap: 0.85rem;
+  animation: fadeIn 0.45s ease;
+  background: #F0FDFA; border-radius: 14px; padding: 0.7rem 0.85rem;
+  border: 1px solid #CCFBF1;
 }}
 .weather-slide.active {{ display: flex; }}
 @keyframes fadeIn {{
   from {{ opacity: 0; transform: translateY(6px); }}
   to {{ opacity: 1; transform: translateY(0); }}
 }}
-.weather-slide .w-icon {{
-  font-size: 2.75rem; line-height: 1; width: 64px; text-align: center;
-}}
+.weather-slide .w-body {{ flex: 1; min-width: 0; }}
 .weather-slide .w-city {{
   font-size: 1.05rem; font-weight: 800; color: #134E4A; margin: 0;
 }}
 .weather-slide .w-temp {{
-  font-size: 1.35rem; font-weight: 800; color: {TEAL_DARK}; margin: 0.15rem 0;
+  font-size: 1.35rem; font-weight: 800; color: {TEAL_DARK}; margin: 0.1rem 0;
 }}
 .weather-slide .w-cond {{
-  font-size: 0.82rem; color: #64748B; margin: 0;
+  font-size: 0.8rem; color: #64748B; margin: 0;
+}}
+.weather-slide .w-range {{
+  font-size: 0.75rem; color: #0D9488; margin: 0.1rem 0 0.25rem 0; font-weight: 600;
+}}
+.weather-slide .w-tip {{
+  font-size: 0.76rem; color: #475569; margin: 0.35rem 0 0 0;
+  line-height: 1.45; padding: 0.4rem 0.55rem; background: rgba(255,255,255,0.65);
+  border-radius: 10px; border-left: 3px solid {TEAL};
+}}
+
+.fest-ticker-wrap {{
+  background: #fff; border-radius: 18px; padding: 0.75rem 1rem;
+  border: 1px solid #CCFBF1; box-shadow: 0 6px 20px rgba(13, 148, 136, 0.08);
+  overflow: hidden; height: 148px; position: relative;
+}}
+.fest-ticker-wrap .f-label {{
+  font-size: 0.72rem; font-weight: 700; color: {TEAL_DARK};
+  text-transform: uppercase; margin-bottom: 0.4rem;
+}}
+.fest-ticker-viewport {{
+  height: 108px; overflow: hidden; position: relative;
+}}
+.fest-ticker-viewport::after {{
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 28px;
+  background: linear-gradient(transparent, #fff); pointer-events: none;
+}}
+.fest-ticker-track {{
+  animation: festScrollUp 28s linear infinite;
+}}
+.fest-ticker-track:hover {{ animation-play-state: paused; }}
+@keyframes festScrollUp {{
+  0% {{ transform: translateY(0); }}
+  100% {{ transform: translateY(-50%); }}
+}}
+.fest-row {{
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.55rem 0.25rem; min-height: 52px;
+}}
+.fest-row .fest-text strong {{
+  display: block; font-size: 0.82rem; color: #134E4A;
+}}
+.fest-row .fest-text span {{
+  font-size: 0.72rem; color: #64748B;
 }}
 .weather-dots {{
   display: flex; gap: 0.35rem; margin-top: 0.65rem; flex-wrap: wrap;
@@ -217,7 +275,14 @@ def _cached_weather_cities() -> list[dict]:
     return get_weather_cities()
 
 
-def render_weather_rotator(interval_ms: int = 10000) -> None:
+def _icon_thumb(icon: str, thumb_bg: str) -> str:
+    return (
+        f'<div class="ui-icon-thumb" style="background:{html.escape(thumb_bg)};">'
+        f"{html.escape(icon)}</div>"
+    )
+
+
+def render_weather_rotator(interval_ms: int = 5000) -> None:
     cities = _cached_weather_cities()
     cities_json = json.dumps(cities, ensure_ascii=False)
 
@@ -225,39 +290,40 @@ def render_weather_rotator(interval_ms: int = 10000) -> None:
     dots_html = []
     for i, c in enumerate(cities):
         active = "active" if i == 0 else ""
-        bg = c.get("bg", "#F0FDFA")
+        thumb = _icon_thumb(c["icon"], c.get("thumb_bg", "linear-gradient(135deg,#CCFBF1,#99F6E4)"))
+        tr = c.get("temp_range", "")
+        range_html = (
+            f'<p class="w-range">오늘 {html.escape(tr)}</p>' if tr else ""
+        )
         slides_html.append(
             f"""
-<div class="weather-slide {active}" data-idx="{i}" style="background:{html.escape(bg)};border-radius:14px;padding:0.65rem 0.85rem;">
-  <div class="w-icon">{c['icon']}</div>
-  <div>
-    <p class="w-city">{html.escape(c['city'])}</p>
-    <p class="w-temp">{html.escape(c['temp_display'])}</p>
-    <p class="w-cond">{html.escape(c['label'])}</p>
+<div class="weather-slide {active}" data-idx="{i}">
+  {thumb}
+  <div class="w-body">
+    <p class="w-city">{html.escape(c['city'])} <span style="font-size:0.72rem;font-weight:600;color:#94A3B8;">인구순 {i+1}</span></p>
+    <p class="w-temp">{html.escape(c['temp_display'])} <span class="w-cond">· {html.escape(c['label'])}</span></p>
+    {range_html}
+    <p class="w-tip">{html.escape(c.get('tip', ''))}</p>
   </div>
 </div>
             """
         )
-        dots_html.append(f'<span class="{active}" data-dot="{i}"></span>')
+        dots_html.append(f'<span class="{active}" data-dot="{i}" title="{html.escape(c["city"])}"></span>')
 
     html_block = f"""
 <div class="weather-rotator-wrap">
-  <div class="w-label">강원 주요 도시 날씨 · 10초마다 전환</div>
+  <div class="w-label">강원도 시·군 날씨 (인구순) · 5초마다 전환</div>
   <div id="weather-slides">{"".join(slides_html)}</div>
   <div class="weather-dots" id="weather-dots">{"".join(dots_html)}</div>
 </div>
 <script>
 (function() {{
-  const cities = {cities_json};
   const slides = document.querySelectorAll('.weather-slide');
   const dots = document.querySelectorAll('#weather-dots span');
   let idx = 0;
   function show(i) {{
     slides.forEach((el, n) => el.classList.toggle('active', n === i));
     dots.forEach((el, n) => el.classList.toggle('active', n === i));
-    if (cities[i] && slides[i]) {{
-      slides[i].style.background = cities[i].bg || '#F0FDFA';
-    }}
   }}
   setInterval(() => {{
     idx = (idx + 1) % slides.length;
@@ -266,31 +332,53 @@ def render_weather_rotator(interval_ms: int = 10000) -> None:
 }})();
 </script>
     """
-    components.html(html_block, height=155, scrolling=False)
+    components.html(html_block, height=175, scrolling=False)
+
+
+def render_festival_ticker() -> None:
+    festivals = get_festivals()
+    rows = []
+    for i, f in enumerate(festivals):
+        icon = FESTIVAL_ICONS[i % len(FESTIVAL_ICONS)]
+        grad = [
+            "linear-gradient(135deg,#0D9488,#14B8A6)",
+            "linear-gradient(135deg,#0891B2,#22D3EE)",
+            "linear-gradient(135deg,#0284C7,#38BDF8)",
+            "linear-gradient(135deg,#7C3AED,#A78BFA)",
+        ][i % 4]
+        thumb = _icon_thumb(icon, grad)
+        rows.append(
+            f"""
+<div class="fest-row">
+  {thumb}
+  <div class="fest-text">
+    <strong>{html.escape(f['title'])}</strong>
+    <span>{html.escape(f['place'])} · {html.escape(f['period'])} — {html.escape(f['desc'])}</span>
+  </div>
+</div>
+            """
+        )
+    doubled = "".join(rows) + "".join(rows)
+
+    html_block = f"""
+<div class="fest-ticker-wrap">
+  <div class="f-label">Festivals · 상향 슬라이드</div>
+  <div class="fest-ticker-viewport">
+    <div class="fest-ticker-track">{doubled}</div>
+  </div>
+</div>
+    """
+    components.html(html_block, height=168, scrolling=False)
 
 
 def render_gangwon_dashboard() -> None:
-    festivals = get_festivals()
     highlights = get_highlights()
-
-    fest_html = "".join(
-        f"<li><b>{html.escape(f['title'])}</b> · {html.escape(f['place'])} ({html.escape(f['period'])})</li>"
-        for f in festivals
-    )
 
     col_w, col_f, col_t = st.columns([1.15, 1, 1])
     with col_w:
-        render_weather_rotator()
+        render_weather_rotator(interval_ms=5000)
     with col_f:
-        st.markdown(
-            f"""
-<div class="info-card" style="height:100%;">
-  <div class="label">Festivals</div>
-  <ul class="festival-list">{fest_html}</ul>
-</div>
-            """,
-            unsafe_allow_html=True,
-        )
+        render_festival_ticker()
     with col_t:
         st.markdown(
             """
@@ -306,8 +394,8 @@ def render_gangwon_dashboard() -> None:
     for h in highlights:
         cards.append(
             f"""
-<div class="highlight-card" style="background:{h['gradient']};">
-  <div style="font-size:2rem;">{h['emoji']}</div>
+<div class="highlight-card" style="background:{h.get('gradient', h.get('thumb_bg', '#0D9488'))};">
+  <div class="ui-icon-thumb" style="background:rgba(255,255,255,0.25);">{html.escape(h.get('icon', h.get('emoji', '★')))}</div>
   <strong>{html.escape(h['title'])}</strong>
   <span>{html.escape(h['region'])}</span>
 </div>
