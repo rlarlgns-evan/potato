@@ -1,0 +1,32 @@
+# 환경 변수 / 비밀
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.py[cod]
+*$py.class
+.Python
+
+# 가상환경
+.venv/
+venv/
+env/
+
+# DB
+*.db
+
+# Streamlit 로컬 secrets
+.streamlit/secrets.toml
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# 기타
+*.log
