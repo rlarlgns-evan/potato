@@ -22,9 +22,20 @@ streamlit run app.py
 KAKAO_MAP_APP_KEY=발급받은_JavaScript_키
 ```
 
-Streamlit Cloud Secrets 예시:
+## Streamlit Cloud Secrets
+
+[share.streamlit.io](https://share.streamlit.io) → 앱 **Settings** → **Secrets**에 `secrets.example.toml` 형식으로 붙여넣기.
 
 ```toml
-KAKAO_MAP_APP_KEY = "xxxxxxxx"
-OPENAI_API_KEY = "sk-..."
+AI_PROVIDER = "google"
+
+GOOGLE_API_KEY = "your-gemini-api-key"
+GOOGLE_MODEL = "gemini-2.5-flash"
+
+KAKAO_MAP_APP_KEY = "your-kakao-javascript-key"
+
+OPENAI_API_KEY = ""
+OPENAI_MODEL = "gpt-4o-mini"
 ```
+
+저장 후 **Reboot app** 실행.
