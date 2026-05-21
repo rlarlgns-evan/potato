@@ -135,17 +135,13 @@ def render_kakao_map(
     shell_h = height + 88
     domain_hint_js = json.dumps(_DOMAIN_HINT, ensure_ascii=False)
 
-    kakao_sdk_script = ""
-    if app_key:
-        kakao_sdk_script = (
-            f'<script type="text/javascript" '
-            f'src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={safe_key}&autoload=false"></script>'
-        )
+    appkey_js = json.dumps(app_key) if app_key else '""'
 
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
+  <meta name="referrer" content="origin"/>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
@@ -206,18 +202,17 @@ def render_kakao_map(
 <body>
   <div class="map-shell">
     <div class="map-head">
-      <span class="map-label">{safe_title}</span>
+      <span class="map-label" id="map-label">{safe_title}</span>
       <span class="map-focus" id="map-focus-badge">{('📍 ' + safe_focus) if safe_focus else '일정 카드를 클릭하세요'}</span>
     </div>
     <div id="map-error"></div>
     <div id="map-wrap">
-      <div id="map-loading">지도 불러오는 중…</div>
+      <div id="map-loading">카카오 지도 불러오는 중…</div>
       <div id="map"></div>
     </div>
   </div>
-  {kakao_sdk_script}
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    const APPKEY = {appkey_js};
     const markers = {markers_json};
     const showRoute = {show_polyline};
     const showNumbers = {has_numbered};
@@ -225,7 +220,7 @@ def render_kakao_map(
     const centerLat = {center_lat};
     const centerLng = {center_lng};
     const domainHint = {domain_hint_js};
-    const hasKakaoKey = {str(bool(app_key)).lower()};
+    const hasKakaoKey = APPKEY && APPKEY.length > 0;
 
     let mapReady = false;
     let mapEngine = '';
@@ -404,46 +399,93 @@ def render_kakao_map(
       }}
     }}
 
-    function bootKakao() {{
-      if (!hasKakaoKey) return;
-
-      const loadTimeout = setTimeout(function() {{
-        if (mapEngine !== 'kakao' && !mapReady) {{
-          showWarn('카카오 지도 미사용 · OpenStreetMap 표시 중');
-        }}
-      }}, 8000);
-
-      function run() {{
-        if (!kakaoReady()) {{
-          setTimeout(run, 80);
-          return;
-        }}
-        kakao.maps.load(function() {{
-          try {{
-            initKakaoMap();
-            clearTimeout(loadTimeout);
-          }} catch (e) {{
-            clearTimeout(loadTimeout);
-            if (!mapReady) startFallback('카카오 지도 오류: ' + e.message);
-          }}
-        }});
-      }}
-      run();
+    function setMapLabel(text) {{
+      const el = document.getElementById('map-label');
+      if (el) el.textContent = text;
     }}
 
-    function boot() {{
-      if (typeof L === 'undefined') {{
-        hideLoading();
-        showWarn('지도 라이브러리 로드 실패');
+    function ensureLeafletThenRun(fn) {{
+      if (typeof L !== 'undefined') {{
+        fn();
         return;
       }}
-      setTimeout(function() {{
-        if (!mapReady) initLeaflet();
-      }}, 200);
-      bootKakao();
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      s.onload = fn;
+      s.onerror = function() {{
+        hideLoading();
+        showWarn('대체 지도(OpenStreetMap) 로드 실패');
+      }};
+      document.head.appendChild(s);
     }}
 
-    boot();
+    function useOsmFallback(msg) {{
+      if (mapReady && mapEngine === 'kakao') return;
+      if (msg) showWarn(msg + '<br/><small>' + domainHint + '</small>');
+      setMapLabel('OpenStreetMap (대체)');
+      ensureLeafletThenRun(initLeaflet);
+    }}
+
+    function runKakaoMap(onFail, onSuccess) {{
+      kakao.maps.load(function() {{
+        try {{
+          initKakaoMap();
+          setMapLabel('Kakao Map');
+          onSuccess();
+        }} catch (e) {{
+          onFail('카카오 지도 오류: ' + e.message);
+        }}
+      }});
+    }}
+
+    function bootKakaoFirst() {{
+      if (!hasKakaoKey) {{
+        useOsmFallback('KAKAO_MAP_APP_KEY가 없습니다.');
+        return;
+      }}
+
+      let settled = false;
+      const fallbackTimer = setTimeout(function() {{
+        if (settled) return;
+        settled = true;
+        useOsmFallback(
+          '카카오 지도 연결 실패. JavaScript SDK 도메인에 '
+          + 'https://kangwon-potato.streamlit.app 등록 여부를 확인하세요.'
+        );
+      }}, 6000);
+
+      function fail(msg) {{
+        if (settled) return;
+        settled = true;
+        clearTimeout(fallbackTimer);
+        useOsmFallback(msg);
+      }}
+
+      function succeed() {{
+        settled = true;
+        clearTimeout(fallbackTimer);
+      }}
+
+      if (kakaoReady()) {{
+        runKakaoMap(fail, succeed);
+        return;
+      }}
+
+      const sdk = document.createElement('script');
+      sdk.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey='
+        + encodeURIComponent(APPKEY) + '&autoload=false';
+      sdk.onload = function() {{
+        if (!kakaoReady()) {{
+          fail('카카오 SDK 초기화 실패');
+          return;
+        }}
+        runKakaoMap(fail, succeed);
+      }};
+      sdk.onerror = function() {{ fail('카카오 SDK 네트워크 오류'); }};
+      document.head.appendChild(sdk);
+    }}
+
+    bootKakaoFirst();
   </script>
 </body>
 </html>"""
