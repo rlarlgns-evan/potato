@@ -133,6 +133,23 @@ html, body, [class*="css"] {{ font-family: 'Plus Jakarta Sans', sans-serif; }}
   font-weight: 800; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 8px;
 }}
 
+/* MY TRIP — 일정 카드 클릭 버튼 */
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stButton"] button {{
+  min-height: 108px;
+  height: auto !important;
+  padding: 1rem 1.1rem !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  white-space: pre-wrap !important;
+  line-height: 1.45 !important;
+  border-radius: 16px !important;
+  font-size: 0.88rem !important;
+}}
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stButton"] button p {{
+  text-align: left !important;
+  white-space: pre-wrap !important;
+}}
+
 .trip-info-box {{
   background: #fff; border-radius: 18px; padding: 1.2rem;
   border: 1px solid #CCFBF1; margin-top: 1rem;
@@ -439,24 +456,42 @@ def render_featured_trip(spot: dict, meta: dict) -> None:
     )
 
 
-def render_spot_pick_card(step: dict, spot: dict, active: bool) -> None:
-    cls = "spot-pick active" if active else "spot-pick"
+def _spot_card_label(step: dict) -> str:
     stay = step.get("stay_minutes")
     stay_txt = f" · 약 {stay}분" if stay else ""
-    move = step.get("move_to_next", "")
-    move_html = f'<p style="margin:0.5rem 0 0;font-size:0.8rem;color:#0D9488;">🚗 {html.escape(move)}</p>' if move else ""
-    st.markdown(
-        f"""
-<div class="{cls}">
-  <span class="order">STEP {step['order']}</span>
-  <h4 style="margin:0.5rem 0 0.2rem;color:#134E4A;">{html.escape(step['spot_name'])}</h4>
-  <p style="margin:0;font-size:0.78rem;color:#64748B;">{html.escape(step.get('region',''))} · {html.escape(step.get('theme',''))}{html.escape(stay_txt)}</p>
-  <p style="margin:0.5rem 0 0;font-size:0.88rem;color:#334155;">{html.escape(step.get('why',''))}</p>
-  {move_html}
-</div>
-        """,
-        unsafe_allow_html=True,
-    )
+    lines = [
+        f"STEP {step['order']}   {step['spot_name']}",
+        f"{step.get('region', '')} · {step.get('theme', '')}{stay_txt}",
+        step.get("why", "") or "",
+    ]
+    move = (step.get("move_to_next") or "").strip()
+    if move:
+        lines.append(f"🚗 {move}")
+    return "\n".join(lines)
+
+
+def render_clickable_spot_card(
+    step: dict,
+    spot: dict,
+    active: bool,
+    on_click,
+) -> None:
+    """일정 박스 전체를 클릭하면 지도 포커스가 바뀝니다."""
+    order = int(step["order"])
+    with st.container(border=True):
+        st.button(
+            _spot_card_label(step),
+            key=f"spot_card_{order}",
+            type="primary" if active else "secondary",
+            use_container_width=True,
+            on_click=on_click,
+            args=(order,),
+        )
+        if spot:
+            url = f"https://map.kakao.com/link/map/{spot['name']},{spot['lat']},{spot['lng']}"
+            st.link_button("카카오맵 앱에서 열기", url, use_container_width=True)
+
+
 
 
 def render_trip_information(text: str) -> None:

@@ -13,7 +13,7 @@ from ui import (
     render_gangwon_dashboard,
     render_home_search_hero,
     render_screen_steps,
-    render_spot_pick_card,
+    render_clickable_spot_card,
     render_trip_information,
 )
 
@@ -45,6 +45,10 @@ if "last_user_query" not in st.session_state:
     st.session_state.last_user_query = ""
 
 kakao_key = get_kakao_app_key()
+
+
+def _focus_step(order: int) -> None:
+    st.session_state.focus_order = order
 
 
 def _map_center(spots: list) -> tuple[float, float]:
@@ -151,42 +155,12 @@ else:
 
     with left:
         st.markdown("#### Popular Trip · AI 추천")
-        st.caption("STEP 버튼 또는 카드의 **지도에 표시**를 누르면 오른쪽 지도가 해당 장소로 이동합니다.")
-
-        if steps:
-            pill_cols = st.columns(min(len(steps), 4))
-            for i, step in enumerate(steps):
-                with pill_cols[i % len(pill_cols)]:
-                    if st.button(
-                        f"STEP {step['order']}",
-                        key=f"pill_{step['order']}",
-                        type="primary"
-                        if step["order"] == st.session_state.focus_order
-                        else "secondary",
-                        use_container_width=True,
-                    ):
-                        st.session_state.focus_order = step["order"]
-                        st.rerun()
+        st.caption("**일정 카드를 클릭**하면 오른쪽 지도에 해당 장소가 표시됩니다.")
 
         for step in steps:
             spot = next((s for s in curated if s["name"] == step["spot_name"]), None)
             is_active = step["order"] == st.session_state.focus_order
-            render_spot_pick_card(step, spot or {}, is_active)
-
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button(
-                    "📍 지도에 표시",
-                    key=f"focus_{step['order']}",
-                    type="primary" if is_active else "secondary",
-                    use_container_width=True,
-                ):
-                    st.session_state.focus_order = step["order"]
-                    st.rerun()
-            with c2:
-                if spot:
-                    url = f"https://map.kakao.com/link/map/{spot['name']},{spot['lat']},{spot['lng']}"
-                    st.link_button("카카오맵 앱", url, use_container_width=True)
+            render_clickable_spot_card(step, spot or {}, is_active, on_click=_focus_step)
 
         trip_text = meta.get("message") or meta.get("summary") or get_region_intro()
         if meta.get("map_tip"):
@@ -206,11 +180,10 @@ else:
             focus_order=st.session_state.focus_order,
             focus_label=focus_label,
             title="Live Kakao Map",
-            map_key=f"trip_map_{st.session_state.focus_order}",
         )
         st.caption(
-            "번호 마커 · 틸 동선 · **STEP / 지도에 표시** 클릭 시 확대·상세 팝업 · "
-            "좌표는 앱 DB 기준(실제 위치와 수십~수백 m 차이 가능)"
+            "일정 카드 클릭 → 지도 포커스 · 마커 클릭 → 상세 팝업 · "
+            "좌표는 앱 DB 기준"
         )
 
     if st.button("다른 조건으로 새로 검색", use_container_width=True):

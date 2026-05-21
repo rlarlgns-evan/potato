@@ -90,7 +90,6 @@ def render_kakao_map(
     focus_order: int = 0,
     focus_label: str = "",
     title: str = "Live Kakao Map",
-    map_key: str = "trip_map",
 ) -> None:
     display_spots = route_spots if route_spots else spots
     if not display_spots:
@@ -199,7 +198,7 @@ def render_kakao_map(
   <div class="map-shell">
     <div class="map-head">
       <span class="map-label">{safe_title}</span>
-      <span class="map-focus" id="map-focus-badge">{'📍 ' + safe_focus if safe_focus else 'STEP를 선택하세요'}</span>
+      <span class="map-focus" id="map-focus-badge">{('📍 ' + safe_focus) if safe_focus else '일정 카드를 클릭하세요'}</span>
     </div>
     <div id="map-error"></div>
     <div id="map-wrap">
@@ -220,7 +219,7 @@ def render_kakao_map(
     const hasKakaoKey = {str(bool(app_key)).lower()};
 
     let mapReady = false;
-    let fallbackDone = false;
+    let mapEngine = '';
 
     function showWarn(msg) {{
       const el = document.getElementById('map-error');
@@ -263,10 +262,9 @@ def render_kakao_map(
     }}
 
     function initLeaflet() {{
-      if (fallbackDone) return;
-      fallbackDone = true;
+      if (mapEngine === 'kakao' || mapReady) return;
+      mapEngine = 'leaflet';
       hideLoading();
-      document.getElementById('map-title') && (document.getElementById('map-title').textContent = 'Trip Map');
 
       const container = document.getElementById('map');
       container.innerHTML = '';
@@ -313,10 +311,11 @@ def render_kakao_map(
     }}
 
     function startFallback(reason) {{
-      if (mapReady || fallbackDone) return;
+      if (mapReady) return;
       if (reason) showWarn(reason + '<br/><small>' + domainHint + '</small>');
       if (typeof L === 'undefined') {{
         hideLoading();
+        showWarn('지도를 불러오지 못했습니다.');
         return;
       }}
       initLeaflet();
@@ -330,7 +329,9 @@ def render_kakao_map(
     }}
 
     function initKakaoMap() {{
+      mapEngine = 'kakao';
       const container = document.getElementById('map');
+      container.innerHTML = '';
       const map = new kakao.maps.Map(container, {{
         center: new kakao.maps.LatLng(centerLat, centerLng),
         level: 8
@@ -385,7 +386,6 @@ def render_kakao_map(
       }}
 
       mapReady = true;
-      fallbackDone = true;
       hideLoading();
       function relayout() {{ map.relayout(); }}
       setTimeout(relayout, 100);
@@ -396,14 +396,13 @@ def render_kakao_map(
     }}
 
     function bootKakao() {{
-      if (!hasKakaoKey) {{
-        startFallback('카카오 키 없음 · OpenStreetMap으로 표시 (좌표는 동일합니다).');
-        return;
-      }}
+      if (!hasKakaoKey) return;
 
       const loadTimeout = setTimeout(function() {{
-        if (!mapReady) startFallback('카카오 지도 대기 시간 초과 · OpenStreetMap으로 표시합니다.');
-      }}, 6000);
+        if (mapEngine !== 'kakao' && !mapReady) {{
+          showWarn('카카오 지도 미사용 · OpenStreetMap 표시 중');
+        }}
+      }}, 8000);
 
       function run() {{
         if (!kakaoReady()) {{
@@ -416,16 +415,28 @@ def render_kakao_map(
             clearTimeout(loadTimeout);
           }} catch (e) {{
             clearTimeout(loadTimeout);
-            startFallback('카카오 지도 오류: ' + e.message);
+            if (!mapReady) startFallback('카카오 지도 오류: ' + e.message);
           }}
         }});
       }}
       run();
     }}
 
-    bootKakao();
+    function boot() {{
+      if (typeof L === 'undefined') {{
+        hideLoading();
+        showWarn('지도 라이브러리 로드 실패');
+        return;
+      }}
+      setTimeout(function() {{
+        if (!mapReady) initLeaflet();
+      }}, 200);
+      bootKakao();
+    }}
+
+    boot();
   </script>
 </body>
 </html>"""
 
-    components.html(html_content, height=shell_h, scrolling=False, key=map_key)
+    components.html(html_content, height=shell_h, scrolling=False)
