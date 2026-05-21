@@ -257,19 +257,86 @@ div[data-testid="stChatInput"] > div {
   font-weight: 800;
   font-size: 0.8rem;
 }
+
+.screen-steps {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+.screen-step {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #fff;
+  color: #94A3B8;
+  border: 2px solid #E2E8F0;
+}
+.screen-step.active {
+  background: linear-gradient(135deg, #5B5FEA, #7C3AED);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 6px 18px rgba(91, 95, 234, 0.35);
+}
+.screen-step.done {
+  background: #EEF2FF;
+  color: #4338CA;
+  border-color: #C7D2FE;
+}
+.screen-step-line {
+  width: 28px;
+  height: 2px;
+  background: #E2E8F0;
+}
+.screen-step-line.done {
+  background: #A5B4FC;
+}
+
+div.stButton > button[kind="primary"] {
+  background: linear-gradient(135deg, #5B5FEA, #6366F1) !important;
+  border: none !important;
+  border-radius: 14px !important;
+  font-weight: 700 !important;
+  padding: 0.65rem 1.25rem !important;
+  box-shadow: 0 10px 24px rgba(91, 95, 234, 0.35) !important;
+}
 </style>
         """,
         unsafe_allow_html=True,
     )
 
 
-def hero_header() -> None:
+def render_screen_steps(active: int) -> None:
+    """active: 1 = 홈(채팅), 2 = 결과(동선·지도)"""
+    s1 = "active" if active == 1 else ("done" if active > 1 else "")
+    s2 = "active" if active == 2 else ""
+    line = "done" if active > 1 else ""
     st.markdown(
-        """
+        f"""
+<div class="screen-steps">
+  <span class="screen-step {s1}">① Plan · AI 채팅</span>
+  <span class="screen-step-line {line}"></span>
+  <span class="screen-step {s2}">② Route · 동선 정보</span>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def hero_header(screen: int = 1) -> None:
+    title = "Find Your Route" if screen == 1 else "Your Trip Plan"
+    sub = "AI와 대화하고 취향을 알려주세요" if screen == 1 else "추천 동선과 카카오맵을 확인하세요"
+    st.markdown(
+        f"""
 <div class="hero-card">
   <p class="eyebrow">안녕하세요, 여행자님 👋</p>
-  <h1>Find Your Route</h1>
-  <p>AI가 강원도 숨은 spot을 골라 카카오맵 동선으로 보여드려요</p>
+  <h1>{html.escape(title)}</h1>
+  <p>{html.escape(sub)}</p>
 </div>
         """,
         unsafe_allow_html=True,
