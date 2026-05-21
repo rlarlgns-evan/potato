@@ -2,6 +2,7 @@
 
 import html
 import json
+from urllib.parse import quote
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -553,8 +554,9 @@ def _trip_card_html(step: dict, spot: dict, active: bool) -> str:
         f'<p class="trip-move">🚗 {html.escape(move)}</p>' if move else ""
     )
     ext = ""
-    if spot:
-        url = f"https://map.kakao.com/link/map/{spot['name']},{spot['lat']},{spot['lng']}"
+    if spot.get("name") and spot.get("lat") is not None and spot.get("lng") is not None:
+        name_q = quote(str(spot["name"]))
+        url = f"https://map.kakao.com/link/map/{name_q},{spot['lat']},{spot['lng']}"
         ext = (
             f'<a class="trip-ext-link" href="{html.escape(url, quote=True)}" '
             f'target="_blank" rel="noopener">카카오맵 ↗</a>'
@@ -576,23 +578,18 @@ def _trip_card_html(step: dict, spot: dict, active: bool) -> str:
 </div>"""
 
 
-def render_clickable_spot_card(
-    step: dict,
-    spot: dict,
-    active: bool,
-    on_click,
-) -> None:
-    """카드 UI + 투명 버튼 오버레이로 전체 박스 클릭."""
+def render_clickable_spot_card(step: dict, spot: dict, active: bool) -> bool:
+    """카드 UI + 투명 버튼 오버레이. 클릭 시 True 반환."""
     order = int(step["order"])
     st.markdown(_trip_card_html(step, spot, active), unsafe_allow_html=True)
-    st.button(
-        "select",
+    clicked = st.button(
+        " ",
         key=f"spot_card_{order}",
-        on_click=on_click,
-        args=(order,),
         label_visibility="collapsed",
+        use_container_width=True,
         type="primary" if active else "secondary",
     )
+    return clicked
 
 
 

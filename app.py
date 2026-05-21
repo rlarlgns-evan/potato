@@ -47,10 +47,6 @@ if "last_user_query" not in st.session_state:
 kakao_key = get_kakao_app_key()
 
 
-def _focus_step(order: int) -> None:
-    st.session_state.focus_order = order
-
-
 def _map_center(spots: list) -> tuple[float, float]:
     if spots:
         return (
@@ -163,7 +159,9 @@ else:
         for step in steps:
             spot = next((s for s in curated if s["name"] == step["spot_name"]), None)
             is_active = step["order"] == st.session_state.focus_order
-            render_clickable_spot_card(step, spot or {}, is_active, on_click=_focus_step)
+            if render_clickable_spot_card(step, spot or {}, is_active):
+                st.session_state.focus_order = step["order"]
+                st.rerun()
 
         trip_text = meta.get("message") or meta.get("summary") or get_region_intro()
         if meta.get("map_tip"):
