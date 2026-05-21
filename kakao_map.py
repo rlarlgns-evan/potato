@@ -10,13 +10,10 @@ from config import get_env
 
 
 def get_kakao_app_key() -> str:
-    # Streamlit 재실행 시에도 프로젝트 루트 .env를 확실히 읽음
     load_dotenv(Path(__file__).resolve().parent / ".env", override=False)
-
     key = get_env("KAKAO_MAP_APP_KEY")
     if key:
         return key
-
     try:
         return str(st.secrets["KAKAO_MAP_APP_KEY"]).strip()
     except Exception:
@@ -31,24 +28,27 @@ def render_kakao_map(
     height: int = 500,
     route_spots: list[dict[str, Any]] | None = None,
     show_route: bool = False,
-    empty_message: str = "AI 추천 후 지도에 동선이 표시됩니다.",
 ) -> None:
     if not app_key:
         st.warning(
             "카카오 지도 API 키가 없습니다. `.env` 또는 Streamlit Secrets에 "
             "`KAKAO_MAP_APP_KEY`를 설정해 주세요."
         )
-        st.caption(
-            "[카카오 개발자](https://developers.kakao.com) → 앱 → 플랫폼 키 → "
-            "JavaScript 키 발급 후, SDK 도메인에 `http://localhost:8501`과 "
-            "배포 URL(예: `https://본인앱.streamlit.app`)을 등록하세요."
-        )
         return
 
     display_spots = route_spots if route_spots else spots
     if not display_spots:
-        st.info(empty_message)
-        return
+        display_spots = [
+            {
+                "name": "강원도",
+                "lat": center_lat,
+                "lng": center_lng,
+                "region": "",
+                "theme": "",
+                "description": "AI 추천 후 마커가 표시됩니다.",
+                "order": 0,
+            }
+        ]
 
     markers = []
     for idx, s in enumerate(display_spots, start=1):
@@ -57,85 +57,120 @@ def render_kakao_map(
                 "name": s["name"],
                 "lat": s["lat"],
                 "lng": s["lng"],
-                "region": s["region"],
-                "theme": s["theme"],
-                "description": s["description"],
-                "order": idx,
+                "region": s.get("region", ""),
+                "theme": s.get("theme", ""),
+                "description": s.get("description", ""),
+                "order": idx if s.get("order", 1) else idx,
             }
         )
 
     markers_json = json.dumps(markers, ensure_ascii=False)
     show_polyline = "true" if show_route and len(display_spots) > 1 else "false"
-    level = 8
+    has_numbered = "true" if route_spots else "false"
 
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
-  <style>#map {{ width: 100%; height: {height}px; }}</style>
+  <style>
+    html, body {{ margin: 0; padding: 0; width: 100%; height: 100%; }}
+    #map {{ width: 100%; height: {height}px; }}
+    #map-error {{
+      display: none;
+      padding: 12px;
+      color: #b42318;
+      font-size: 14px;
+      line-height: 1.5;
+    }}
+  </style>
 </head>
 <body>
+  <div id="map-error"></div>
   <div id="map"></div>
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={app_key}"></script>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={app_key}&autoload=false"></script>
   <script>
     const markers = {markers_json};
     const showRoute = {show_polyline};
-    const container = document.getElementById('map');
-    const map = new kakao.maps.Map(container, {{
-      center: new kakao.maps.LatLng({center_lat}, {center_lng}),
-      level: {level}
-    }});
+    const showNumbers = {has_numbered};
 
-    const bounds = new kakao.maps.LatLngBounds();
-    const path = [];
-
-    markers.forEach(function(spot) {{
-      const pos = new kakao.maps.LatLng(spot.lat, spot.lng);
-      bounds.extend(pos);
-      path.push(pos);
-
-      const markerImage = new kakao.maps.MarkerImage(
-        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
-        new kakao.maps.Size(36, 42),
-        {{ offset: new kakao.maps.Point(18, 42) }}
-      );
-      const marker = new kakao.maps.Marker({{
-        position: pos,
-        image: markerImage
-      }});
-      marker.setMap(map);
-
-      const content = '<div style="padding:8px;min-width:180px;line-height:1.5;">'
-        + '<strong>' + spot.order + '. ' + spot.name + '</strong><br/>'
-        + '지역: ' + spot.region + '<br/>'
-        + '테마: ' + spot.theme + '<br/>'
-        + spot.description
-        + '</div>';
-      const infowindow = new kakao.maps.InfoWindow({{ content: content }});
-      kakao.maps.event.addListener(marker, 'click', function() {{
-        infowindow.open(map, marker);
-      }});
-    }});
-
-    if (showRoute && path.length > 1) {{
-      const polyline = new kakao.maps.Polyline({{
-        path: path,
-        strokeWeight: 4,
-        strokeColor: '#E85D04',
-        strokeOpacity: 0.85,
-        strokeStyle: 'solid'
-      }});
-      polyline.setMap(map);
+    function showError(msg) {{
+      const el = document.getElementById('map-error');
+      el.style.display = 'block';
+      el.textContent = msg;
     }}
 
-    if (markers.length > 1) {{
-      map.setBounds(bounds);
-    }} else if (markers.length === 1) {{
-      map.setCenter(new kakao.maps.LatLng(markers[0].lat, markers[0].lng));
-      map.setLevel(5);
-    }}
+    kakao.maps.load(function() {{
+      try {{
+        const container = document.getElementById('map');
+        const map = new kakao.maps.Map(container, {{
+          center: new kakao.maps.LatLng({center_lat}, {center_lng}),
+          level: 8
+        }});
+
+        const bounds = new kakao.maps.LatLngBounds();
+        const path = [];
+
+        markers.forEach(function(spot) {{
+          const pos = new kakao.maps.LatLng(spot.lat, spot.lng);
+          bounds.extend(pos);
+          path.push(pos);
+
+          const marker = new kakao.maps.Marker({{ position: pos }});
+          marker.setMap(map);
+
+          if (showNumbers && spot.order > 0) {{
+            const label = '<div style="padding:4px 8px;background:#E85D04;color:#fff;border-radius:4px;font-size:12px;">'
+              + spot.order + '</div>';
+            const overlay = new kakao.maps.CustomOverlay({{
+              position: pos,
+              content: label,
+              yAnchor: 1.4
+            }});
+            overlay.setMap(map);
+          }}
+
+          const content = '<div style="padding:8px;min-width:180px;line-height:1.5;">'
+            + '<strong>' + (showNumbers ? spot.order + '. ' : '') + spot.name + '</strong><br/>'
+            + (spot.region ? '지역: ' + spot.region + '<br/>' : '')
+            + (spot.theme ? '테마: ' + spot.theme + '<br/>' : '')
+            + spot.description
+            + '</div>';
+          const infowindow = new kakao.maps.InfoWindow({{ content: content }});
+          kakao.maps.event.addListener(marker, 'click', function() {{
+            infowindow.open(map, marker);
+          }});
+        }});
+
+        if (showRoute && path.length > 1) {{
+          new kakao.maps.Polyline({{
+            path: path,
+            strokeWeight: 4,
+            strokeColor: '#E85D04',
+            strokeOpacity: 0.85,
+            strokeStyle: 'solid'
+          }}).setMap(map);
+        }}
+
+        if (markers.length > 1) {{
+          map.setBounds(bounds);
+        }} else {{
+          map.setCenter(new kakao.maps.LatLng(markers[0].lat, markers[0].lng));
+          map.setLevel(7);
+        }}
+
+        setTimeout(function() {{ map.relayout(); }}, 200);
+        setTimeout(function() {{ map.relayout(); }}, 800);
+      }} catch (e) {{
+        showError('지도 초기화 실패: ' + e.message);
+      }}
+    }});
   </script>
 </body>
 </html>"""
 
-    components.html(html_content, height=height + 16)
+    components.html(html_content, height=height + 24, scrolling=False)
+
+    st.caption(
+        "지도가 비어 있으면 [카카오 개발자](https://developers.kakao.com) → JavaScript SDK 도메인에 "
+        "현재 접속 주소(예: `http://localhost:8501`, `https://xxx.streamlit.app`)를 등록했는지 확인하세요."
+    )
