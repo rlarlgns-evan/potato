@@ -298,9 +298,9 @@ def render_gangwon_dashboard() -> None:
   .grid {{
     display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; width: 100%;
   }}
-  .box {{ {BOX_STYLE} }}}
-  .lbl {{ {LBL_STYLE} }}}
-  .sub {{ {SUB_STYLE} }}}
+  .box {{ {BOX_STYLE} }}
+  .lbl {{ {LBL_STYLE} }}
+  .sub {{ {SUB_STYLE} }}
   .w-row {{ display: flex; align-items: center; gap: 12px; }}
   .w-city {{ margin: 0; font-size: 0.95rem; font-weight: 700; color: #134E4A; }}
   .w-temp {{ margin: 4px 0 0; font-size: 1.2rem; font-weight: 800; color: {TEAL_DARK}; }}
