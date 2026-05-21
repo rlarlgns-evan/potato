@@ -185,6 +185,8 @@ def get_highlights() -> list[dict[str, Any]]:
         {"title": "설악산 단풍", "region": "속초·고성", "icon": "▲", "thumb_bg": "linear-gradient(135deg,#0D9488,#14B8A6)"},
         {"title": "남이섬·소나무", "region": "춘천", "icon": "♣", "thumb_bg": "linear-gradient(135deg,#0891B2,#22D3EE)"},
         {"title": "동해 해변 드라이브", "region": "동해·삼척", "icon": "≈", "thumb_bg": "linear-gradient(135deg,#0284C7,#38BDF8)"},
+        {"title": "평창 대관령 드라이브", "region": "평창·횡성", "icon": "◇", "thumb_bg": "linear-gradient(135deg,#6366F1,#A78BFA)"},
+        {"title": "강릉·양양 해변·카페", "region": "강릉·양양", "icon": "◎", "thumb_bg": "linear-gradient(135deg,#F59E0B,#FCD34D)"},
     ]
 
 

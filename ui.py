@@ -305,15 +305,19 @@ def render_gangwon_dashboard() -> None:
   .w-city {{ margin: 0; font-size: 0.95rem; font-weight: 700; color: #134E4A; }}
   .w-temp {{ margin: 4px 0 0; font-size: 1.2rem; font-weight: 800; color: {TEAL_DARK}; }}
   .w-meta {{ margin: 0; font-size: 0.78rem; color: #64748B; }}
-  .dots {{ display: flex; gap: 5px; margin-top: 10px; }}
+  .dots {{ display: flex; gap: 3px; align-items: center; margin-top: 10px; }}
   .dots i {{
-    width: 6px; height: 6px; border-radius: 50%; background: #E2E8F0;
-    display: inline-block; font-style: normal; cursor: pointer;
-    padding: 4px; margin: -4px; box-sizing: content-box;
+    width: 14px; height: 14px; padding: 0; margin: 0; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-style: normal; cursor: pointer; background: transparent;
   }}
-  .dots i.on {{ background: {TEAL}; }}
-  .dots i:hover {{ background: #94A3B8; }}
-  .dots i.on:hover {{ background: {TEAL}; }}
+  .dots i::before {{
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: #E2E8F0; display: block;
+  }}
+  .dots i.on::before {{ background: {TEAL}; }}
+  .dots i:hover::before {{ background: #94A3B8; }}
+  .dots i.on:hover::before {{ background: {TEAL}; }}
   .fest-vp {{ height: 108px; overflow: hidden; position: relative; }}
   .fest-vp::after {{
     content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22px;
