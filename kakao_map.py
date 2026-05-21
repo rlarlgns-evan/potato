@@ -22,6 +22,9 @@ def render_kakao_map(
     center_lng: float,
     app_key: str,
     height: int = 500,
+    route_spots: list[dict[str, Any]] | None = None,
+    show_route: bool = False,
+    empty_message: str = "AI 추천 후 지도에 동선이 표시됩니다.",
 ) -> None:
     if not app_key:
         st.warning(
@@ -35,19 +38,28 @@ def render_kakao_map(
         )
         return
 
-    markers = [
-        {
-            "name": s["name"],
-            "lat": s["lat"],
-            "lng": s["lng"],
-            "region": s["region"],
-            "theme": s["theme"],
-            "description": s["description"],
-        }
-        for s in spots
-    ]
+    display_spots = route_spots if route_spots else spots
+    if not display_spots:
+        st.info(empty_message)
+        return
+
+    markers = []
+    for idx, s in enumerate(display_spots, start=1):
+        markers.append(
+            {
+                "name": s["name"],
+                "lat": s["lat"],
+                "lng": s["lng"],
+                "region": s["region"],
+                "theme": s["theme"],
+                "description": s["description"],
+                "order": idx,
+            }
+        )
+
     markers_json = json.dumps(markers, ensure_ascii=False)
-    level = 9 if not spots else 8
+    show_polyline = "true" if show_route and len(display_spots) > 1 else "false"
+    level = 8
 
     html_content = f"""<!DOCTYPE html>
 <html>
@@ -60,24 +72,34 @@ def render_kakao_map(
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={app_key}"></script>
   <script>
     const markers = {markers_json};
+    const showRoute = {show_polyline};
     const container = document.getElementById('map');
     const map = new kakao.maps.Map(container, {{
       center: new kakao.maps.LatLng({center_lat}, {center_lng}),
       level: {level}
     }});
 
-    if (markers.length === 0) {{
-      return;
-    }}
-
     const bounds = new kakao.maps.LatLngBounds();
+    const path = [];
+
     markers.forEach(function(spot) {{
       const pos = new kakao.maps.LatLng(spot.lat, spot.lng);
       bounds.extend(pos);
-      const marker = new kakao.maps.Marker({{ position: pos }});
+      path.push(pos);
+
+      const markerImage = new kakao.maps.MarkerImage(
+        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
+        new kakao.maps.Size(36, 42),
+        {{ offset: new kakao.maps.Point(18, 42) }}
+      );
+      const marker = new kakao.maps.Marker({{
+        position: pos,
+        image: markerImage
+      }});
       marker.setMap(map);
-      const content = '<div style="padding:8px;min-width:160px;line-height:1.5;">'
-        + '<strong>' + spot.name + '</strong><br/>'
+
+      const content = '<div style="padding:8px;min-width:180px;line-height:1.5;">'
+        + '<strong>' + spot.order + '. ' + spot.name + '</strong><br/>'
         + '지역: ' + spot.region + '<br/>'
         + '테마: ' + spot.theme + '<br/>'
         + spot.description
@@ -88,9 +110,20 @@ def render_kakao_map(
       }});
     }});
 
+    if (showRoute && path.length > 1) {{
+      const polyline = new kakao.maps.Polyline({{
+        path: path,
+        strokeWeight: 4,
+        strokeColor: '#E85D04',
+        strokeOpacity: 0.85,
+        strokeStyle: 'solid'
+      }});
+      polyline.setMap(map);
+    }}
+
     if (markers.length > 1) {{
       map.setBounds(bounds);
-    }} else {{
+    }} else if (markers.length === 1) {{
       map.setCenter(new kakao.maps.LatLng(markers[0].lat, markers[0].lng));
       map.setLevel(5);
     }}
