@@ -26,10 +26,11 @@ CURATION_SCHEMA_HINT = """
 }
 
 규칙:
-- recommended_spots·route_order·route_steps의 spot_name은 DB 목록에 있는 이름만 사용 (1~3곳).
-- route_order는 실제 방문 순서(지리적으로 묶인 동선).
-- route_steps는 route_order와 같은 순서·개수.
-- 사용자 질문(동반자·시간·테마)을 반영해 실용적인 당일/반나절 코스를 제안.
+- recommended_spots·route_order·route_steps의 spot_name은 아래 강원도 관광지 목록 이름만 정확히 사용 (1~4곳).
+- route_order는 지리적으로 묶인 실제 방문 순서.
+- route_steps는 route_order와 동일 순서·개수.
+- 사용자 질문(동반자·시간·테마·이동수단)을 반영한 당일/반나절 코스.
+- 목록에 없는 장소명은 만들지 마세요.
 """.strip()
 
 
@@ -37,16 +38,16 @@ def _build_system_prompt(spots: list[dict[str, Any]], for_curation: bool = False
     spot_lines = "\n".join(
         [
             f"- {s['name']} | {s['region']} | {s['theme']} | ({s['lat']}, {s['lng']}) | {s['description']}"
-            for s in spots[:20]
+            for s in spots[:45]
         ]
     )
     base = f"""
-당신은 '샤이한 열정 감자들' 앱의 강원도 로컬 여행 플래너입니다.
-인구 감소 지역의 한적한 spot을 골라 **방문 순서가 있는 당일/반나절 동선**을 짭니다.
-말투: 친근한 한국어, 실용적, 과장 없이.
+당신은 '샤이한 열정 감자들' 앱의 강원도 여행 플래너입니다.
+강원도 **전역 관광지** 목록에서 사용자 취향에 맞는 곳을 골라 방문 순서가 있는 동선을 짭니다.
+말투: 친근한 한국어, 실용적.
 
-DB 후보지 (이름을 글자 그대로 복사):
-{spot_lines if spot_lines else "(후보 없음)"}
+강원도 관광지 목록 (이름을 글자 그대로 복사, 필터 없음):
+{spot_lines if spot_lines else "(목록 없음)"}
 """.strip()
     if for_curation:
         return f"{base}\n\n{CURATION_SCHEMA_HINT}"
@@ -70,7 +71,7 @@ def _spots_from_names(spots: list[dict[str, Any]], names: list[str]) -> list[dic
                 if spot not in result:
                     result.append(spot)
     result.sort(key=lambda s: order.get(s["name"], 999))
-    return result[:3]
+    return result[:4]
 
 
 def _parse_curation_json(text: str) -> dict[str, Any] | None:

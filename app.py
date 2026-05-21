@@ -3,79 +3,50 @@ import config  # noqa: F401 — .env 로드
 import streamlit as st
 
 from chatbot import curate_trip
-from database import get_filter_options, get_spots, init_db
+from database import get_all_spots, init_db
+from gangwon_content import get_region_intro
 from kakao_map import get_kakao_app_key, render_kakao_map
 from ui import (
-    hero_header,
     inject_styles,
     map_card_close,
     map_card_open,
+    render_app_header,
+    render_featured_trip,
+    render_gangwon_dashboard,
+    render_home_search_hero,
     render_screen_steps,
-    render_spot_carousel,
-    render_step_ticket,
-    render_theme_chips,
-    section_title,
+    render_spot_pick_card,
+    render_trip_information,
 )
 
 st.set_page_config(
     page_title="샤이한 열정 감자들",
     page_icon="🥔",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 inject_styles()
 init_db()
 
-# --- session ---
-if "screen" not in st.session_state:
-    st.session_state.screen = "home"  # home | results
+ALL_SPOTS = get_all_spots()
 
+if "screen" not in st.session_state:
+    st.session_state.screen = "home"
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": (
-                "안녕하세요! 🥔\n\n"
-                "여행 **기간·동반자·분위기**를 알려주시면 "
-                "다음 화면에서 **방문 동선·카카오맵**을 보여드릴게요."
-            ),
-        }
-    ]
+    st.session_state.messages = []
 if "curated_spots" not in st.session_state:
     st.session_state.curated_spots = []
 if "route_steps" not in st.session_state:
     st.session_state.route_steps = []
 if "itinerary_meta" not in st.session_state:
     st.session_state.itinerary_meta = {}
+if "focus_order" not in st.session_state:
+    st.session_state.focus_order = 1
+if "last_user_query" not in st.session_state:
+    st.session_state.last_user_query = ""
 
 kakao_key = get_kakao_app_key()
-
-with st.sidebar:
-    st.markdown("### 🥔 Trip Filters")
-    regions, themes = get_filter_options()
-    st.markdown("**지역**")
-    selected_region = st.selectbox("지역", ["전체"] + regions, label_visibility="collapsed")
-    st.markdown("**테마**")
-    selected_theme = st.selectbox("테마", ["전체"] + themes, label_visibility="collapsed")
-    st.caption("AI 후보 장소 범위")
-    if not kakao_key:
-        st.warning("KAKAO_MAP_APP_KEY 필요")
-
-    st.divider()
-    if st.session_state.screen == "results":
-        if st.button("← 1단계: 채팅으로", use_container_width=True):
-            st.session_state.screen = "home"
-            st.rerun()
-    elif st.session_state.curated_spots:
-        if st.button("② 동선 상세 보기", type="primary", use_container_width=True):
-            st.session_state.screen = "results"
-            st.rerun()
-
-candidate_spots = get_spots(region=selected_region, theme=selected_theme)
-curated = st.session_state.curated_spots
-meta = st.session_state.itinerary_meta
-steps = st.session_state.route_steps
 
 
 def _map_center(spots: list) -> tuple[float, float]:
@@ -87,8 +58,8 @@ def _map_center(spots: list) -> tuple[float, float]:
     return 37.8228, 128.1555
 
 
-def _apply_curation_result(result: dict) -> None:
-    st.session_state.messages.append({"role": "assistant", "content": result["message"]})
+def _apply_curation_result(result: dict, user_prompt: str) -> None:
+    st.session_state.last_user_query = user_prompt
     st.session_state.curated_spots = result["curated_spots"]
     st.session_state.route_steps = result.get("route_steps", [])
     st.session_state.itinerary_meta = {
@@ -96,123 +67,125 @@ def _apply_curation_result(result: dict) -> None:
         "summary": result.get("summary", ""),
         "map_tip": result.get("map_tip", ""),
         "total_duration": result.get("total_duration", ""),
+        "message": result.get("message", ""),
     }
+    st.session_state.focus_order = 1
     if result["curated_spots"]:
         st.session_state.screen = "results"
 
 
 # =============================================================================
-# 화면 1 — 홈: 소개 + AI 채팅
+# ① 홈 — 강원도 정보 + AI 검색
 # =============================================================================
 if st.session_state.screen == "home":
+    render_app_header()
     render_screen_steps(1)
-    hero_header(screen=1)
-    render_theme_chips()
-    render_spot_carousel(candidate_spots)
+    render_home_search_hero()
+    render_gangwon_dashboard()
 
-    st.markdown('<div class="surface-card">', unsafe_allow_html=True)
-    section_title("Plan Your Trip", "여행 취향을 말해 주세요 · AI가 코스를 설계합니다")
+    with st.form("ai_trip_search", clear_on_submit=True):
+        st.markdown("##### 🔍 AI 여행 검색")
+        user_prompt = st.text_input(
+            "label",
+            placeholder="예: 주말 가족과 드라이브, 설악·동해 쪽 당일 코스",
+            label_visibility="collapsed",
+        )
+        submitted = st.form_submit_button("AI 코스 설계하기", type="primary", use_container_width=True)
 
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    user_prompt = st.chat_input("예: 주말 연인과 반나절, 조용한 숲길·드라이브 코스")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    if user_prompt:
-        st.session_state.messages.append({"role": "user", "content": user_prompt})
-        with st.spinner("AI가 동선을 설계하는 중…"):
+    if submitted and user_prompt.strip():
+        st.session_state.messages = [
+            {"role": "user", "content": user_prompt.strip()},
+        ]
+        with st.spinner("강원도 전역 관광지에서 동선을 설계하는 중…"):
             result = curate_trip(
-                user_message=user_prompt,
-                spots=candidate_spots,
-                chat_history=st.session_state.messages,
+                user_message=user_prompt.strip(),
+                spots=ALL_SPOTS,
+                chat_history=[],
             )
-        _apply_curation_result(result)
+        st.session_state.messages.append(
+            {"role": "assistant", "content": result["message"]}
+        )
+        _apply_curation_result(result, user_prompt.strip())
         st.rerun()
 
-    if curated:
-        st.markdown("---")
-        col_a, col_b = st.columns([2, 1])
-        with col_a:
-            st.success(f"✅ **{meta.get('title') or '코스'}** 준비됐어요. 동선·지도를 확인해 보세요.")
-        with col_b:
-            if st.button("② 동선 상세 보기 →", type="primary", use_container_width=True):
-                st.session_state.screen = "results"
-                st.rerun()
-
-    with st.expander("필터 후보지 전체", expanded=False):
-        for spot in candidate_spots:
-            st.markdown(f"- **{spot['name']}** ({spot['region']}, {spot['theme']})")
+    st.caption(f"등록 관광지 **{len(ALL_SPOTS)}곳** · AI는 필터 없이 강원도 전역에서 선택합니다.")
 
 # =============================================================================
-# 화면 2 — 결과: 동선 정보 + 카카오맵
+# ② MY TRIP — AI 답변 기반 인터랙티브 동선
 # =============================================================================
 else:
+    curated = st.session_state.curated_spots
     if not curated:
         st.session_state.screen = "home"
         st.rerun()
 
-    render_screen_steps(2)
-    hero_header(screen=2)
+    meta = st.session_state.itinerary_meta
+    steps = st.session_state.route_steps
 
-    top_l, top_r = st.columns([1.2, 1])
-    with top_l:
-        if st.button("← 채팅 화면으로", use_container_width=False):
+    render_app_header()
+    render_screen_steps(2)
+
+    nav1, nav2, nav3 = st.columns([1, 2, 1])
+    with nav1:
+        if st.button("← 홈", use_container_width=True):
             st.session_state.screen = "home"
             st.rerun()
-
-    with top_r:
+    with nav2:
+        q = st.session_state.last_user_query
+        q_prev = (q[:40] + "…") if len(q) > 40 else q
+        st.markdown(f"**MY TRIP** · _{q_prev}_")
+    with nav3:
         if meta.get("total_duration"):
-            st.markdown(
-                f'<div style="text-align:right;"><span class="stat-pill">⏱ {meta["total_duration"]}</span></div>',
-                unsafe_allow_html=True,
-            )
+            st.caption(f"⏱ {meta['total_duration']}")
 
-    st.markdown('<div class="surface-card">', unsafe_allow_html=True)
-    title = meta.get("title") or "AI 추천 코스"
-    st.markdown(f"### {title}")
-    if meta.get("summary"):
-        st.write(meta["summary"])
-    st.markdown("</div>", unsafe_allow_html=True)
+    render_featured_trip(curated[0], meta)
 
-    route_col, map_col = st.columns([1, 1.12], gap="large")
+    left, right = st.columns([1, 1.1], gap="large")
 
-    center_lat, center_lng = _map_center(curated)
-
-    with route_col:
-        section_title("Select Route", "방문 순서 · 티켓 카드")
+    with left:
+        st.markdown("#### Popular Trip · AI 추천")
         for step in steps:
             spot = next((s for s in curated if s["name"] == step["spot_name"]), None)
-            render_step_ticket(step, spot)
+            is_active = step["order"] == st.session_state.focus_order
+            render_spot_pick_card(step, spot or {}, is_active)
 
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button(
+                    "지도에서 보기",
+                    key=f"focus_{step['order']}",
+                    use_container_width=True,
+                ):
+                    st.session_state.focus_order = step["order"]
+                    st.rerun()
+            with c2:
+                if spot:
+                    url = f"https://map.kakao.com/link/map/{spot['name']},{spot['lat']},{spot['lng']}"
+                    st.link_button("카카오맵 앱", url, use_container_width=True)
+
+        trip_text = meta.get("message") or meta.get("summary") or get_region_intro()
         if meta.get("map_tip"):
-            st.markdown(
-                f'<div class="surface-card" style="background:#F0FDF4;border-color:#BBF7D0;">'
-                f'<p style="margin:0;color:#166534;font-size:0.88rem;">🗺️ {meta["map_tip"]}</p></div>',
-                unsafe_allow_html=True,
-            )
+            trip_text += f"\n\n🗺️ {meta['map_tip']}"
+        render_trip_information(trip_text[:1200])
 
-        with st.expander("AI 채팅 기록", expanded=False):
-            for msg in st.session_state.messages:
-                role = "🧑" if msg["role"] == "user" else "🥔"
-                st.markdown(f"{role} {msg['content'][:500]}")
-
-    with map_col:
-        section_title("Kakao Map", "번호 = 방문 순서 · 보라색 선 = 이동 경로")
-        map_card_open("Live Route Map", "터치하여 장소 정보 확인")
+    with right:
+        center_lat, center_lng = _map_center(curated)
+        map_card_open("Live Kakao Map")
         render_kakao_map(
-            spots=candidate_spots,
+            spots=ALL_SPOTS,
             center_lat=center_lat,
             center_lng=center_lng,
             app_key=kakao_key,
-            height=520,
+            height=540,
             route_spots=curated,
             show_route=len(curated) > 1,
+            focus_order=st.session_state.focus_order,
         )
         map_card_close()
+        st.caption("번호 마커 · 틸색 동선 · 카드를 누르면 해당 장소로 포커스")
 
-    st.divider()
-    if st.button("다른 조건으로 다시 Plan하기", use_container_width=True):
+    if st.button("다른 조건으로 새로 검색", use_container_width=True):
         st.session_state.screen = "home"
+        st.session_state.curated_spots = []
+        st.session_state.messages = []
         st.rerun()

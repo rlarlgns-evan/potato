@@ -1,402 +1,248 @@
-"""Travel-app 스타일 UI (Streamlit 커스텀 CSS·카드 컴포넌트)."""
+"""STAR TRAVEL 스타일 · 틸(teal) 테마 UI."""
 
 import html
+
 import streamlit as st
 
-THEME_ICONS = {
-    "힐링": ("🌲", "#8B5CF6"),
-    "야경": ("🌙", "#5B5FEA"),
-    "트레킹": ("🥾", "#FF8C42"),
-    "역사": ("🏛️", "#FFD166"),
-    "체험": ("✨", "#22C55E"),
-    "자전거": ("🚲", "#3B82F6"),
-}
+from gangwon_content import get_festivals, get_highlights, get_region_intro, get_weather
+
+TEAL = "#14B8A6"
+TEAL_DARK = "#0D9488"
 
 
 def inject_styles() -> None:
     st.markdown(
-        """
+        f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+html, body, [class*="css"] {{ font-family: 'Plus Jakarta Sans', sans-serif; }}
+.stApp {{ background: #F0FDFA; }}
+.block-container {{ padding-top: 1rem; max-width: 1100px; }}
+#MainMenu, footer, header {{ visibility: hidden; }}
 
-html, body, [class*="css"] {
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-}
+.app-top {{
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1rem; font-weight: 800; color: {TEAL_DARK};
+}}
+.app-top .brand {{ font-size: 1.1rem; letter-spacing: 0.04em; }}
 
-.stApp {
-  background: linear-gradient(180deg, #EEF2FF 0%, #F8FAFC 45%, #F1F5F9 100%);
-}
-
-.block-container {
-  padding-top: 1.2rem;
-  max-width: 1180px;
-}
-
-section[data-testid="stSidebar"] {
-  background: #fff;
-  border-right: 1px solid #E8ECF4;
-}
-section[data-testid="stSidebar"] .block-container {
-  padding-top: 1.5rem;
-}
-
-#MainMenu, footer, header { visibility: hidden; }
-
-.hero-card {
-  background: linear-gradient(135deg, #5B5FEA 0%, #7C3AED 55%, #6366F1 100%);
-  border-radius: 24px;
-  padding: 1.6rem 1.8rem;
-  color: #fff;
-  box-shadow: 0 20px 50px rgba(91, 95, 234, 0.35);
-  margin-bottom: 1rem;
-}
-.hero-card .eyebrow {
-  font-size: 0.85rem;
-  opacity: 0.9;
-  margin: 0 0 0.25rem 0;
-}
-.hero-card h1 {
-  font-size: 1.75rem;
-  font-weight: 800;
-  margin: 0 0 0.35rem 0;
-  letter-spacing: -0.02em;
-}
-.hero-card p {
-  margin: 0;
-  opacity: 0.92;
-  font-size: 0.95rem;
-}
-
-.surface-card {
-  background: #fff;
-  border-radius: 20px;
-  padding: 1.25rem 1.35rem;
-  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
-  border: 1px solid #EEF2FF;
-  margin-bottom: 1rem;
-}
-.surface-card h3 {
-  margin: 0 0 0.75rem 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #1E293B;
-}
-
-.chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  margin: 0.5rem 0 1rem 0;
-}
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.55rem 1rem;
-  border-radius: 14px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-}
-
-.spot-scroll {
-  display: flex;
-  gap: 0.85rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
-  margin: 0.5rem 0 1rem 0;
-  scrollbar-width: thin;
-}
-.spot-mini {
-  flex: 0 0 168px;
-  background: #fff;
-  border-radius: 18px;
-  padding: 0.85rem;
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.07);
-  border: 1px solid #EEF2FF;
-}
-.spot-mini .thumb {
-  height: 72px;
-  border-radius: 12px;
-  margin-bottom: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.8rem;
-}
-.spot-mini strong {
-  display: block;
-  font-size: 0.82rem;
-  color: #1E293B;
-  line-height: 1.3;
-}
-.spot-mini span {
-  font-size: 0.72rem;
-  color: #64748B;
-}
-
-.ticket-card {
-  background: #fff;
-  border-radius: 20px;
-  padding: 1.1rem 1.25rem;
-  margin-bottom: 0.85rem;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
-  border: 1px solid #E8ECF8;
-  position: relative;
-  overflow: hidden;
-}
-.ticket-card::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 4px;
-  background: linear-gradient(180deg, #5B5FEA, #A78BFA);
-}
-.ticket-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-.ticket-order {
-  background: linear-gradient(135deg, #5B5FEA, #7C3AED);
-  color: #fff;
-  font-weight: 800;
-  font-size: 0.75rem;
-  padding: 0.25rem 0.55rem;
-  border-radius: 8px;
-}
-.ticket-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #0F172A;
-  margin: 0.35rem 0 0.15rem 0;
-}
-.ticket-meta {
-  font-size: 0.78rem;
-  color: #64748B;
-  margin-bottom: 0.5rem;
-}
-.ticket-body {
-  font-size: 0.88rem;
-  color: #334155;
-  line-height: 1.55;
-  margin: 0;
-}
-.ticket-move {
-  margin-top: 0.65rem;
-  padding: 0.55rem 0.75rem;
-  background: #F0F4FF;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  color: #4338CA;
-}
-
-.map-shell {
-  background: #fff;
-  border-radius: 22px;
-  padding: 0.65rem;
-  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
-  border: 1px solid #E8ECF8;
-  overflow: hidden;
-}
-.map-shell .map-label {
-  padding: 0.35rem 0.65rem 0.5rem;
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #1E293B;
-}
-.map-shell .map-hint {
-  padding: 0 0.65rem 0.55rem;
-  font-size: 0.78rem;
-  color: #64748B;
-}
-
-.stat-pill {
-  display: inline-block;
-  background: #EEF2FF;
-  color: #4338CA;
-  font-weight: 700;
-  font-size: 0.8rem;
-  padding: 0.35rem 0.85rem;
-  border-radius: 999px;
-  margin-right: 0.5rem;
-}
-
-div[data-testid="stChatMessage"] {
-  background: #fff !important;
-  border: 1px solid #E8ECF8 !important;
-  border-radius: 16px !important;
-  box-shadow: 0 4px 14px rgba(15,23,42,0.04) !important;
-}
-
-div[data-testid="stChatInput"] > div {
-  border-radius: 16px !important;
-  border: 2px solid #E0E7FF !important;
-  box-shadow: 0 8px 24px rgba(91, 95, 234, 0.12) !important;
-}
-
-.stLinkButton > a {
-  background: linear-gradient(135deg, #5B5FEA, #6366F1) !important;
-  color: white !important;
-  border: none !important;
-  border-radius: 12px !important;
-  font-weight: 600 !important;
-}
-
-.step-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #5B5FEA, #7C3AED);
-  color: #fff;
-  font-weight: 800;
-  font-size: 0.8rem;
-}
-
-.screen-steps {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.search-hero {{
+  background: linear-gradient(145deg, {TEAL_DARK} 0%, {TEAL} 55%, #2DD4BF 100%);
+  border-radius: 22px; padding: 1.5rem 1.6rem; color: #fff;
+  box-shadow: 0 16px 40px rgba(13, 148, 136, 0.35);
   margin-bottom: 1.25rem;
-  flex-wrap: wrap;
-}
-.screen-step {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  background: #fff;
-  color: #94A3B8;
-  border: 2px solid #E2E8F0;
-}
-.screen-step.active {
-  background: linear-gradient(135deg, #5B5FEA, #7C3AED);
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 6px 18px rgba(91, 95, 234, 0.35);
-}
-.screen-step.done {
-  background: #EEF2FF;
-  color: #4338CA;
-  border-color: #C7D2FE;
-}
-.screen-step-line {
-  width: 28px;
-  height: 2px;
-  background: #E2E8F0;
-}
-.screen-step-line.done {
-  background: #A5B4FC;
-}
+}}
+.search-hero h2 {{ margin: 0 0 0.35rem 0; font-size: 1.5rem; font-weight: 800; }}
+.search-hero p {{ margin: 0 0 1rem 0; opacity: 0.92; font-size: 0.9rem; }}
 
-div.stButton > button[kind="primary"] {
-  background: linear-gradient(135deg, #5B5FEA, #6366F1) !important;
-  border: none !important;
-  border-radius: 14px !important;
-  font-weight: 700 !important;
-  padding: 0.65rem 1.25rem !important;
-  box-shadow: 0 10px 24px rgba(91, 95, 234, 0.35) !important;
-}
+.info-grid {{
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}}
+@media (max-width: 768px) {{ .info-grid {{ grid-template-columns: 1fr; }} }}
+
+.info-card {{
+  background: #fff; border-radius: 18px; padding: 1rem 1.1rem;
+  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.08);
+  border: 1px solid #CCFBF1;
+}}
+.info-card .label {{ font-size: 0.72rem; font-weight: 700; color: {TEAL_DARK}; text-transform: uppercase; }}
+.info-card .value {{ font-size: 1rem; font-weight: 700; color: #134E4A; margin: 0.25rem 0; }}
+.info-card .sub {{ font-size: 0.78rem; color: #64748B; margin: 0; }}
+
+.highlight-scroll {{
+  display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; margin-bottom: 1.25rem;
+}}
+.highlight-card {{
+  flex: 0 0 200px; border-radius: 18px; padding: 1.1rem; color: #fff;
+  min-height: 100px; display: flex; flex-direction: column; justify-content: flex-end;
+}}
+.highlight-card strong {{ font-size: 0.95rem; }}
+.highlight-card span {{ font-size: 0.75rem; opacity: 0.9; }}
+
+.festival-list {{ margin: 0; padding: 0; list-style: none; }}
+.festival-list li {{
+  font-size: 0.8rem; color: #475569; padding: 0.35rem 0;
+  border-bottom: 1px solid #F1F5F9;
+}}
+
+.screen-steps {{ display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }}
+.screen-step {{
+  padding: 0.45rem 0.95rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+  background: #fff; color: #94A3B8; border: 2px solid #E2E8F0;
+}}
+.screen-step.active {{
+  background: linear-gradient(135deg, {TEAL_DARK}, {TEAL});
+  color: #fff; border-color: transparent;
+}}
+.screen-step.done {{ background: #CCFBF1; color: {TEAL_DARK}; border-color: #99F6E4; }}
+.screen-step-line {{ width: 24px; height: 2px; background: #E2E8F0; }}
+.screen-step-line.done {{ background: #5EEAD4; }}
+
+.featured-trip {{
+  background: linear-gradient(145deg, {TEAL_DARK}, {TEAL});
+  border-radius: 22px; padding: 1.35rem 1.5rem; color: #fff;
+  margin-bottom: 1rem; position: relative; overflow: hidden;
+}}
+.featured-trip h3 {{ margin: 0 0 0.5rem 0; font-size: 1.25rem; }}
+.featured-trip p {{ margin: 0; opacity: 0.9; font-size: 0.88rem; line-height: 1.5; }}
+
+.spot-pick {{
+  background: #fff; border-radius: 18px; padding: 1rem 1.1rem;
+  border: 2px solid #E2E8F0; margin-bottom: 0.65rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}}
+.spot-pick.active {{
+  border-color: {TEAL};
+  box-shadow: 0 8px 24px rgba(20, 184, 166, 0.2);
+}}
+.spot-pick .order {{
+  display: inline-block; background: {TEAL}; color: #fff;
+  font-weight: 800; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 8px;
+}}
+
+.trip-info-box {{
+  background: #fff; border-radius: 18px; padding: 1.2rem;
+  border: 1px solid #CCFBF1; margin-top: 1rem;
+}}
+.trip-info-box h4 {{ margin: 0 0 0.5rem 0; color: {TEAL_DARK}; }}
+
+.map-shell {{
+  background: #fff; border-radius: 20px; padding: 0.6rem;
+  box-shadow: 0 10px 30px rgba(13, 148, 136, 0.1); border: 1px solid #CCFBF1;
+}}
+.map-shell .map-label {{ padding: 0.4rem 0.6rem; font-weight: 700; color: #134E4A; }}
+
+div.stButton > button[kind="primary"] {{
+  background: linear-gradient(135deg, {TEAL_DARK}, {TEAL}) !important;
+  border: none !important; border-radius: 12px !important; font-weight: 700 !important;
+}}
+
+.kto-badge {{
+  font-size: 0.72rem; color: #64748B; background: #F0FDFA;
+  border: 1px dashed #99F6E4; border-radius: 10px; padding: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+}}
 </style>
         """,
         unsafe_allow_html=True,
     )
 
 
+def render_app_header() -> None:
+    st.markdown(
+        """
+<div class="app-top">
+  <span class="brand">🥔 SHY POTATOES TRAVEL</span>
+  <span style="font-size:1.2rem;">☰</span>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_screen_steps(active: int) -> None:
-    """active: 1 = 홈(채팅), 2 = 결과(동선·지도)"""
     s1 = "active" if active == 1 else ("done" if active > 1 else "")
     s2 = "active" if active == 2 else ""
     line = "done" if active > 1 else ""
     st.markdown(
         f"""
 <div class="screen-steps">
-  <span class="screen-step {s1}">① Plan · AI 채팅</span>
+  <span class="screen-step {s1}">① 홈 · AI 검색</span>
   <span class="screen-step-line {line}"></span>
-  <span class="screen-step {s2}">② Route · 동선 정보</span>
+  <span class="screen-step {s2}">② MY TRIP · 동선</span>
 </div>
         """,
         unsafe_allow_html=True,
     )
 
 
-def hero_header(screen: int = 1) -> None:
-    title = "Find Your Route" if screen == 1 else "Your Trip Plan"
-    sub = "AI와 대화하고 취향을 알려주세요" if screen == 1 else "추천 동선과 카카오맵을 확인하세요"
+def render_home_search_hero() -> None:
     st.markdown(
         f"""
-<div class="hero-card">
-  <p class="eyebrow">안녕하세요, 여행자님 👋</p>
-  <h1>{html.escape(title)}</h1>
-  <p>{html.escape(sub)}</p>
+<div class="search-hero">
+  <h2>HELLO, TRAVELER</h2>
+  <p>{html.escape(get_region_intro())}</p>
 </div>
         """,
         unsafe_allow_html=True,
     )
 
 
-def render_theme_chips() -> None:
-    chips = []
-    for name, (icon, color) in THEME_ICONS.items():
-        chips.append(
-            f'<span class="chip" style="background:{color};">{icon} {html.escape(name)}</span>'
-        )
-    st.markdown(f'<div class="chip-row">{"".join(chips)}</div>', unsafe_allow_html=True)
+def render_gangwon_dashboard() -> None:
+    w = get_weather()
+    festivals = get_festivals()
+    highlights = get_highlights()
 
+    fest_html = "".join(
+        f"<li><b>{html.escape(f['title'])}</b> · {html.escape(f['place'])} ({html.escape(f['period'])})</li>"
+        for f in festivals
+    )
+    st.markdown(
+        f"""
+<div class="info-grid">
+  <div class="info-card">
+    <div class="label">Weather</div>
+    <div class="value">{html.escape(w['temp'])} {html.escape(w['condition'])}</div>
+    <p class="sub">{html.escape(w['region'])} · {html.escape(w['tip'])}</p>
+  </div>
+  <div class="info-card">
+    <div class="label">Festivals</div>
+    <ul class="festival-list">{fest_html}</ul>
+  </div>
+  <div class="info-card">
+    <div class="label">Gangwon Tip</div>
+    <p class="sub">AI가 <b>강원도 전역 관광지</b>에서 동선을 골라요. 한국관광공사 API 연동 예정.</p>
+  </div>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-def render_spot_carousel(spots: list[dict]) -> None:
-    if not spots:
-        return
     cards = []
-    icons = ["🏔️", "🌲", "🌊", "⭐", "🚲", "🛤️"]
-    for i, s in enumerate(spots[:8]):
-        icon = icons[i % len(icons)]
-        grad = ["#DDD6FE", "#BFDBFE", "#FECACA", "#FDE68A", "#BBF7D0", "#E9D5FF"][i % 6]
+    for h in highlights:
         cards.append(
             f"""
-<div class="spot-mini">
-  <div class="thumb" style="background:{grad};">{icon}</div>
-  <strong>{html.escape(s['name'])}</strong>
-  <span>{html.escape(s['region'])} · {html.escape(s['theme'])}</span>
+<div class="highlight-card" style="background:{h['gradient']};">
+  <div style="font-size:2rem;">{h['emoji']}</div>
+  <strong>{html.escape(h['title'])}</strong>
+  <span>{html.escape(h['region'])}</span>
 </div>
             """
         )
+    st.markdown(f'<div class="highlight-scroll">{"".join(cards)}</div>', unsafe_allow_html=True)
+
+
+def render_featured_trip(spot: dict, meta: dict) -> None:
+    title = meta.get("title") or spot["name"]
+    summary = meta.get("summary") or spot["description"]
+    duration = meta.get("total_duration", "")
+    dur = f" · {html.escape(duration)}" if duration else ""
     st.markdown(
-        f'<div class="surface-card"><h3>Popular Places</h3><div class="spot-scroll">{"".join(cards)}</div></div>',
+        f"""
+<div class="featured-trip">
+  <h3>{html.escape(title)}</h3>
+  <p>{html.escape(summary)}{dur}</p>
+  <p style="margin-top:0.75rem;font-size:0.8rem;">📍 {html.escape(spot['region'])} · {html.escape(spot['theme'])}</p>
+</div>
+        """,
         unsafe_allow_html=True,
     )
 
 
-def render_step_ticket(step: dict, spot: dict | None) -> None:
+def render_spot_pick_card(step: dict, spot: dict, active: bool) -> None:
+    cls = "spot-pick active" if active else "spot-pick"
     stay = step.get("stay_minutes")
     stay_txt = f" · 약 {stay}분" if stay else ""
     move = step.get("move_to_next", "")
-    move_html = (
-        f'<div class="ticket-move">🚗 {html.escape(move)}</div>' if move else ""
-    )
-    map_btn = ""
-    if spot:
-        url = f"https://map.kakao.com/link/map/{spot['name']},{spot['lat']},{spot['lng']}"
-        map_btn = f'<a href="{html.escape(url)}" target="_blank" style="font-size:0.78rem;color:#5B5FEA;font-weight:600;">카카오맵 →</a>'
-
+    move_html = f'<p style="margin:0.5rem 0 0;font-size:0.8rem;color:#0D9488;">🚗 {html.escape(move)}</p>' if move else ""
     st.markdown(
         f"""
-<div class="ticket-card">
-  <div class="ticket-head">
-    <span class="ticket-order">STEP {step['order']}</span>
-    {map_btn}
-  </div>
-  <div class="ticket-title">{html.escape(step['spot_name'])}</div>
-  <div class="ticket-meta">{html.escape(step.get('region', ''))} · {html.escape(step.get('theme', ''))}{html.escape(stay_txt)}</div>
-  <p class="ticket-body">{html.escape(step.get('why', ''))}</p>
+<div class="{cls}">
+  <span class="order">STEP {step['order']}</span>
+  <h4 style="margin:0.5rem 0 0.2rem;color:#134E4A;">{html.escape(step['spot_name'])}</h4>
+  <p style="margin:0;font-size:0.78rem;color:#64748B;">{html.escape(step.get('region',''))} · {html.escape(step.get('theme',''))}{html.escape(stay_txt)}</p>
+  <p style="margin:0.5rem 0 0;font-size:0.88rem;color:#334155;">{html.escape(step.get('why',''))}</p>
   {move_html}
 </div>
         """,
@@ -404,19 +250,21 @@ def render_step_ticket(step: dict, spot: dict | None) -> None:
     )
 
 
-def section_title(text: str, subtitle: str = "") -> None:
-    sub = f'<p style="margin:0;color:#64748B;font-size:0.88rem;">{html.escape(subtitle)}</p>' if subtitle else ""
+def render_trip_information(text: str) -> None:
     st.markdown(
-        f'<div style="margin:1rem 0 0.75rem 0;"><h2 style="margin:0;font-size:1.25rem;font-weight:800;color:#0F172A;">{html.escape(text)}</h2>{sub}</div>',
+        f"""
+<div class="trip-info-box">
+  <h4>Trip Information</h4>
+  <p style="margin:0;font-size:0.88rem;color:#475569;line-height:1.6;">{html.escape(text)}</p>
+  <div class="kto-badge">📡 추후 한국관광공사 Tour API 데이터로 날씨·축제·관광지 정보가 자동 갱신됩니다.</div>
+</div>
+        """,
         unsafe_allow_html=True,
     )
 
 
-def map_card_open(title: str, hint: str) -> None:
-    st.markdown(
-        f'<div class="map-shell"><div class="map-label">{html.escape(title)}</div><div class="map-hint">{html.escape(hint)}</div>',
-        unsafe_allow_html=True,
-    )
+def map_card_open(title: str) -> None:
+    st.markdown(f'<div class="map-shell"><div class="map-label">{html.escape(title)}</div>', unsafe_allow_html=True)
 
 
 def map_card_close() -> None:

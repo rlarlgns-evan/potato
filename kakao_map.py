@@ -28,6 +28,7 @@ def render_kakao_map(
     height: int = 500,
     route_spots: list[dict[str, Any]] | None = None,
     show_route: bool = False,
+    focus_order: int = 0,
 ) -> None:
     if not app_key:
         st.warning(
@@ -67,6 +68,7 @@ def render_kakao_map(
     markers_json = json.dumps(markers, ensure_ascii=False)
     show_polyline = "true" if show_route and len(display_spots) > 1 else "false"
     has_numbered = "true" if route_spots else "false"
+    focus_order = int(focus_order or 0)
 
     html_content = f"""<!DOCTYPE html>
 <html>
@@ -92,6 +94,7 @@ def render_kakao_map(
     const markers = {markers_json};
     const showRoute = {show_polyline};
     const showNumbers = {has_numbered};
+    const focusOrder = {focus_order};
 
     function showError(msg) {{
       const el = document.getElementById('map-error');
@@ -139,13 +142,19 @@ def render_kakao_map(
           kakao.maps.event.addListener(marker, 'click', function() {{
             infowindow.open(map, marker);
           }});
+
+          if (focusOrder > 0 && spot.order === focusOrder) {{
+            infowindow.open(map, marker);
+            map.setCenter(pos);
+            map.setLevel(6);
+          }}
         }});
 
         if (showRoute && path.length > 1) {{
           new kakao.maps.Polyline({{
             path: path,
             strokeWeight: 4,
-            strokeColor: '#5B5FEA',
+            strokeColor: '#14B8A6',
             strokeOpacity: 0.85,
             strokeStyle: 'solid'
           }}).setMap(map);
