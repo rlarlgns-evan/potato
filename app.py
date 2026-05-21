@@ -8,8 +8,6 @@ from gangwon_content import get_region_intro
 from kakao_map import get_kakao_app_key, render_kakao_map
 from ui import (
     inject_styles,
-    map_card_close,
-    map_card_open,
     render_app_header,
     render_featured_trip,
     render_gangwon_dashboard,
@@ -170,7 +168,11 @@ else:
 
     with right:
         center_lat, center_lng = _map_center(curated)
-        map_card_open("Live Kakao Map")
+        if not kakao_key:
+            st.error(
+                "Streamlit Cloud → Settings → Secrets에 `KAKAO_MAP_APP_KEY` "
+                "(카카오 **JavaScript** 키)를 추가해 주세요."
+            )
         render_kakao_map(
             spots=ALL_SPOTS,
             center_lat=center_lat,
@@ -180,8 +182,8 @@ else:
             route_spots=curated,
             show_route=len(curated) > 1,
             focus_order=st.session_state.focus_order,
+            title="Live Kakao Map",
         )
-        map_card_close()
         st.caption("번호 마커 · 틸색 동선 · 카드를 누르면 해당 장소로 포커스")
 
     if st.button("다른 조건으로 새로 검색", use_container_width=True):
