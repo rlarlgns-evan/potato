@@ -1,10 +1,8 @@
 """STAR TRAVEL 스타일 · 틸(teal) 테마 UI."""
 
 import html
-import json
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 from gangwon_content import (
     FESTIVAL_ICONS,
@@ -155,23 +153,15 @@ div.stButton > button[kind="primary"] {{
   font-size: 0.78rem; color: #64748B; margin: 0; line-height: 1.55;
 }}
 
-.weather-slide {{
-  display: none; align-items: center; gap: 0.75rem;
-  animation: fadeIn 0.4s ease;
-}}
-.weather-slide.active {{ display: flex; }}
-@keyframes fadeIn {{
-  from {{ opacity: 0; }} to {{ opacity: 1; }}
-}}
-.weather-slide .w-city {{ font-size: 0.95rem; font-weight: 700; color: #134E4A; margin: 0; }}
-.weather-slide .w-temp {{ font-size: 1.2rem; font-weight: 800; color: {TEAL_DARK}; margin: 0.15rem 0 0; }}
-.weather-slide .w-meta {{ font-size: 0.78rem; color: #64748B; margin: 0; }}
-.weather-slide .w-tip {{ font-size: 0.76rem; color: #475569; margin: 0.35rem 0 0; line-height: 1.45; }}
-.weather-dots {{ display: flex; gap: 0.3rem; margin-top: 0.5rem; }}
-.weather-dots span {{
+.dash-inner {{ display: flex; align-items: center; gap: 0.75rem; }}
+.dash-inner .w-city {{ font-size: 0.95rem; font-weight: 700; color: #134E4A; margin: 0; }}
+.dash-inner .w-temp {{ font-size: 1.2rem; font-weight: 800; color: {TEAL_DARK}; margin: 0.15rem 0 0; }}
+.dash-inner .w-meta {{ font-size: 0.78rem; color: #64748B; margin: 0; }}
+.dash-dots {{ display: flex; gap: 0.3rem; margin-top: 0.55rem; }}
+.dash-dots span {{
   width: 6px; height: 6px; border-radius: 50%; background: #E2E8F0;
 }}
-.weather-dots span.active {{ background: {TEAL}; }}
+.dash-dots span.active {{ background: {TEAL}; }}
 
 .fest-viewport {{ height: 118px; overflow: hidden; position: relative; }}
 .fest-viewport::after {{
@@ -247,31 +237,11 @@ def _icon_thumb(icon: str, thumb_bg: str) -> str:
     )
 
 
-def _build_weather_slides(cities: list[dict]) -> tuple[str, str]:
-    slides_html = []
-    dots_html = []
-    for i, c in enumerate(cities):
-        active = "active" if i == 0 else ""
-        thumb = _icon_thumb(c["icon"], c.get("thumb_bg", "linear-gradient(135deg,#CCFBF1,#99F6E4)"))
-        tr = c.get("temp_range", "")
-        meta = f"{html.escape(c['label'])}"
-        if tr:
-            meta += f" · {html.escape(tr)}"
-        slides_html.append(
-            f"""
-<div class="weather-slide {active}">
-  {thumb}
-  <div>
-    <p class="w-city">{html.escape(c['city'])}</p>
-    <p class="w-temp">{html.escape(c['temp_display'])}</p>
-    <p class="w-meta">{meta}</p>
-    <p class="w-tip">{html.escape(c.get('tip', ''))}</p>
-  </div>
-</div>
-            """
-        )
-        dots_html.append(f'<span class="{active}"></span>')
-    return "".join(slides_html), "".join(dots_html)
+def _weather_dots(cities: list[dict], active_idx: int) -> str:
+    return "".join(
+        f'<span class="{"active" if j == active_idx else ""}"></span>'
+        for j in range(len(cities))
+    )
 
 
 def _build_festival_rows() -> str:
@@ -296,40 +266,62 @@ def _build_festival_rows() -> str:
     return "".join(rows) * 2
 
 
-def render_weather_box(interval_ms: int = 5000) -> None:
+@st.fragment(run_every=5)
+def _weather_panel() -> None:
     cities = _cached_weather_cities()
-    slides_html, dots_html = _build_weather_slides(cities)
-    html_block = f"""
+    if not cities:
+        st.markdown(
+            '<div class="dash-box"><p class="dash-label">Weather</p>'
+            '<p class="dash-sub">날씨 정보를 불러오지 못했습니다.</p></div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    if "weather_i" not in st.session_state:
+        st.session_state.weather_i = 0
+    idx = st.session_state.weather_i % len(cities)
+    c = cities[idx]
+    st.session_state.weather_i = idx + 1
+
+    meta = html.escape(c["label"])
+    if c.get("temp_range"):
+        meta += f" · {html.escape(c['temp_range'])}"
+
+    st.markdown(
+        f"""
 <div class="dash-box">
   <p class="dash-label">Weather</p>
-  <div id="weather-slides">{slides_html}</div>
-  <div class="weather-dots" id="weather-dots">{dots_html}</div>
+  <div class="dash-inner">
+    {_icon_thumb(c['icon'], c.get('thumb_bg', 'linear-gradient(135deg,#CCFBF1,#99F6E4)'))}
+    <div>
+      <p class="w-city">{html.escape(c['city'])}</p>
+      <p class="w-temp">{html.escape(c['temp_display'])}</p>
+      <p class="w-meta">{meta}</p>
+    </div>
+  </div>
+  <p class="dash-sub">{html.escape(c.get('tip', ''))}</p>
+  <div class="dash-dots">{_weather_dots(cities, idx)}</div>
 </div>
-<script>
-(function() {{
-  const slides = document.querySelectorAll('.weather-slide');
-  const dots = document.querySelectorAll('#weather-dots span');
-  let idx = 0;
-  function show(i) {{
-    slides.forEach((el, n) => el.classList.toggle('active', n === i));
-    dots.forEach((el, n) => el.classList.toggle('active', n === i));
-  }}
-  setInterval(() => {{ idx = (idx + 1) % slides.length; show(idx); }}, {interval_ms});
-}})();
-</script>
-    """
-    components.html(html_block, height=165, scrolling=False)
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_weather_box() -> None:
+    _weather_panel()
 
 
 def render_festival_box() -> None:
     fest_html = _build_festival_rows()
-    html_block = f"""
+    st.markdown(
+        f"""
 <div class="dash-box">
   <p class="dash-label">Festival</p>
   <div class="fest-viewport"><div class="fest-track">{fest_html}</div></div>
 </div>
-    """
-    components.html(html_block, height=165, scrolling=False)
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_tip_box() -> None:
@@ -353,6 +345,11 @@ def render_gangwon_dashboard() -> None:
         render_festival_box()
     with col_tip:
         render_tip_box()
+
+    st.caption(
+        "날씨: [Open-Meteo](https://open-meteo.com) 실시간 (10분마다 API 갱신 · 화면은 5초마다 도시 전환) "
+        "| 축제: 앱 내 목록 (한국관광공사 API 연동 예정)"
+    )
 
     highlights = get_highlights()
     cards = []
