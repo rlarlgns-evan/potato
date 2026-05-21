@@ -141,89 +141,59 @@ div.stButton > button[kind="primary"] {{
   margin-top: 0.75rem;
 }}
 
-.weather-rotator-wrap {{
-  background: #fff; border-radius: 18px; padding: 0.85rem 1rem;
-  border: 1px solid #CCFBF1; box-shadow: 0 6px 20px rgba(13, 148, 136, 0.08);
-  min-height: 118px;
+.dash-grid {{
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
+  margin-bottom: 1.25rem;
 }}
-.weather-rotator-wrap .w-label {{
+@media (max-width: 900px) {{ .dash-grid {{ grid-template-columns: 1fr; }} }}
+
+.dash-box {{
+  background: #fff; border-radius: 18px; padding: 1rem 1.1rem;
+  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.08);
+  border: 1px solid #CCFBF1; min-height: 150px;
+}}
+.dash-box .dash-label {{
   font-size: 0.72rem; font-weight: 700; color: {TEAL_DARK};
-  text-transform: uppercase; margin-bottom: 0.35rem;
+  text-transform: uppercase; margin: 0 0 0.65rem 0;
 }}
+.dash-box .dash-sub {{
+  font-size: 0.78rem; color: #64748B; margin: 0; line-height: 1.55;
+}}
+
 .weather-slide {{
-  display: none; align-items: flex-start; gap: 0.85rem;
-  animation: fadeIn 0.45s ease;
-  background: #F0FDFA; border-radius: 14px; padding: 0.7rem 0.85rem;
-  border: 1px solid #CCFBF1;
+  display: none; align-items: center; gap: 0.75rem;
+  animation: fadeIn 0.4s ease;
 }}
 .weather-slide.active {{ display: flex; }}
 @keyframes fadeIn {{
-  from {{ opacity: 0; transform: translateY(6px); }}
-  to {{ opacity: 1; transform: translateY(0); }}
+  from {{ opacity: 0; }} to {{ opacity: 1; }}
 }}
-.weather-slide .w-body {{ flex: 1; min-width: 0; }}
-.weather-slide .w-city {{
-  font-size: 1.05rem; font-weight: 800; color: #134E4A; margin: 0;
+.weather-slide .w-city {{ font-size: 0.95rem; font-weight: 700; color: #134E4A; margin: 0; }}
+.weather-slide .w-temp {{ font-size: 1.2rem; font-weight: 800; color: {TEAL_DARK}; margin: 0.15rem 0 0; }}
+.weather-slide .w-meta {{ font-size: 0.78rem; color: #64748B; margin: 0; }}
+.weather-slide .w-tip {{ font-size: 0.76rem; color: #475569; margin: 0.35rem 0 0; line-height: 1.45; }}
+.weather-dots {{ display: flex; gap: 0.3rem; margin-top: 0.5rem; }}
+.weather-dots span {{
+  width: 6px; height: 6px; border-radius: 50%; background: #E2E8F0;
 }}
-.weather-slide .w-temp {{
-  font-size: 1.35rem; font-weight: 800; color: {TEAL_DARK}; margin: 0.1rem 0;
-}}
-.weather-slide .w-cond {{
-  font-size: 0.8rem; color: #64748B; margin: 0;
-}}
-.weather-slide .w-range {{
-  font-size: 0.75rem; color: #0D9488; margin: 0.1rem 0 0.25rem 0; font-weight: 600;
-}}
-.weather-slide .w-tip {{
-  font-size: 0.76rem; color: #475569; margin: 0.35rem 0 0 0;
-  line-height: 1.45; padding: 0.4rem 0.55rem; background: rgba(255,255,255,0.65);
-  border-radius: 10px; border-left: 3px solid {TEAL};
-}}
+.weather-dots span.active {{ background: {TEAL}; }}
 
-.fest-ticker-wrap {{
-  background: #fff; border-radius: 18px; padding: 0.75rem 1rem;
-  border: 1px solid #CCFBF1; box-shadow: 0 6px 20px rgba(13, 148, 136, 0.08);
-  overflow: hidden; height: 148px; position: relative;
-}}
-.fest-ticker-wrap .f-label {{
-  font-size: 0.72rem; font-weight: 700; color: {TEAL_DARK};
-  text-transform: uppercase; margin-bottom: 0.4rem;
-}}
-.fest-ticker-viewport {{
-  height: 108px; overflow: hidden; position: relative;
-}}
-.fest-ticker-viewport::after {{
-  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 28px;
+.fest-viewport {{ height: 118px; overflow: hidden; position: relative; }}
+.fest-viewport::after {{
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 24px;
   background: linear-gradient(transparent, #fff); pointer-events: none;
 }}
-.fest-ticker-track {{
-  animation: festScrollUp 28s linear infinite;
-}}
-.fest-ticker-track:hover {{ animation-play-state: paused; }}
+.fest-track {{ animation: festScrollUp 24s linear infinite; }}
+.fest-track:hover {{ animation-play-state: paused; }}
 @keyframes festScrollUp {{
   0% {{ transform: translateY(0); }}
   100% {{ transform: translateY(-50%); }}
 }}
 .fest-row {{
-  display: flex; align-items: center; gap: 0.75rem;
-  padding: 0.55rem 0.25rem; min-height: 52px;
+  display: flex; align-items: center; gap: 0.65rem; padding: 0.45rem 0;
 }}
-.fest-row .fest-text strong {{
-  display: block; font-size: 0.82rem; color: #134E4A;
-}}
-.fest-row .fest-text span {{
-  font-size: 0.72rem; color: #64748B;
-}}
-.weather-dots {{
-  display: flex; gap: 0.35rem; margin-top: 0.65rem; flex-wrap: wrap;
-}}
-.weather-dots span {{
-  width: 7px; height: 7px; border-radius: 50%; background: #CBD5E1;
-  transition: background 0.3s, transform 0.3s;
-}}
-.weather-dots span.active {{
-  background: {TEAL}; transform: scale(1.2);
-}}
+.fest-row strong {{ display: block; font-size: 0.8rem; color: #134E4A; }}
+.fest-row span {{ font-size: 0.72rem; color: #64748B; }}
 </style>
         """,
         unsafe_allow_html=True,
@@ -282,60 +252,34 @@ def _icon_thumb(icon: str, thumb_bg: str) -> str:
     )
 
 
-def render_weather_rotator(interval_ms: int = 5000) -> None:
-    cities = _cached_weather_cities()
-    cities_json = json.dumps(cities, ensure_ascii=False)
-
+def _build_weather_slides(cities: list[dict]) -> tuple[str, str]:
     slides_html = []
     dots_html = []
     for i, c in enumerate(cities):
         active = "active" if i == 0 else ""
         thumb = _icon_thumb(c["icon"], c.get("thumb_bg", "linear-gradient(135deg,#CCFBF1,#99F6E4)"))
         tr = c.get("temp_range", "")
-        range_html = (
-            f'<p class="w-range">오늘 {html.escape(tr)}</p>' if tr else ""
-        )
+        meta = f"{html.escape(c['label'])}"
+        if tr:
+            meta += f" · {html.escape(tr)}"
         slides_html.append(
             f"""
-<div class="weather-slide {active}" data-idx="{i}">
+<div class="weather-slide {active}">
   {thumb}
-  <div class="w-body">
-    <p class="w-city">{html.escape(c['city'])} <span style="font-size:0.72rem;font-weight:600;color:#94A3B8;">인구순 {i+1}</span></p>
-    <p class="w-temp">{html.escape(c['temp_display'])} <span class="w-cond">· {html.escape(c['label'])}</span></p>
-    {range_html}
+  <div>
+    <p class="w-city">{html.escape(c['city'])}</p>
+    <p class="w-temp">{html.escape(c['temp_display'])}</p>
+    <p class="w-meta">{meta}</p>
     <p class="w-tip">{html.escape(c.get('tip', ''))}</p>
   </div>
 </div>
             """
         )
-        dots_html.append(f'<span class="{active}" data-dot="{i}" title="{html.escape(c["city"])}"></span>')
-
-    html_block = f"""
-<div class="weather-rotator-wrap">
-  <div class="w-label">강원도 시·군 날씨 (인구순) · 5초마다 전환</div>
-  <div id="weather-slides">{"".join(slides_html)}</div>
-  <div class="weather-dots" id="weather-dots">{"".join(dots_html)}</div>
-</div>
-<script>
-(function() {{
-  const slides = document.querySelectorAll('.weather-slide');
-  const dots = document.querySelectorAll('#weather-dots span');
-  let idx = 0;
-  function show(i) {{
-    slides.forEach((el, n) => el.classList.toggle('active', n === i));
-    dots.forEach((el, n) => el.classList.toggle('active', n === i));
-  }}
-  setInterval(() => {{
-    idx = (idx + 1) % slides.length;
-    show(idx);
-  }}, {interval_ms});
-}})();
-</script>
-    """
-    components.html(html_block, height=175, scrolling=False)
+        dots_html.append(f'<span class="{active}"></span>')
+    return "".join(slides_html), "".join(dots_html)
 
 
-def render_festival_ticker() -> None:
+def _build_festival_rows() -> str:
     festivals = get_festivals()
     rows = []
     for i, f in enumerate(festivals):
@@ -346,50 +290,55 @@ def render_festival_ticker() -> None:
             "linear-gradient(135deg,#0284C7,#38BDF8)",
             "linear-gradient(135deg,#7C3AED,#A78BFA)",
         ][i % 4]
-        thumb = _icon_thumb(icon, grad)
         rows.append(
             f"""
 <div class="fest-row">
-  {thumb}
-  <div class="fest-text">
-    <strong>{html.escape(f['title'])}</strong>
-    <span>{html.escape(f['place'])} · {html.escape(f['period'])} — {html.escape(f['desc'])}</span>
-  </div>
+  {_icon_thumb(icon, grad)}
+  <div><strong>{html.escape(f['title'])}</strong><span>{html.escape(f['place'])} · {html.escape(f['period'])}</span></div>
 </div>
             """
         )
-    doubled = "".join(rows) + "".join(rows)
-
-    html_block = f"""
-<div class="fest-ticker-wrap">
-  <div class="f-label">Festivals · 상향 슬라이드</div>
-  <div class="fest-ticker-viewport">
-    <div class="fest-ticker-track">{doubled}</div>
-  </div>
-</div>
-    """
-    components.html(html_block, height=168, scrolling=False)
+    return "".join(rows) * 2
 
 
 def render_gangwon_dashboard() -> None:
-    highlights = get_highlights()
+    cities = _cached_weather_cities()
+    slides_html, dots_html = _build_weather_slides(cities)
+    fest_html = _build_festival_rows()
+    tip_text = "AI가 강원도 전역 관광지에서 동선을 골라 드려요."
 
-    col_w, col_f, col_t = st.columns([1.15, 1, 1])
-    with col_w:
-        render_weather_rotator(interval_ms=5000)
-    with col_f:
-        render_festival_ticker()
-    with col_t:
-        st.markdown(
-            """
-<div class="info-card" style="height:100%;">
-  <div class="label">Gangwon Tip</div>
-  <p class="sub">AI가 <b>강원도 전역</b> 관광지에서 동선을 골라요.<br>한국관광공사 API 연동 예정.</p>
+    html_block = f"""
+<div class="dash-grid">
+  <div class="dash-box">
+    <p class="dash-label">Weather</p>
+    <div id="weather-slides">{slides_html}</div>
+    <div class="weather-dots" id="weather-dots">{dots_html}</div>
+  </div>
+  <div class="dash-box">
+    <p class="dash-label">Festival</p>
+    <div class="fest-viewport"><div class="fest-track">{fest_html}</div></div>
+  </div>
+  <div class="dash-box">
+    <p class="dash-label">Tip</p>
+    <p class="dash-sub">{html.escape(tip_text)}</p>
+  </div>
 </div>
-            """,
-            unsafe_allow_html=True,
-        )
+<script>
+(function() {{
+  const slides = document.querySelectorAll('.weather-slide');
+  const dots = document.querySelectorAll('#weather-dots span');
+  let idx = 0;
+  function show(i) {{
+    slides.forEach((el, n) => el.classList.toggle('active', n === i));
+    dots.forEach((el, n) => el.classList.toggle('active', n === i));
+  }}
+  setInterval(() => {{ idx = (idx + 1) % slides.length; show(idx); }}, 5000);
+}})();
+</script>
+    """
+    components.html(html_block, height=168, scrolling=False)
 
+    highlights = get_highlights()
     cards = []
     for h in highlights:
         cards.append(
