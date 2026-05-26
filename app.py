@@ -1,10 +1,11 @@
 import config  # noqa: F401 — .env 로드
 
+import html
+
 import streamlit as st
 
 from chatbot import curate_trip
 from database import get_all_spots, init_db
-from gangwon_content import get_region_intro
 from kakao_map import (
     build_kakao_route_url,
     build_route_markers,
@@ -13,13 +14,11 @@ from kakao_map import (
 )
 from ui import (
     inject_styles,
-    render_app_header,
-    render_gangwon_dashboard,
-    render_home_search_hero,
-    render_screen_steps,
-    render_my_trip_hero,
-    render_my_trip_map_shell,
-    render_my_trip_route_column,
+    render_course_cards_list,
+    render_tailored_header,
+    render_voyage_app_sidebar,
+    render_voyage_explore_page,
+    render_voyage_top_nav,
 )
 
 st.set_page_config(
@@ -78,23 +77,18 @@ def _apply_curation_result(result: dict, user_prompt: str) -> None:
 
 
 # =============================================================================
-# ① 홈 — 강원도 정보 + AI 검색
+# ① Explore — AI 채팅 · 강원 컨텍스트
 # =============================================================================
 if st.session_state.screen == "home":
-    render_app_header()
-    render_screen_steps(1)
-    render_home_search_hero()
-    render_gangwon_dashboard()
+    render_voyage_explore_page(len(ALL_SPOTS))
 
-    st.markdown('<div style="max-width:640px;margin:0 auto;">', unsafe_allow_html=True)
     with st.form("ai_trip_search", clear_on_submit=True):
         user_prompt = st.text_input(
             "label",
-            placeholder="예: 해안 드라이브, 조용한 카페, 반나절 힐링 코스…",
+            placeholder="예: That sounds perfect — include a famous local coffee shop too…",
             label_visibility="collapsed",
         )
-        submitted = st.form_submit_button("Plan this trip", type="primary", use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+        submitted = st.form_submit_button("✦ Design AI Course", type="primary", use_container_width=True)
 
     if submitted and user_prompt.strip():
         st.session_state.messages = [
@@ -112,10 +106,8 @@ if st.session_state.screen == "home":
         _apply_curation_result(result, user_prompt.strip())
         st.rerun()
 
-    st.caption(f"등록 관광지 **{len(ALL_SPOTS)}곳** · AI는 필터 없이 강원도 전역에서 선택합니다.")
-
 # =============================================================================
-# ② MY TRIP — AI 답변 기반 인터랙티브 동선
+# ② Planner — Tailored for You · 카드 + 지도
 # =============================================================================
 else:
     curated = st.session_state.curated_spots
@@ -125,57 +117,63 @@ else:
 
     meta = st.session_state.itinerary_meta
     steps = st.session_state.route_steps
+    focus_order = int(st.session_state.focus_order or 1)
 
-    render_app_header()
-    render_screen_steps(2)
+    render_voyage_top_nav("planner")
 
-    back_col, _ = st.columns([1, 5])
-    with back_col:
-        if st.button("← 홈", type="secondary", use_container_width=True):
+    sb_col, main_col = st.columns([0.14, 0.86], gap="small")
+    with sb_col:
+        render_voyage_app_sidebar("itinerary")
+        if st.button("← Explore", use_container_width=True):
             st.session_state.screen = "home"
             st.rerun()
 
-    render_my_trip_hero(meta, len(steps), st.session_state.last_user_query)
+    with main_col:
+        render_tailored_header(meta, st.session_state.last_user_query, len(steps))
 
-    route_for_map = build_route_markers(curated, steps)
+        route_for_map = build_route_markers(curated, steps)
+        list_col, map_col = st.columns([1, 1.08], gap="medium")
 
-    left, right = st.columns([1, 1.1], gap="large")
+        with list_col:
+            focus_order = render_course_cards_list(steps, curated, focus_order)
 
-    with left:
-        focus_order, focus_step, _focus_db = render_my_trip_route_column(steps, curated, meta)
-
-    focus_spot = next(
-        (m for m in route_for_map if m["order"] == focus_order),
-        route_for_map[0] if route_for_map else None,
-    )
-    focus_label = (
-        f"STEP {focus_spot['order']} · {focus_spot['name']}" if focus_spot else ""
-    )
-
-    with right:
-        render_my_trip_map_shell(focus_label)
-        center_lat, center_lng = _map_center(curated)
-        if focus_spot:
-            center_lat, center_lng = float(focus_spot["lat"]), float(focus_spot["lng"])
-        route_url = build_kakao_route_url(route_for_map)
-        if route_url:
-            st.link_button("카카오맵에서 전체 동선 보기", route_url, use_container_width=True)
-        render_kakao_map(
-            spots=ALL_SPOTS,
-            center_lat=center_lat,
-            center_lng=center_lng,
-            app_key=kakao_key,
-            height=500,
-            route_spots=route_for_map,
-            show_route=len(route_for_map) > 1,
-            focus_order=focus_order,
-            focus_label=focus_label,
-            title="",
+        focus_spot = next(
+            (m for m in route_for_map if m["order"] == focus_order),
+            route_for_map[0] if route_for_map else None,
+        )
+        focus_label = (
+            f"{focus_spot['name']}" if focus_spot else ""
+        )
+        query_chip = st.session_state.last_user_query[:40] + (
+            "…" if len(st.session_state.last_user_query) > 40 else ""
         )
 
-    st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
-    if st.button("새 여행 검색", type="secondary", use_container_width=True):
-        st.session_state.screen = "home"
-        st.session_state.curated_spots = []
-        st.session_state.messages = []
-        st.rerun()
+        with map_col:
+            st.markdown(
+                f'<p class="mt-panel-label">Live Map · {html.escape(query_chip)}</p>',
+                unsafe_allow_html=True,
+            )
+            center_lat, center_lng = _map_center(curated)
+            if focus_spot:
+                center_lat, center_lng = float(focus_spot["lat"]), float(focus_spot["lng"])
+            route_url = build_kakao_route_url(route_for_map)
+            if route_url:
+                st.link_button("Refine route in Kakao Map", route_url, use_container_width=True)
+            render_kakao_map(
+                spots=ALL_SPOTS,
+                center_lat=center_lat,
+                center_lng=center_lng,
+                app_key=kakao_key,
+                height=520,
+                route_spots=route_for_map,
+                show_route=len(route_for_map) > 1,
+                focus_order=focus_order,
+                focus_label=focus_label,
+                title="",
+            )
+
+        if st.button("새 여행 검색", type="secondary"):
+            st.session_state.screen = "home"
+            st.session_state.curated_spots = []
+            st.session_state.messages = []
+            st.rerun()
