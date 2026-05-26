@@ -17,6 +17,8 @@ from ui import (
     render_gangwon_dashboard,
     render_home_search_hero,
     render_screen_steps,
+    render_my_trip_hero,
+    render_my_trip_map_shell,
     render_my_trip_route_column,
 )
 
@@ -126,18 +128,13 @@ else:
     render_app_header()
     render_screen_steps(2)
 
-    nav1, nav2, nav3 = st.columns([1, 2, 1])
-    with nav1:
-        if st.button("← 홈", use_container_width=True):
+    back_col, _ = st.columns([1, 5])
+    with back_col:
+        if st.button("← 홈", type="secondary", use_container_width=True):
             st.session_state.screen = "home"
             st.rerun()
-    with nav2:
-        q = st.session_state.last_user_query
-        q_prev = (q[:40] + "…") if len(q) > 40 else q
-        st.markdown(f"**MY TRIP** · _{q_prev}_")
-    with nav3:
-        if meta.get("total_duration"):
-            st.caption(f"⏱ {meta['total_duration']}")
+
+    render_my_trip_hero(meta, len(steps), st.session_state.last_user_query)
 
     route_for_map = build_route_markers(curated, steps)
 
@@ -155,33 +152,28 @@ else:
     )
 
     with right:
-        if focus_label:
-            st.markdown(f"**🗺️ {focus_label}**")
+        render_my_trip_map_shell(focus_label)
         center_lat, center_lng = _map_center(curated)
         if focus_spot:
             center_lat, center_lng = float(focus_spot["lat"]), float(focus_spot["lng"])
         route_url = build_kakao_route_url(route_for_map)
         if route_url:
-            st.link_button("🗺️ 카카오맵에서 전체 동선 보기", route_url, use_container_width=True)
+            st.link_button("카카오맵에서 전체 동선 보기", route_url, use_container_width=True)
         render_kakao_map(
             spots=ALL_SPOTS,
             center_lat=center_lat,
             center_lng=center_lng,
             app_key=kakao_key,
-            height=540,
+            height=500,
             route_spots=route_for_map,
             show_route=len(route_for_map) > 1,
             focus_order=focus_order,
             focus_label=focus_label,
-            title="Live Kakao Map",
-        )
-        st.markdown(
-            '<p class="section-sub" style="margin-top:0.5rem;text-align:center;">'
-            "마커 탭 · 상세 정보 · DB 좌표 기준</p>",
-            unsafe_allow_html=True,
+            title="",
         )
 
-    if st.button("다른 조건으로 새로 검색", use_container_width=True):
+    st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
+    if st.button("다른 조건으로 검색", type="secondary", use_container_width=True):
         st.session_state.screen = "home"
         st.session_state.curated_spots = []
         st.session_state.messages = []

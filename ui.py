@@ -165,50 +165,90 @@ div.stLinkButton > a {{
 }}
 .section-sub {{ margin: 0 0 1rem 0; font-size: 0.82rem; color: #64748B; }}
 
-/* MY TRIP — 일정 pills (세로 카드, 별도 버튼 없음) */
-.mytrip-route-block {{ margin-bottom: 1rem; }}
+/* MY TRIP — 2페이지 (미니멀·현대) */
+.mt-hero {{
+  background: #fff; border: 1px solid #E2E8F0; border-radius: 20px;
+  padding: 1.35rem 1.45rem; margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}}
+.mt-hero-row {{ display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }}
+.mt-kicker {{ font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; color: {TEAL_DARK}; }}
+.mt-chip {{
+  font-size: 0.72rem; font-weight: 600; color: #475569; background: #F1F5F9;
+  border-radius: 999px; padding: 0.25rem 0.65rem;
+}}
+.mt-hero h1 {{ margin: 0.55rem 0 0.4rem; font-size: 1.35rem; font-weight: 800; color: #0F172A !important; line-height: 1.3; }}
+.mt-hero-summary {{ margin: 0; font-size: 0.9rem; color: #475569; line-height: 1.55; }}
+.mt-query {{ margin: 0.75rem 0 0; font-size: 0.78rem; color: #94A3B8; }}
+
+.mt-panel-label {{
+  margin: 0 0 0.65rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #94A3B8;
+}}
+
+.mytrip-route-block {{ margin-bottom: 0.25rem; }}
 div[data-testid="stPills"] [data-baseweb="button-group"] {{
   display: flex !important; flex-direction: column !important;
-  width: 100% !important; gap: 0.65rem !important;
+  width: 100% !important; gap: 0.5rem !important;
 }}
 div[data-testid="stPills"] [data-baseweb="button-group"] > button {{
-  width: 100% !important; min-height: 4.25rem !important; height: auto !important;
+  width: 100% !important; min-height: 3.75rem !important; height: auto !important;
   justify-content: flex-start !important; text-align: left !important;
-  padding: 0.85rem 1rem !important; border-radius: 16px !important;
+  padding: 0.8rem 1rem !important; border-radius: 14px !important;
   white-space: pre-wrap !important; line-height: 1.45 !important;
-  font-size: 0.84rem !important; font-weight: 600 !important;
+  font-size: 0.83rem !important; font-weight: 500 !important;
+  background: #fff !important; color: #334155 !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
 }}
 div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="true"] {{
-  background: linear-gradient(135deg, {TEAL_DARK}, {TEAL}) !important;
-  color: #fff !important; border-color: transparent !important;
-  box-shadow: 0 8px 22px rgba(13, 148, 136, 0.35) !important;
+  background: #F0FDFA !important; color: #0F766E !important;
+  border: 1.5px solid {TEAL} !important;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12) !important;
+  font-weight: 600 !important;
 }}
 
-.route-detail-panel {{
-  background: linear-gradient(145deg, #0F766E 0%, {TEAL_DARK} 45%, {TEAL} 100%);
-  color: #fff; border-radius: 22px; padding: 1.25rem 1.35rem; margin-bottom: 1rem;
-  box-shadow: 0 16px 40px rgba(13, 148, 136, 0.28);
+.mt-detail {{
+  background: #fff; border: 1px solid #E2E8F0; border-radius: 16px;
+  padding: 1.15rem 1.2rem; margin: 1rem 0 0.85rem;
+  border-left: 4px solid {TEAL};
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }}
-.route-detail-panel .rd-tag {{
-  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em; opacity: 0.88;
+.mt-detail-top {{ display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 0.5rem; }}
+.mt-step-badge {{
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em;
+  color: {TEAL_DARK}; background: #F0FDFA; padding: 0.2rem 0.5rem; border-radius: 6px;
 }}
-.route-detail-panel h3 {{ margin: 0.4rem 0 0.35rem; font-size: 1.2rem; font-weight: 800; }}
-.route-detail-panel .rd-meta {{ margin: 0; font-size: 0.82rem; opacity: 0.92; }}
-.route-detail-panel .rd-body {{ margin: 0.65rem 0 0; font-size: 0.9rem; line-height: 1.6; opacity: 0.96; }}
-.route-detail-panel .rd-move {{
-  margin: 0.75rem 0 0; padding: 0.5rem 0.65rem; border-radius: 12px;
-  background: rgba(255,255,255,0.15); font-size: 0.82rem;
+.mt-theme-chip {{
+  font-size: 0.68rem; font-weight: 600; color: #64748B;
+  background: #F8FAFC; padding: 0.2rem 0.5rem; border-radius: 6px;
 }}
+.mt-detail h2 {{ margin: 0 0 0.35rem; font-size: 1.1rem; font-weight: 800; color: #0F172A !important; line-height: 1.35; }}
+.mt-detail-meta {{ margin: 0 0 0.65rem; font-size: 0.8rem; color: #64748B; }}
+.mt-detail-body {{ margin: 0; font-size: 0.88rem; color: #334155; line-height: 1.6; }}
+.mt-detail-move {{
+  margin: 0.75rem 0 0; padding: 0.55rem 0.7rem; border-radius: 10px;
+  background: #F8FAFC; border: 1px solid #F1F5F9;
+  font-size: 0.8rem; color: #475569; line-height: 1.5;
+}}
+
+.mt-map-card {{
+  background: #fff; border: 1px solid #E2E8F0; border-radius: 18px;
+  padding: 0.85rem; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}}
+.mt-map-head {{ display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin-bottom: 0.65rem; padding: 0 0.15rem; }}
+.mt-map-head h3 {{ margin: 0; font-size: 0.95rem; font-weight: 700; color: #0F172A !important; }}
+.mt-map-head span {{ font-size: 0.75rem; color: #94A3B8; }}
 
 .trip-info-box {{
-  background: #fff; border-radius: 20px; padding: 1.25rem 1.35rem;
-  border: 1px solid #E2E8F0; margin-top: 1rem;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  background: #F8FAFC; border-radius: 14px; padding: 1rem 1.1rem;
+  border: 1px solid #F1F5F9; margin-top: 0.5rem;
 }}
 .trip-info-box h4 {{
-  margin: 0 0 0.65rem 0; color: {TEAL_DARK}; font-size: 0.8rem;
-  text-transform: uppercase; letter-spacing: 0.08em;
+  margin: 0 0 0.5rem 0; color: #64748B; font-size: 0.72rem;
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;
 }}
+.trip-info-box .kto-badge {{ display: none; }}
 
 .map-shell {{
   background: #fff; border-radius: 20px; padding: 0.6rem;
@@ -493,17 +533,23 @@ resetWeatherTimer();
     st.markdown(f'<div class="highlight-scroll">{"".join(cards)}</div>', unsafe_allow_html=True)
 
 
-def render_featured_trip(spot: dict, meta: dict) -> None:
-    title = meta.get("title") or spot["name"]
-    summary = meta.get("summary") or spot["description"]
+def render_my_trip_hero(meta: dict, step_count: int, query: str) -> None:
+    title = html.escape(meta.get("title") or "오늘의 강원도 코스")
+    summary = html.escape(meta.get("summary") or "")
     duration = meta.get("total_duration", "")
-    dur = f" · {html.escape(duration)}" if duration else ""
+    dur_chip = f'<span class="mt-chip">⏱ {html.escape(duration)}</span>' if duration else ""
+    stops_chip = f'<span class="mt-chip">{step_count}곳</span>' if step_count else ""
+    q = html.escape((query[:56] + "…") if len(query) > 56 else query)
     st.markdown(
         f"""
-<div class="featured-trip">
-  <h3>{html.escape(title)}</h3>
-  <p>{html.escape(summary)}{dur}</p>
-  <p style="margin-top:0.75rem;font-size:0.8rem;">📍 {html.escape(spot['region'])} · {html.escape(spot['theme'])}</p>
+<div class="mt-hero">
+  <div class="mt-hero-row">
+    <span class="mt-kicker">MY TRIP</span>
+    <span style="display:flex;gap:0.35rem;flex-wrap:wrap;">{stops_chip}{dur_chip}</span>
+  </div>
+  <h1>{title}</h1>
+  <p class="mt-hero-summary">{summary}</p>
+  <p class="mt-query">검색 · {q}</p>
 </div>
         """,
         unsafe_allow_html=True,
@@ -513,9 +559,9 @@ def render_featured_trip(spot: dict, meta: dict) -> None:
 def _pill_step_label(step: dict) -> str:
     order = int(step["order"])
     stay = step.get("stay_minutes")
-    stay_txt = f" · 약 {stay}분" if stay else ""
+    stay_txt = f" · {stay}분" if stay else ""
     theme = step.get("theme", "여행")
-    return f"{order:02d}  {step['spot_name']}\n{step.get('region', '')} · {theme}{stay_txt}"
+    return f"{order:02d} · {step['spot_name']}\n{step.get('region', '')} · {theme}{stay_txt}"
 
 
 def _normalize_pill_selection(sel: Any, fallback: int) -> int:
@@ -560,22 +606,25 @@ def render_route_picker(steps: list[dict]) -> int:
     return _normalize_pill_selection(picked, focus)
 
 
-def render_route_detail_panel(step: dict, spot: dict, meta: dict) -> None:
-    """선택한 일정 상세 (박스 탭 시 여기만 갱신)."""
+def render_route_detail_panel(step: dict, spot: dict) -> None:
+    """선택한 일정 상세."""
     order = int(step["order"])
     stay = step.get("stay_minutes")
     stay_txt = f" · 약 {stay}분" if stay else ""
+    theme = html.escape(step.get("theme", spot.get("theme", "")) or "여행")
     why = html.escape((step.get("why") or spot.get("description") or "").strip())
     move = html.escape((step.get("move_to_next") or "").strip())
-    move_html = f'<p class="rd-move">🚗 {move}</p>' if move else ""
-    trip_title = html.escape(meta.get("title") or "오늘의 코스")
+    move_html = f'<p class="mt-detail-move">{move}</p>' if move else ""
     st.markdown(
         f"""
-<div class="route-detail-panel">
-  <span class="rd-tag">{trip_title}</span>
-  <h3>{order}. {html.escape(step['spot_name'])}</h3>
-  <p class="rd-meta">{html.escape(step.get('region', spot.get('region', '')))} · {html.escape(step.get('theme', spot.get('theme', '')))}{html.escape(stay_txt)}</p>
-  <p class="rd-body">{why}</p>
+<div class="mt-detail">
+  <div class="mt-detail-top">
+    <span class="mt-step-badge">STEP {order:02d}</span>
+    <span class="mt-theme-chip">{theme}</span>
+  </div>
+  <h2>{html.escape(step['spot_name'])}</h2>
+  <p class="mt-detail-meta">{html.escape(step.get('region', spot.get('region', '')))}{html.escape(stay_txt)}</p>
+  <p class="mt-detail-body">{why}</p>
   {move_html}
 </div>
         """,
@@ -584,7 +633,7 @@ def render_route_detail_panel(step: dict, spot: dict, meta: dict) -> None:
     if spot.get("name") and spot.get("lat") is not None and spot.get("lng") is not None:
         name_q = quote(str(spot["name"]))
         url = f"https://map.kakao.com/link/map/{name_q},{spot['lat']},{spot['lng']}"
-        st.link_button("카카오맵에서 이 장소 열기 ↗", url, use_container_width=True)
+        st.link_button("카카오맵에서 열기", url, use_container_width=True)
 
 
 def render_my_trip_route_column(
@@ -592,12 +641,8 @@ def render_my_trip_route_column(
     curated: list[dict],
     meta: dict,
 ) -> tuple[int, dict | None, dict | None]:
-    """MY TRIP 왼쪽: 상세 패널 + 일정 pills + 코스 요약."""
-    st.markdown(
-        '<p class="section-head">Your Route</p>'
-        '<p class="section-sub"><strong>일정 박스</strong>를 누르면 아래 상세·오른쪽 지도가 바뀝니다.</p>',
-        unsafe_allow_html=True,
-    )
+    """MY TRIP 왼쪽: 일정 선택 + 상세."""
+    st.markdown('<p class="mt-panel-label">일정</p>', unsafe_allow_html=True)
 
     picked = render_route_picker(steps)
     st.session_state.focus_order = picked
@@ -606,16 +651,30 @@ def render_my_trip_route_column(
     focus_db = None
     if focus_step:
         focus_db = next((s for s in curated if s["name"] == focus_step["spot_name"]), curated[0] if curated else None)
-        st.markdown("##### 선택한 장소")
-        render_route_detail_panel(focus_step, focus_db or {}, meta)
+        st.markdown('<p class="mt-panel-label">선택한 장소</p>', unsafe_allow_html=True)
+        render_route_detail_panel(focus_step, focus_db or {})
 
     trip_text = meta.get("message") or meta.get("summary") or get_region_intro()
     if meta.get("map_tip"):
-        trip_text += f"\n\n🗺️ {meta['map_tip']}"
-    with st.expander("코스 전체 설명", expanded=False):
+        trip_text += f"\n\n{meta['map_tip']}"
+    with st.expander("코스 전체 보기", expanded=False):
         render_trip_information(trip_text[:1200])
 
     return picked, focus_step, focus_db
+
+
+def render_my_trip_map_shell(focus_label: str) -> None:
+    st.markdown(
+        f"""
+<div class="mt-map-card">
+  <div class="mt-map-head">
+    <h3>지도</h3>
+    <span>{html.escape(focus_label) if focus_label else "일정을 선택하세요"}</span>
+  </div>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_trip_information(text: str) -> None:

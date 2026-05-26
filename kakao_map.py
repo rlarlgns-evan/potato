@@ -121,8 +121,17 @@ def _build_map_html(
     }
     cfg_js = json.dumps(cfg, ensure_ascii=False)
     safe_focus = html_module.escape(focus_label or "")
-    safe_title = html_module.escape(title or "Live Kakao Map")
-    badge = f"📍 {safe_focus}" if safe_focus else "일정 카드를 클릭하세요"
+    safe_title = html_module.escape(title) if title else ""
+    badge = safe_focus if safe_focus else ""
+    show_head = bool(safe_title or badge)
+    head_html = (
+        f"""<div class="map-head">
+      <span class="map-label" id="map-label">{safe_title}</span>
+      <span class="map-focus" id="map-focus-badge">{badge}</span>
+    </div>"""
+        if show_head
+        else ""
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="ko">
@@ -134,8 +143,8 @@ def _build_map_html(
     * {{ box-sizing: border-box; }}
     html, body {{ margin: 0; padding: 0; width: 100%; font-family: sans-serif; }}
     .map-shell {{
-      background: #fff; border-radius: 22px; padding: 0.75rem;
-      border: 1px solid #E2E8F0; box-shadow: 0 12px 36px rgba(13, 148, 136, 0.12);
+      background: transparent; border-radius: 14px; padding: 0;
+      border: none; box-shadow: none;
     }}
     .map-head {{
       display: flex; justify-content: space-between; align-items: center;
@@ -172,10 +181,7 @@ def _build_map_html(
 </head>
 <body>
   <div class="map-shell">
-    <div class="map-head">
-      <span class="map-label" id="map-label">{safe_title}</span>
-      <span class="map-focus" id="map-focus-badge">{badge}</span>
-    </div>
+    {head_html}
     <div id="map-error"></div>
     <div id="map-wrap">
       <div id="map-loading">카카오 지도 불러오는 중…</div>
