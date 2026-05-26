@@ -917,16 +917,16 @@ def render_voyage_top_nav(active: str = "explore") -> None:
     links = "".join(
         f'<span class="{"on" if key == active else ""}">{label}</span>' for key, label in tabs
     )
-  st.markdown(
-      f"""
+    st.markdown(
+        f"""
 <div class="vx-topnav">
   <span class="logo">VoyageAI</span>
   <div class="nav-links">{links}</div>
   <div class="nav-right">🔔 ⚙ 👤</div>
 </div>
-      """,
-      unsafe_allow_html=True,
-  )
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_voyage_app_sidebar(active: str = "itinerary") -> None:
