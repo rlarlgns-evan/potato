@@ -23,8 +23,8 @@ from ui import (
 )
 
 st.set_page_config(
-    page_title="샤이한 열정 감자들",
-    page_icon="🥔",
+    page_title="VoyageAI · 강원",
+    page_icon="✦",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -86,20 +86,21 @@ if st.session_state.screen == "home":
     render_home_search_hero()
     render_gangwon_dashboard()
 
+    st.markdown('<div style="max-width:640px;margin:0 auto;">', unsafe_allow_html=True)
     with st.form("ai_trip_search", clear_on_submit=True):
-        st.markdown("##### 🔍 AI 여행 검색")
         user_prompt = st.text_input(
             "label",
-            placeholder="예: 주말 가족과 드라이브, 설악·동해 쪽 당일 코스",
+            placeholder="예: 해안 드라이브, 조용한 카페, 반나절 힐링 코스…",
             label_visibility="collapsed",
         )
-        submitted = st.form_submit_button("AI 코스 설계하기", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("Plan this trip", type="primary", use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     if submitted and user_prompt.strip():
         st.session_state.messages = [
             {"role": "user", "content": user_prompt.strip()},
         ]
-        with st.spinner("강원도 전역 관광지에서 동선을 설계하는 중…"):
+        with st.spinner("AI가 맞춤 동선을 설계하는 중…"):
             result = curate_trip(
                 user_message=user_prompt.strip(),
                 spots=ALL_SPOTS,
@@ -173,7 +174,7 @@ else:
         )
 
     st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
-    if st.button("다른 조건으로 검색", type="secondary", use_container_width=True):
+    if st.button("새 여행 검색", type="secondary", use_container_width=True):
         st.session_state.screen = "home"
         st.session_state.curated_spots = []
         st.session_state.messages = []

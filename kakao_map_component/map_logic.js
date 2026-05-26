@@ -51,7 +51,7 @@ function initLeaflet(cfg) {
     const focused = isFocused(spot, cfg.focus_order);
     if (focused) focusSpot = spot;
     const icon = L.divIcon({
-      html: '<div class="order-pin' + (focused ? ' focus' : '') + '">' + (cfg.show_numbers ? spot.order : '') + '</div>',
+      html: '<div class="order-pin' + (focused ? ' focus' : '') + '">' + (cfg.show_numbers ? spot.order : '•') + '</div>',
       className: '', iconSize: focused ? [32, 32] : [26, 26], iconAnchor: focused ? [16, 16] : [13, 13]
     });
     const m = L.marker(ll, { icon: icon }).addTo(map);
@@ -60,7 +60,7 @@ function initLeaflet(cfg) {
   });
 
   if (cfg.show_route && latlngs.length > 1) {
-    L.polyline(latlngs, { color: '#14B8A6', weight: 4, opacity: 0.85 }).addTo(map);
+    L.polyline(latlngs, { color: '#66bcb0', weight: 4, opacity: 0.85 }).addTo(map);
   }
   if (!focusSpot && latlngs.length > 1) map.fitBounds(latlngs, { padding: [40, 40] });
 
@@ -96,7 +96,7 @@ function initKakao(cfg) {
     marker.setMap(map);
 
     if (cfg.show_numbers && spot.order > 0) {
-      const bg = focused ? '#E85D04' : '#14B8A6';
+      const bg = focused ? '#4fa89c' : '#66bcb0';
       const label = '<div style="padding:4px 9px;background:' + bg + ';color:#fff;border-radius:6px;font-size:12px;font-weight:700;">' + spot.order + '</div>';
       new kakao.maps.CustomOverlay({ position: pos, content: label, yAnchor: 1.45 }).setMap(map);
     }
@@ -108,7 +108,7 @@ function initKakao(cfg) {
 
   if (cfg.show_route && path.length > 1) {
     new kakao.maps.Polyline({
-      path: path, strokeWeight: 4, strokeColor: '#14B8A6',
+      path: path, strokeWeight: 4, strokeColor: '#66bcb0',
       strokeOpacity: 0.85, strokeStyle: 'solid'
     }).setMap(map);
   }

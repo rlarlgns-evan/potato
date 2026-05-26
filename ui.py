@@ -1,4 +1,4 @@
-"""STAR TRAVEL 스타일 · 틸(teal) 테마 UI."""
+"""VoyageAI · Ethereal Intelligence design system (Streamlit)."""
 
 import html
 import json
@@ -16,22 +16,31 @@ from gangwon_content import (
     get_weather_cities,
 )
 
-TEAL = "#14B8A6"
-TEAL_DARK = "#0D9488"
+# VoyageAI palette
+PRIMARY = "#66bcb0"
+PRIMARY_DARK = "#4fa89c"
+SURFACE = "#f5faf9"
+TEXT = "#1e293b"
+TEXT_MUTED = "#64748b"
+LAVENDER = "#ddd6fe"
+SKY = "#bae6fd"
+SOFT_ORANGE = "#fed7aa"
+TEAL = PRIMARY
+TEAL_DARK = PRIMARY_DARK
 
-# Tip 박스와 동일 — iframe·fragment에서도 깨지지 않도록 인라인
 BOX_STYLE = (
-    "background:#fff;border-radius:18px;padding:1rem 1.1rem;"
-    "box-shadow:0 6px 20px rgba(13,148,136,0.08);border:1px solid #CCFBF1;"
-    "min-height:152px;box-sizing:border-box;"
+    f"background:rgba(255,255,255,0.72);backdrop-filter:blur(12px);"
+    f"border-radius:24px;padding:1rem 1.1rem;"
+    f"box-shadow:0 4px 24px rgba(102,188,176,0.12);border:1px solid rgba(102,188,176,0.2);"
+    f"min-height:152px;box-sizing:border-box;"
 )
 LBL_STYLE = (
-    f"margin:0 0 0.65rem 0;font-size:0.72rem;font-weight:700;color:{TEAL_DARK};"
-    "text-transform:uppercase;font-family:'Plus Jakarta Sans',sans-serif;"
+    f"margin:0 0 0.65rem 0;font-size:0.72rem;font-weight:700;color:{PRIMARY_DARK};"
+    "text-transform:uppercase;letter-spacing:0.08em;font-family:Inter,sans-serif;"
 )
 SUB_STYLE = (
-    "margin:0.5rem 0 0;font-size:0.78rem;color:#64748B;line-height:1.55;"
-    "font-family:'Plus Jakarta Sans',sans-serif;"
+    f"margin:0.5rem 0 0;font-size:0.78rem;color:{TEXT_MUTED};line-height:1.55;"
+    "font-family:Inter,sans-serif;"
 )
 
 
@@ -39,55 +48,90 @@ def inject_styles() -> None:
     st.markdown(
         f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-html, body, [class*="css"] {{ font-family: 'Plus Jakarta Sans', sans-serif; }}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+html, body, [class*="css"] {{ font-family: 'Inter', system-ui, sans-serif; }}
 .stApp {{
-  background: linear-gradient(180deg, #ECFDF5 0%, #F0FDFA 35%, #F8FAFC 100%);
+  background: {SURFACE};
+  background-image:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(102,188,176,0.18), transparent),
+    radial-gradient(ellipse 60% 40% at 95% 5%, rgba(186,230,253,0.35), transparent),
+    radial-gradient(ellipse 50% 30% at 50% 100%, rgba(221,214,254,0.2), transparent);
 }}
-.block-container {{ padding-top: 1.25rem; max-width: 1080px; }}
+.block-container {{ padding-top: 1rem; max-width: 1120px; }}
 #MainMenu, footer, header {{ visibility: hidden; }}
 
-h1, h2, h3, h4 {{ color: #134E4A !important; letter-spacing: -0.02em; }}
-.stCaption {{ color: #64748B !important; }}
+h1, h2, h3, h4 {{ color: {TEXT} !important; letter-spacing: -0.03em; }}
+.stCaption {{ color: {TEXT_MUTED} !important; }}
 
-div[data-testid="stTextInput"] input {{
-  border-radius: 14px !important; border: 1px solid #CCFBF1 !important;
-  padding: 0.65rem 1rem !important; background: #fff !important;
+div[data-testid="stTextInput"] input, div[data-testid="stTextArea"] textarea {{
+  border-radius: 16px !important; border: 1px solid rgba(102,188,176,0.25) !important;
+  padding: 0.7rem 1rem !important;
+  background: rgba(255,255,255,0.85) !important; backdrop-filter: blur(8px);
 }}
 div[data-testid="stTextInput"] input:focus {{
-  border-color: {TEAL} !important; box-shadow: 0 0 0 3px rgba(20,184,166,0.15) !important;
+  border-color: {PRIMARY} !important;
+  box-shadow: 0 0 0 3px rgba(102,188,176,0.2) !important;
 }}
 div.stButton > button[kind="secondary"] {{
-  background: #fff !important; color: #475569 !important;
-  border: 1px solid #E2E8F0 !important; border-radius: 12px !important;
+  background: rgba(255,255,255,0.9) !important; color: {TEXT} !important;
+  border: 1px solid rgba(102,188,176,0.2) !important;
+  border-radius: 14px !important; font-weight: 600 !important;
+}}
+div.stButton > button[kind="primary"] {{
+  background: {PRIMARY} !important; color: #fff !important;
+  border: none !important; border-radius: 14px !important;
   font-weight: 600 !important;
+  box-shadow: 0 4px 14px rgba(102,188,176,0.35) !important;
+}}
+div.stButton > button[kind="primary"]:hover {{
+  background: {PRIMARY_DARK} !important;
 }}
 div.stLinkButton > a {{
-  border-radius: 10px !important; font-size: 0.8rem !important;
+  border-radius: 14px !important; font-size: 0.82rem !important;
+  border: 1px solid rgba(102,188,176,0.25) !important;
 }}
 
 .app-top {{
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 1.1rem; padding: 0.65rem 0.85rem;
-  background: rgba(255,255,255,0.75); backdrop-filter: blur(8px);
-  border-radius: 16px; border: 1px solid rgba(204,251,241,0.9);
-  box-shadow: 0 4px 20px rgba(13, 148, 136, 0.08);
+  margin-bottom: 1rem; padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.65); backdrop-filter: blur(16px);
+  border-radius: 24px; border: 1px solid rgba(255,255,255,0.8);
+  box-shadow: 0 4px 24px rgba(102,188,176,0.1);
 }}
 .app-top .brand {{
-  font-size: 1.05rem; font-weight: 800; letter-spacing: 0.06em;
-  background: linear-gradient(135deg, {TEAL_DARK}, {TEAL});
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: {TEXT};
+}}
+.app-top .brand span {{ color: {PRIMARY_DARK}; }}
+.app-top .tag {{
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em;
+  color: {PRIMARY_DARK}; background: rgba(102,188,176,0.15);
+  padding: 0.3rem 0.6rem; border-radius: 999px;
+}}
+
+.vx-chat-shell {{
+  max-width: 640px; margin: 0 auto 1.25rem;
+  background: rgba(255,255,255,0.7); backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.9); border-radius: 24px;
+  padding: 1.5rem 1.6rem; box-shadow: 0 8px 32px rgba(102,188,176,0.12);
+}}
+.vx-chat-shell h2 {{
+  margin: 0 0 0.35rem; font-size: 1.35rem; font-weight: 800;
+  color: {TEXT} !important; letter-spacing: -0.03em;
+}}
+.vx-chat-shell p {{ margin: 0; font-size: 0.9rem; color: {TEXT_MUTED}; line-height: 1.6; }}
+.vx-chat-hint {{
+  margin-top: 0.85rem; font-size: 0.75rem; color: {TEXT_MUTED};
+  text-align: center;
 }}
 
 .search-hero {{
-  background: linear-gradient(145deg, {TEAL_DARK} 0%, {TEAL} 55%, #2DD4BF 100%);
-  border-radius: 22px; padding: 1.5rem 1.6rem; color: #fff;
-  box-shadow: 0 16px 40px rgba(13, 148, 136, 0.35);
-  margin-bottom: 1.25rem;
+  background: rgba(255,255,255,0.55); backdrop-filter: blur(12px);
+  border-radius: 24px; padding: 1.25rem 1.4rem; margin-bottom: 1rem;
+  border: 1px solid rgba(102,188,176,0.15);
+  box-shadow: 0 4px 20px rgba(102,188,176,0.08);
 }}
-.search-hero h2 {{ margin: 0 0 0.35rem 0; font-size: 1.5rem; font-weight: 800; }}
-.search-hero p {{ margin: 0 0 1rem 0; opacity: 0.92; font-size: 0.9rem; }}
+.search-hero h2 {{ margin: 0 0 0.35rem 0; font-size: 1.2rem; font-weight: 700; color: {TEXT} !important; }}
+.search-hero p {{ margin: 0; font-size: 0.88rem; color: {TEXT_MUTED}; }}
 
 .info-grid {{
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
@@ -96,13 +140,14 @@ div.stLinkButton > a {{
 @media (max-width: 768px) {{ .info-grid {{ grid-template-columns: 1fr; }} }}
 
 .info-card {{
-  background: #fff; border-radius: 18px; padding: 1rem 1.1rem;
-  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.08);
-  border: 1px solid #CCFBF1;
+  background: rgba(255,255,255,0.72); backdrop-filter: blur(12px);
+  border-radius: 24px; padding: 1rem 1.1rem;
+  box-shadow: 0 4px 24px rgba(102,188,176,0.1);
+  border: 1px solid rgba(102,188,176,0.15);
 }}
-.info-card .label {{ font-size: 0.72rem; font-weight: 700; color: {TEAL_DARK}; text-transform: uppercase; }}
-.info-card .value {{ font-size: 1rem; font-weight: 700; color: #134E4A; margin: 0.25rem 0; }}
-.info-card .sub {{ font-size: 0.78rem; color: #64748B; margin: 0; }}
+.info-card .label {{ font-size: 0.72rem; font-weight: 700; color: {PRIMARY_DARK}; text-transform: uppercase; }}
+.info-card .value {{ font-size: 1rem; font-weight: 700; color: {TEXT}; margin: 0.25rem 0; }}
+.info-card .sub {{ font-size: 0.78rem; color: {TEXT_MUTED}; margin: 0; }}
 
 .highlight-scroll {{
   display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; margin-bottom: 1.25rem;
@@ -116,9 +161,11 @@ div.stLinkButton > a {{
 }}
 
 .highlight-card {{
-  flex: 0 0 200px; border-radius: 18px; padding: 1.1rem; color: #fff;
+  flex: 0 0 200px; border-radius: 24px; padding: 1.1rem; color: #fff;
   min-height: 100px; display: flex; flex-direction: column; justify-content: flex-end;
+  transition: transform 0.2s ease; cursor: default;
 }}
+.highlight-card:hover {{ transform: scale(1.02); }}
 .highlight-card .ui-icon-thumb {{ margin-bottom: 0.5rem; width: 44px; height: 44px; font-size: 1.2rem; }}
 .highlight-card strong {{ font-size: 0.95rem; }}
 .highlight-card span {{ font-size: 0.75rem; opacity: 0.9; }}
@@ -131,16 +178,17 @@ div.stLinkButton > a {{
 
 .screen-steps {{ display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }}
 .screen-step {{
-  padding: 0.45rem 0.95rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
-  background: #fff; color: #94A3B8; border: 2px solid #E2E8F0;
+  padding: 0.4rem 0.9rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600;
+  background: rgba(255,255,255,0.6); color: {TEXT_MUTED};
+  border: 1px solid rgba(102,188,176,0.15);
 }}
 .screen-step.active {{
-  background: linear-gradient(135deg, {TEAL_DARK}, {TEAL});
-  color: #fff; border-color: transparent;
+  background: {PRIMARY}; color: #fff; border-color: transparent;
+  box-shadow: 0 4px 12px rgba(102,188,176,0.35);
 }}
-.screen-step.done {{ background: #CCFBF1; color: {TEAL_DARK}; border-color: #99F6E4; }}
-.screen-step-line {{ width: 24px; height: 2px; background: #E2E8F0; }}
-.screen-step-line.done {{ background: #5EEAD4; }}
+.screen-step.done {{ background: rgba(102,188,176,0.12); color: {PRIMARY_DARK}; border-color: rgba(102,188,176,0.25); }}
+.screen-step-line {{ width: 20px; height: 2px; background: rgba(102,188,176,0.2); border-radius: 2px; }}
+.screen-step-line.done {{ background: {PRIMARY}; }}
 
 .featured-trip {{
   background: linear-gradient(135deg, #0F766E 0%, {TEAL_DARK} 40%, {TEAL} 100%);
@@ -165,26 +213,43 @@ div.stLinkButton > a {{
 }}
 .section-sub {{ margin: 0 0 1rem 0; font-size: 0.82rem; color: #64748B; }}
 
-/* MY TRIP — 2페이지 (미니멀·현대) */
+/* MY TRIP — Phase 2 split-view (VoyageAI) */
+.vx-split-label {{
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: {PRIMARY_DARK}; margin: 0 0 0.75rem;
+}}
 .mt-hero {{
-  background: #fff; border: 1px solid #E2E8F0; border-radius: 20px;
-  padding: 1.35rem 1.45rem; margin-bottom: 1.25rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  background: rgba(255,255,255,0.72); backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.9); border-radius: 24px;
+  padding: 1.35rem 1.45rem; margin-bottom: 1.15rem;
+  box-shadow: 0 8px 32px rgba(102,188,176,0.1);
 }}
 .mt-hero-row {{ display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }}
-.mt-kicker {{ font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; color: {TEAL_DARK}; }}
+.mt-kicker {{ font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; color: {PRIMARY_DARK}; }}
 .mt-chip {{
-  font-size: 0.72rem; font-weight: 600; color: #475569; background: #F1F5F9;
-  border-radius: 999px; padding: 0.25rem 0.65rem;
+  font-size: 0.72rem; font-weight: 600; color: {TEXT};
+  background: rgba(102,188,176,0.12); border-radius: 999px; padding: 0.25rem 0.65rem;
 }}
-.mt-hero h1 {{ margin: 0.55rem 0 0.4rem; font-size: 1.35rem; font-weight: 800; color: #0F172A !important; line-height: 1.3; }}
-.mt-hero-summary {{ margin: 0; font-size: 0.9rem; color: #475569; line-height: 1.55; }}
-.mt-query {{ margin: 0.75rem 0 0; font-size: 0.78rem; color: #94A3B8; }}
+.mt-chip.accent-lav {{ background: {LAVENDER}; color: #5b21b6; }}
+.mt-chip.accent-sky {{ background: {SKY}; color: #0369a1; }}
+.mt-hero h1 {{ margin: 0.55rem 0 0.4rem; font-size: 1.3rem; font-weight: 800; color: {TEXT} !important; line-height: 1.3; letter-spacing: -0.03em; }}
+.mt-hero-summary {{ margin: 0; font-size: 0.88rem; color: {TEXT_MUTED}; line-height: 1.55; }}
+.mt-query {{
+  margin: 0.75rem 0 0; font-size: 0.78rem; color: {TEXT_MUTED};
+  padding: 0.45rem 0.65rem; background: rgba(102,188,176,0.08); border-radius: 12px;
+}}
 
 .mt-panel-label {{
   margin: 0 0 0.65rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase; color: #94A3B8;
+  text-transform: uppercase; color: {TEXT_MUTED};
 }}
+.vx-theme-tags {{ display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.75rem; }}
+.vx-theme-tag {{
+  font-size: 0.68rem; font-weight: 600; padding: 0.25rem 0.55rem; border-radius: 999px;
+}}
+.vx-theme-tag:nth-child(3n+1) {{ background: {SKY}; color: #0369a1; }}
+.vx-theme-tag:nth-child(3n+2) {{ background: {LAVENDER}; color: #5b21b6; }}
+.vx-theme-tag:nth-child(3n) {{ background: {SOFT_ORANGE}; color: #c2410c; }}
 
 .mytrip-route-block {{ margin-bottom: 0.25rem; }}
 div[data-testid="stPills"] [data-baseweb="button-group"] {{
@@ -194,51 +259,65 @@ div[data-testid="stPills"] [data-baseweb="button-group"] {{
 div[data-testid="stPills"] [data-baseweb="button-group"] > button {{
   width: 100% !important; min-height: 3.75rem !important; height: auto !important;
   justify-content: flex-start !important; text-align: left !important;
-  padding: 0.8rem 1rem !important; border-radius: 14px !important;
+  padding: 0.85rem 1rem !important; border-radius: 20px !important;
   white-space: pre-wrap !important; line-height: 1.45 !important;
   font-size: 0.83rem !important; font-weight: 500 !important;
-  background: #fff !important; color: #334155 !important;
-  border: 1px solid #E2E8F0 !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  background: rgba(255,255,255,0.85) !important; color: {TEXT} !important;
+  border: 1px solid rgba(102,188,176,0.15) !important;
+  box-shadow: 0 2px 8px rgba(102,188,176,0.06) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}}
+div[data-testid="stPills"] [data-baseweb="button-group"] > button:hover {{
+  transform: translateY(-1px); box-shadow: 0 4px 16px rgba(102,188,176,0.12) !important;
 }}
 div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="true"] {{
-  background: #F0FDFA !important; color: #0F766E !important;
-  border: 1.5px solid {TEAL} !important;
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12) !important;
+  background: rgba(102,188,176,0.15) !important; color: {PRIMARY_DARK} !important;
+  border: 1.5px solid {PRIMARY} !important;
+  box-shadow: 0 0 0 3px rgba(102,188,176,0.15) !important;
   font-weight: 600 !important;
 }}
 
 .mt-detail {{
-  background: #fff; border: 1px solid #E2E8F0; border-radius: 16px;
+  background: rgba(255,255,255,0.8); backdrop-filter: blur(12px);
+  border: 1px solid rgba(102,188,176,0.2); border-radius: 24px;
   padding: 1.15rem 1.2rem; margin: 1rem 0 0.85rem;
-  border-left: 4px solid {TEAL};
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 8px 28px rgba(102,188,176,0.1);
 }}
 .mt-detail-top {{ display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 0.5rem; }}
 .mt-step-badge {{
   font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em;
-  color: {TEAL_DARK}; background: #F0FDFA; padding: 0.2rem 0.5rem; border-radius: 6px;
+  color: #fff; background: {PRIMARY}; padding: 0.25rem 0.55rem; border-radius: 8px;
 }}
 .mt-theme-chip {{
-  font-size: 0.68rem; font-weight: 600; color: #64748B;
-  background: #F8FAFC; padding: 0.2rem 0.5rem; border-radius: 6px;
+  font-size: 0.68rem; font-weight: 600; color: {PRIMARY_DARK};
+  background: rgba(102,188,176,0.12); padding: 0.2rem 0.55rem; border-radius: 8px;
 }}
-.mt-detail h2 {{ margin: 0 0 0.35rem; font-size: 1.1rem; font-weight: 800; color: #0F172A !important; line-height: 1.35; }}
-.mt-detail-meta {{ margin: 0 0 0.65rem; font-size: 0.8rem; color: #64748B; }}
-.mt-detail-body {{ margin: 0; font-size: 0.88rem; color: #334155; line-height: 1.6; }}
+.mt-detail h2 {{ margin: 0 0 0.35rem; font-size: 1.08rem; font-weight: 800; color: {TEXT} !important; line-height: 1.35; letter-spacing: -0.02em; }}
+.mt-detail-meta {{ margin: 0 0 0.75rem; font-size: 0.8rem; color: {TEXT_MUTED}; }}
+.vx-ai-why {{
+  margin: 0 0 0.65rem; padding: 0.85rem 1rem; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(102,188,176,0.1), rgba(186,230,253,0.2));
+  border: 1px solid rgba(102,188,176,0.15);
+}}
+.vx-ai-why-label {{
+  font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: {PRIMARY_DARK}; margin-bottom: 0.35rem;
+}}
+.vx-ai-why p {{ margin: 0; font-size: 0.86rem; color: {TEXT}; line-height: 1.6; }}
 .mt-detail-move {{
-  margin: 0.75rem 0 0; padding: 0.55rem 0.7rem; border-radius: 10px;
-  background: #F8FAFC; border: 1px solid #F1F5F9;
-  font-size: 0.8rem; color: #475569; line-height: 1.5;
+  margin: 0.5rem 0 0; padding: 0.55rem 0.7rem; border-radius: 14px;
+  background: rgba(255,255,255,0.6); border: 1px solid rgba(102,188,176,0.12);
+  font-size: 0.8rem; color: {TEXT_MUTED}; line-height: 1.5;
 }}
 
 .mt-map-card {{
-  background: #fff; border: 1px solid #E2E8F0; border-radius: 18px;
-  padding: 0.85rem; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  background: rgba(255,255,255,0.72); backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.9); border-radius: 24px;
+  padding: 0.9rem 1rem; box-shadow: 0 8px 32px rgba(102,188,176,0.1);
 }}
-.mt-map-head {{ display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin-bottom: 0.65rem; padding: 0 0.15rem; }}
-.mt-map-head h3 {{ margin: 0; font-size: 0.95rem; font-weight: 700; color: #0F172A !important; }}
-.mt-map-head span {{ font-size: 0.75rem; color: #94A3B8; }}
+.mt-map-head {{ display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin-bottom: 0.65rem; }}
+.mt-map-head h3 {{ margin: 0; font-size: 0.92rem; font-weight: 700; color: {TEXT} !important; letter-spacing: -0.02em; }}
+.mt-map-head span {{ font-size: 0.75rem; color: {TEXT_MUTED}; }}
 
 .trip-info-box {{
   background: #F8FAFC; border-radius: 14px; padding: 1rem 1.1rem;
@@ -256,10 +335,6 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
 }}
 .map-shell .map-label {{ padding: 0.4rem 0.6rem; font-weight: 700; color: #134E4A; }}
 
-div.stButton > button[kind="primary"] {{
-  background: linear-gradient(135deg, {TEAL_DARK}, {TEAL}) !important;
-  border: none !important; border-radius: 12px !important; font-weight: 700 !important;
-}}
 
 .kto-badge {{
   font-size: 0.72rem; color: #64748B; background: #F0FDFA;
@@ -315,10 +390,10 @@ div.stButton > button[kind="primary"] {{
 
 def render_app_header() -> None:
     st.markdown(
-        """
+        f"""
 <div class="app-top">
-  <span class="brand">SHY POTATOES · GANGWON</span>
-  <span style="font-size:0.72rem;font-weight:700;color:#64748B;letter-spacing:0.12em;">TRAVEL</span>
+  <span class="brand">Voyage<span>AI</span> · 강원</span>
+  <span class="tag">ETHEREAL INTELLIGENCE</span>
 </div>
         """,
         unsafe_allow_html=True,
@@ -332,9 +407,9 @@ def render_screen_steps(active: int) -> None:
     st.markdown(
         f"""
 <div class="screen-steps">
-  <span class="screen-step {s1}">① 홈 · AI 검색</span>
+  <span class="screen-step {s1}">① Discover</span>
   <span class="screen-step-line {line}"></span>
-  <span class="screen-step {s2}">② MY TRIP · 동선</span>
+  <span class="screen-step {s2}">② Your Route</span>
 </div>
         """,
         unsafe_allow_html=True,
@@ -344,9 +419,10 @@ def render_screen_steps(active: int) -> None:
 def render_home_search_hero() -> None:
     st.markdown(
         f"""
-<div class="search-hero">
-  <h2>HELLO, TRAVELER</h2>
+<div class="vx-chat-shell">
+  <h2>여행의 꿈을 들려주세요</h2>
   <p>{html.escape(get_region_intro())}</p>
+  <p class="vx-chat-hint">자연어로 입력하면 AI가 맞춤 코스·지도를 제안합니다</p>
 </div>
         """,
         unsafe_allow_html=True,
@@ -370,10 +446,10 @@ def _build_festival_rows_html() -> str:
     festivals = get_festivals()
     rows = []
     grads = [
-        "linear-gradient(135deg,#0D9488,#14B8A6)",
-        "linear-gradient(135deg,#0891B2,#22D3EE)",
-        "linear-gradient(135deg,#0284C7,#38BDF8)",
-        "linear-gradient(135deg,#7C3AED,#A78BFA)",
+        f"linear-gradient(135deg,{PRIMARY_DARK},{PRIMARY})",
+        "linear-gradient(135deg,#38bdf8,#7dd3fc)",
+        "linear-gradient(135deg,#a78bfa,#ddd6fe)",
+        "linear-gradient(135deg,#fb923c,#fed7aa)",
     ]
     for i, f in enumerate(festivals):
         icon = FESTIVAL_ICONS[i % len(FESTIVAL_ICONS)]
@@ -537,14 +613,14 @@ def render_my_trip_hero(meta: dict, step_count: int, query: str) -> None:
     title = html.escape(meta.get("title") or "오늘의 강원도 코스")
     summary = html.escape(meta.get("summary") or "")
     duration = meta.get("total_duration", "")
-    dur_chip = f'<span class="mt-chip">⏱ {html.escape(duration)}</span>' if duration else ""
-    stops_chip = f'<span class="mt-chip">{step_count}곳</span>' if step_count else ""
+    dur_chip = f'<span class="mt-chip accent-sky">⏱ {html.escape(duration)}</span>' if duration else ""
+    stops_chip = f'<span class="mt-chip accent-lav">{step_count} stops</span>' if step_count else ""
     q = html.escape((query[:56] + "…") if len(query) > 56 else query)
     st.markdown(
         f"""
 <div class="mt-hero">
   <div class="mt-hero-row">
-    <span class="mt-kicker">MY TRIP</span>
+    <span class="mt-kicker">YOUR ROUTE</span>
     <span style="display:flex;gap:0.35rem;flex-wrap:wrap;">{stops_chip}{dur_chip}</span>
   </div>
   <h1>{title}</h1>
@@ -614,7 +690,7 @@ def render_route_detail_panel(step: dict, spot: dict) -> None:
     theme = html.escape(step.get("theme", spot.get("theme", "")) or "여행")
     why = html.escape((step.get("why") or spot.get("description") or "").strip())
     move = html.escape((step.get("move_to_next") or "").strip())
-    move_html = f'<p class="mt-detail-move">{move}</p>' if move else ""
+    move_html = f'<p class="mt-detail-move">→ {move}</p>' if move else ""
     st.markdown(
         f"""
 <div class="mt-detail">
@@ -624,7 +700,10 @@ def render_route_detail_panel(step: dict, spot: dict) -> None:
   </div>
   <h2>{html.escape(step['spot_name'])}</h2>
   <p class="mt-detail-meta">{html.escape(step.get('region', spot.get('region', '')))}{html.escape(stay_txt)}</p>
-  <p class="mt-detail-body">{why}</p>
+  <div class="vx-ai-why">
+    <div class="vx-ai-why-label">AI Why</div>
+    <p>{why}</p>
+  </div>
   {move_html}
 </div>
         """,
@@ -636,13 +715,23 @@ def render_route_detail_panel(step: dict, spot: dict) -> None:
         st.link_button("카카오맵에서 열기", url, use_container_width=True)
 
 
+def _render_theme_tags(steps: list[dict]) -> None:
+    themes = sorted({s.get("theme", "") for s in steps if s.get("theme")})
+    if not themes:
+        return
+    tags = "".join(f'<span class="vx-theme-tag">{html.escape(t)}</span>' for t in themes)
+    st.markdown(f'<div class="vx-theme-tags">{tags}</div>', unsafe_allow_html=True)
+
+
 def render_my_trip_route_column(
     steps: list[dict],
     curated: list[dict],
     meta: dict,
 ) -> tuple[int, dict | None, dict | None]:
-    """MY TRIP 왼쪽: 일정 선택 + 상세."""
-    st.markdown('<p class="mt-panel-label">일정</p>', unsafe_allow_html=True)
+    """MY TRIP 왼쪽: 추천 리스트 + AI Why."""
+    st.markdown('<p class="vx-split-label">Curated for you</p>', unsafe_allow_html=True)
+    _render_theme_tags(steps)
+    st.markdown('<p class="mt-panel-label">Timeline</p>', unsafe_allow_html=True)
 
     picked = render_route_picker(steps)
     st.session_state.focus_order = picked
@@ -651,7 +740,7 @@ def render_my_trip_route_column(
     focus_db = None
     if focus_step:
         focus_db = next((s for s in curated if s["name"] == focus_step["spot_name"]), curated[0] if curated else None)
-        st.markdown('<p class="mt-panel-label">선택한 장소</p>', unsafe_allow_html=True)
+        st.markdown('<p class="mt-panel-label">Spot detail</p>', unsafe_allow_html=True)
         render_route_detail_panel(focus_step, focus_db or {})
 
     trip_text = meta.get("message") or meta.get("summary") or get_region_intro()
@@ -668,8 +757,8 @@ def render_my_trip_map_shell(focus_label: str) -> None:
         f"""
 <div class="mt-map-card">
   <div class="mt-map-head">
-    <h3>지도</h3>
-    <span>{html.escape(focus_label) if focus_label else "일정을 선택하세요"}</span>
+    <h3>Live Map</h3>
+    <span>{html.escape(focus_label) if focus_label else "Select a stop"}</span>
   </div>
 </div>
         """,

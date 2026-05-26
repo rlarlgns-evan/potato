@@ -153,7 +153,7 @@ def _build_map_html(
     .map-label {{ font-weight: 800; color: #134E4A; font-size: 0.88rem; }}
     .map-focus {{
       font-size: 0.7rem; font-weight: 700; color: #fff;
-      background: linear-gradient(135deg, #0D9488, #14B8A6);
+      background: linear-gradient(135deg, #4fa89c, #66bcb0);
       padding: 0.35rem 0.7rem; border-radius: 999px; max-width: 72%;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }}
@@ -171,12 +171,12 @@ def _build_map_html(
     }}
     #map {{ width: 100%; height: {height}px; }}
     .order-pin {{
-      background: #14B8A6; color: #fff; font-weight: 700; font-size: 12px;
+      background: #66bcb0; color: #fff; font-weight: 700; font-size: 12px;
       width: 26px; height: 26px; border-radius: 50%; display: flex;
       align-items: center; justify-content: center;
       border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
     }}
-    .order-pin.focus {{ background: #E85D04; width: 32px; height: 32px; }}
+    .order-pin.focus {{ background: #4fa89c; width: 32px; height: 32px; box-shadow: 0 0 0 4px rgba(102,188,176,0.35); }}
   </style>
 </head>
 <body>
