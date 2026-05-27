@@ -2,8 +2,8 @@
 port = 8501
 
 [theme]
-primaryColor = "#66bcb0"
+primaryColor = "#006a61"
 backgroundColor = "#f5faf9"
 secondaryBackgroundColor = "#ffffff"
-textColor = "#1e293b"
+textColor = "#171d1c"
 font = "sans serif"

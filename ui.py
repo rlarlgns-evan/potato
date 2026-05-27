@@ -8,6 +8,7 @@ from urllib.parse import quote
 import streamlit as st
 import streamlit.components.v1 as components
 
+from design_tokens import TOKENS as T
 from gangwon_content import (
     FESTIVAL_ICONS,
     get_festivals,
@@ -16,30 +17,33 @@ from gangwon_content import (
     get_weather_cities,
 )
 
-# VoyageAI palette
-PRIMARY = "#66bcb0"
-PRIMARY_DARK = "#4fa89c"
-SURFACE = "#f5faf9"
-TEXT = "#1e293b"
-TEXT_MUTED = "#64748b"
-LAVENDER = "#ddd6fe"
-SKY = "#bae6fd"
-SOFT_ORANGE = "#fed7aa"
-TEAL = PRIMARY
-TEAL_DARK = PRIMARY_DARK
+# Stitch Ethereal Intelligence
+PRIMARY = T.primary
+PRIMARY_CONTAINER = T.primary_container
+PRIMARY_DARK = T.primary
+SURFACE = T.background
+TEXT = T.on_surface
+TEXT_MUTED = T.on_surface_variant
+LAVENDER = T.tertiary_fixed
+SKY = T.secondary_container
+SOFT_ORANGE = "#ffdcc8"
+TEAL = T.primary_container
+TEAL_DARK = T.primary
+GLASS = "rgba(255,255,255,0.85)"
+SHADOW = "0 8px 30px rgba(0,106,97,0.08)"
 
 BOX_STYLE = (
-    f"background:rgba(255,255,255,0.72);backdrop-filter:blur(12px);"
+    f"background:{GLASS};backdrop-filter:blur(20px);"
     f"border-radius:24px;padding:1rem 1.1rem;"
-    f"box-shadow:0 4px 24px rgba(102,188,176,0.12);border:1px solid rgba(102,188,176,0.2);"
+    f"box-shadow:{SHADOW};border:1px solid rgba(255,255,255,0.9);"
     f"min-height:152px;box-sizing:border-box;"
 )
 LBL_STYLE = (
-    f"margin:0 0 0.65rem 0;font-size:0.72rem;font-weight:700;color:{PRIMARY_DARK};"
-    "text-transform:uppercase;letter-spacing:0.08em;font-family:Inter,sans-serif;"
+    f"margin:0 0 0.65rem 0;font-size:12px;font-weight:700;color:{TEXT_MUTED};"
+    "text-transform:uppercase;letter-spacing:0.05em;font-family:Inter,sans-serif;"
 )
 SUB_STYLE = (
-    f"margin:0.5rem 0 0;font-size:0.78rem;color:{TEXT_MUTED};line-height:1.55;"
+    f"margin:0.5rem 0 0;font-size:14px;color:{TEXT_MUTED};line-height:1.5;"
     "font-family:Inter,sans-serif;"
 )
 
@@ -53,9 +57,9 @@ html, body, [class*="css"] {{ font-family: 'Inter', system-ui, sans-serif; }}
 .stApp {{
   background: {SURFACE};
   background-image:
-    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(102,188,176,0.18), transparent),
-    radial-gradient(ellipse 60% 40% at 95% 5%, rgba(186,230,253,0.35), transparent),
-    radial-gradient(ellipse 50% 30% at 50% 100%, rgba(221,214,254,0.2), transparent);
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(0,106,97,0.1), transparent),
+    radial-gradient(ellipse 60% 40% at 95% 5%, rgba(136,214,253,0.28), transparent),
+    radial-gradient(ellipse 50% 30% at 50% 100%, rgba(230,222,255,0.22), transparent);
 }}
 .block-container {{ padding-top: 1rem; max-width: 1120px; }}
 #MainMenu, footer, header {{ visibility: hidden; }}
@@ -78,13 +82,13 @@ div.stButton > button[kind="secondary"] {{
   border-radius: 14px !important; font-weight: 600 !important;
 }}
 div.stButton > button[kind="primary"] {{
-  background: {PRIMARY} !important; color: #fff !important;
-  border: none !important; border-radius: 14px !important;
-  font-weight: 600 !important;
-  box-shadow: 0 4px 14px rgba(102,188,176,0.35) !important;
+  background: linear-gradient(180deg, {PRIMARY} 0%, #005a52 100%) !important;
+  color: {T.on_primary} !important; border: none !important;
+  border-radius: 999px !important; font-weight: 600 !important;
+  box-shadow: 0 4px 16px rgba(0,106,97,0.28) !important;
 }}
 div.stButton > button[kind="primary"]:hover {{
-  background: {PRIMARY_DARK} !important;
+  filter: brightness(1.05);
 }}
 div.stLinkButton > a {{
   border-radius: 14px !important; font-size: 0.82rem !important;
@@ -276,7 +280,6 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
   box-shadow: 0 0 0 3px rgba(102,188,176,0.15) !important;
   font-weight: 600 !important;
 }}
-
 .mt-detail {{
   background: rgba(255,255,255,0.8); backdrop-filter: blur(12px);
   border: 1px solid rgba(102,188,176,0.2); border-radius: 24px;
@@ -383,24 +386,34 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
 .fest-row strong {{ display: block; font-size: 0.8rem; color: #134E4A; }}
 .fest-row span {{ font-size: 0.72rem; color: #64748B; }}
 
-/* VoyageAI Stitch layout */
+/* VoyageAI Stitch layout (Ethereal Intelligence) */
 .vx-topnav {{
-  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-  padding: 0.65rem 1rem; margin-bottom: 1rem;
-  background: rgba(255,255,255,0.85); backdrop-filter: blur(16px);
-  border-radius: 20px; border: 1px solid rgba(255,255,255,0.95);
-  box-shadow: 0 4px 20px rgba(102,188,176,0.08);
+  margin-bottom: 1rem; padding: 0.5rem 0.75rem;
+  background: {GLASS}; backdrop-filter: blur(20px);
+  border-radius: 24px; border: 1px solid rgba(255,255,255,0.95);
+  box-shadow: {SHADOW};
 }}
-.vx-topnav .logo {{ font-size: 1.15rem; font-weight: 800; color: {PRIMARY_DARK}; letter-spacing: -0.03em; }}
-.vx-topnav .nav-links {{ display: flex; gap: 1.25rem; flex-wrap: wrap; }}
-.vx-topnav .nav-links span {{ font-size: 0.82rem; font-weight: 600; color: {TEXT_MUTED}; cursor: default; }}
-.vx-topnav .nav-links span.on {{ color: {PRIMARY_DARK}; border-bottom: 2px solid {PRIMARY}; padding-bottom: 2px; }}
-.vx-topnav .nav-right {{ display: flex; align-items: center; gap: 0.65rem; font-size: 1rem; color: {TEXT_MUTED}; }}
+.vx-topnav-grid {{
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1rem;
+}}
+.vx-topnav .logo {{ font-size: 1.1rem; font-weight: 800; color: {PRIMARY}; letter-spacing: -0.03em; }}
+.vx-nav-search {{
+  max-width: 360px; margin: 0 auto; width: 100%;
+  padding: 0.55rem 1rem 0.55rem 2.25rem; border-radius: 999px;
+  background: {T.surface_container_lowest}; border: 1px solid {T.outline_variant};
+  font-size: 0.82rem; color: {TEXT_MUTED};
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236e7977' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.106a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: 0.75rem center;
+}}
+.vx-topnav .nav-links {{ display: flex; gap: 1.1rem; justify-content: center; flex-wrap: wrap; }}
+.vx-topnav .nav-links span {{ font-size: 0.82rem; font-weight: 600; color: {TEXT_MUTED}; }}
+.vx-topnav .nav-links span.on {{ color: {PRIMARY}; border-bottom: 2px solid {PRIMARY_CONTAINER}; padding-bottom: 2px; }}
+.vx-topnav .nav-right {{ display: flex; align-items: center; gap: 0.75rem; font-size: 1.05rem; color: {TEXT_MUTED}; justify-content: flex-end; }}
 
 .vx-sidebar {{
-  background: linear-gradient(180deg, #2d4a52 0%, #1e3a45 100%);
-  border-radius: 20px; padding: 1.1rem 0.85rem; min-height: 520px;
-  display: flex; flex-direction: column; box-shadow: 0 8px 28px rgba(30,58,69,0.25);
+  background: {T.inverse_surface};
+  border-radius: 24px; padding: 1.1rem 0.85rem; min-height: 520px;
+  display: flex; flex-direction: column; box-shadow: {SHADOW};
 }}
 .vx-sidebar .sb-logo {{ font-size: 1rem; font-weight: 800; color: #fff; margin-bottom: 1.25rem; padding: 0 0.35rem; }}
 .vx-sidebar .sb-item {{
@@ -408,16 +421,19 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
   border-radius: 12px; font-size: 0.8rem; font-weight: 600; color: rgba(255,255,255,0.55);
   margin-bottom: 0.25rem;
 }}
-.vx-sidebar .sb-item.on {{ background: rgba(102,188,176,0.22); color: #fff; }}
+.vx-sidebar .sb-item.on {{ background: {PRIMARY}; color: {T.on_primary}; }}
 .vx-sidebar .sb-foot {{ margin-top: auto; padding-top: 1rem; color: #f87171; font-size: 0.78rem; font-weight: 600; }}
 
 .vx-welcome {{
-  background: linear-gradient(135deg, #e0f2fe 0%, #f0fdfa 50%, #f5faf9 100%);
+  background: linear-gradient(135deg, {SKY} 0%, {T.surface_container_low} 45%, {SURFACE} 100%);
   border-radius: 24px; padding: 1.35rem 1.5rem; margin-bottom: 1rem;
-  border: 1px solid rgba(102,188,176,0.15);
+  border: 1px solid rgba(255,255,255,0.8); box-shadow: {SHADOW};
 }}
-.vx-welcome h2 {{ margin: 0 0 0.4rem; font-size: 1.1rem; font-weight: 800; color: {TEXT} !important; letter-spacing: -0.02em; }}
-.vx-welcome p {{ margin: 0; font-size: 0.86rem; color: {TEXT_MUTED}; line-height: 1.55; }}
+.vx-welcome h2 {{
+  margin: 0 0 0.4rem; font-size: 1.25rem; font-weight: 700; color: {TEXT} !important;
+  letter-spacing: -0.02em; text-transform: uppercase;
+}}
+.vx-welcome p {{ margin: 0; font-size: 0.88rem; color: {TEXT_MUTED}; line-height: 1.6; }}
 
 .vx-profile {{
   background: rgba(255,255,255,0.75); backdrop-filter: blur(12px);
@@ -444,7 +460,10 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
   font-size: 0.84rem; line-height: 1.5;
 }}
 .vx-bubble-ai {{ background: #fff; color: {TEXT}; border: 1px solid #f1f5f9; }}
-.vx-bubble-user {{ background: {PRIMARY}; color: #fff; margin-left: auto; border-bottom-right-radius: 4px; }}
+.vx-bubble-user {{
+  background: {PRIMARY}; color: {T.on_primary}; margin-left: auto;
+  border-bottom-right-radius: 4px;
+}}
 .vx-quick-pills {{ display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }}
 .vx-quick-pills span {{
   font-size: 0.72rem; padding: 0.35rem 0.65rem; border-radius: 999px;
@@ -465,7 +484,7 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
   border: 2px solid transparent; box-shadow: 0 4px 20px rgba(15,23,42,0.06);
   transition: border-color 0.15s, box-shadow 0.15s;
 }}
-.course-card.on {{ border-color: {PRIMARY}; box-shadow: 0 12px 36px rgba(102,188,176,0.18); }}
+.course-card.on {{ border-color: {PRIMARY_CONTAINER}; box-shadow: 0 12px 36px rgba(0,106,97,0.15); }}
 .course-card img {{ width: 100%; height: 150px; object-fit: cover; display: block; }}
 .course-card-body {{ padding: 0.9rem 1rem 1rem; }}
 .course-card-top {{ display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }}
@@ -485,10 +504,45 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
 .course-ai-label {{ font-size: 0.62rem; font-weight: 800; color: {PRIMARY_DARK}; letter-spacing: 0.08em; margin-bottom: 0.25rem; }}
 .course-ai p {{ margin: 0; font-size: 0.78rem; color: {TEXT}; line-height: 1.5; }}
 
-.vx-design-bar {{
-  display: flex; align-items: center; gap: 0.65rem; margin-top: 1rem;
-  background: rgba(255,255,255,0.9); border-radius: 999px; padding: 0.35rem 0.35rem 0.35rem 1rem;
-  border: 1px solid rgba(102,188,176,0.2); box-shadow: 0 4px 20px rgba(102,188,176,0.1);
+/* Planner: 일정 카드 = 전체 너비 버튼 (st-key-course_pick_N) */
+div[class*="st-key-course_pick_"] button {{
+  min-height: 11.25rem !important; height: auto !important; width: 100% !important;
+  white-space: pre-wrap !important; text-align: left !important;
+  justify-content: flex-start !important; align-items: flex-end !important;
+  padding: 6.25rem 1rem 1rem !important; border-radius: 20px !important;
+  margin-bottom: 0.15rem !important; color: #fff !important;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.55); line-height: 1.45 !important;
+  font-size: 0.83rem !important; font-weight: 500 !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  box-shadow: 0 4px 20px rgba(15,23,42,0.08) !important;
+}}
+div[class*="st-key-course_pick_"] button[kind="primary"] {{
+  border: 2px solid {PRIMARY_CONTAINER} !important;
+  box-shadow: 0 0 0 4px rgba(102,188,176,0.35), 0 8px 28px rgba(0,106,97,0.2) !important;
+  font-weight: 600 !important;
+}}
+div[class*="st-key-course_pick_"] button[kind="secondary"] {{
+  background-color: transparent !important; color: #fff !important;
+}}
+
+.vx-design-shell {{ margin-top: 1rem; }}
+.vx-design-shell .vx-footer-note {{
+  text-align: center; font-size: 0.72rem; color: {TEXT_MUTED}; margin-top: 0.65rem;
+}}
+div[data-testid="stForm"] {{
+  background: {GLASS} !important; backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255,255,255,0.95) !important; border-radius: 999px !important;
+  padding: 0.35rem 0.5rem 0.35rem 1rem !important; box-shadow: {SHADOW} !important;
+}}
+div[data-testid="stForm"] [data-testid="stTextInput"] input {{
+  border: none !important; box-shadow: none !important; background: transparent !important;
+}}
+div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {{
+  border-radius: 999px !important; min-width: 11rem;
+}}
+.tip-glass {{
+  background: {LAVENDER} !important; border-radius: 16px !important;
+  border: 1px solid rgba(96,78,180,0.12) !important;
 }}
 </style>
         """,
@@ -576,7 +630,10 @@ def render_gangwon_dashboard() -> None:
     cities = _cached_weather_cities()
     cities_json = json.dumps(cities, ensure_ascii=False)
     fest_html = _build_festival_rows_html()
-    tip_text = "AI가 <b>강원도 전역</b> 관광지에서 맞춤 동선을 골라 드려요."
+    tip_text = (
+        '<span style="font-style:italic;color:#5b21b6;">'
+        '"The best time to drive the coastal road is just before sunset for that golden hour glow."</span>'
+    )
 
     html_page = f"""
 <!DOCTYPE html>
@@ -637,8 +694,8 @@ def render_gangwon_dashboard() -> None:
     <p class="lbl">Festival</p>
     <div class="fest-vp"><div class="fest-tr">{fest_html}</div></div>
   </div>
-  <div class="box">
-    <p class="lbl">Tip</p>
+  <div class="box tip-glass">
+    <p class="lbl">Pro Tip</p>
     <p class="sub">{tip_text}</p>
   </div>
 </div>
@@ -920,9 +977,12 @@ def render_voyage_top_nav(active: str = "explore") -> None:
     st.markdown(
         f"""
 <div class="vx-topnav">
-  <span class="logo">VoyageAI</span>
-  <div class="nav-links">{links}</div>
-  <div class="nav-right">🔔 ⚙ 👤</div>
+  <div class="vx-topnav-grid">
+    <span class="logo">VoyageAI</span>
+    <div class="nav-links">{links}</div>
+    <div class="nav-right">🔔 ⚙ <span style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,{PRIMARY_CONTAINER},{SKY});display:inline-block;vertical-align:middle;"></span></div>
+  </div>
+  <div class="vx-nav-search">Search destinations…</div>
 </div>
         """,
         unsafe_allow_html=True,
@@ -950,17 +1010,26 @@ def render_voyage_profile_sidebar() -> None:
         f"""
 <div class="vx-profile">
   <div class="avatar"></div>
-  <p class="elite">ELITE EXPLORER</p>
-  <h4>Traveler</h4>
+  <p class="elite">ELITE EXPLORER ✓</p>
+  <h4>Alex Jung</h4>
   <div class="vx-stat-row">
     <div class="vx-stat"><strong>12</strong><span>Trips</span></div>
     <div class="vx-stat"><strong>840</strong><span>Points</span></div>
   </div>
-  <p style="margin:0.65rem 0 0.35rem;font-size:0.68rem;font-weight:700;color:{TEXT_MUTED};text-transform:uppercase;">Interests</p>
+  <p style="margin:0.85rem 0 0.4rem;font-size:11px;font-weight:700;color:{TEXT_MUTED};text-transform:uppercase;letter-spacing:0.05em;">Interests ✎</p>
   <div class="vx-theme-tags">
-    <span class="vx-theme-tag">Coastal Drive</span>
-    <span class="vx-theme-tag">Gastronomy</span>
-    <span class="vx-theme-tag">Photography</span>
+    <span class="vx-theme-tag" style="background:{PRIMARY_CONTAINER};color:{T.on_primary_container};">Coastal Drive</span>
+    <span class="vx-theme-tag" style="background:{SKY};color:{T.on_secondary_container};">Gastronomy</span>
+    <span class="vx-theme-tag" style="background:{LAVENDER};color:{T.on_tertiary_container};">Photography</span>
+    <span class="vx-theme-tag">+3 More</span>
+  </div>
+  <div style="margin-top:1rem;padding:0.75rem;background:{T.surface_container_low};border-radius:16px;border:1px solid {T.outline_variant};">
+    <p style="margin:0 0 0.35rem;font-size:11px;font-weight:700;color:{TEXT_MUTED};text-transform:uppercase;">Saved Discovery ♡</p>
+    <p style="margin:0;font-size:0.8rem;font-weight:700;color:{TEXT};">East Coast Scenic Route</p>
+    <p style="margin:0.25rem 0 0;font-size:0.72rem;color:{TEXT_MUTED};">Saved on Sep 14 · 4.2 mi</p>
+  </div>
+  <div style="margin-top:0.65rem;padding:0.75rem;background:{LAVENDER};border-radius:16px;">
+    <p style="margin:0;font-size:0.78rem;color:{T.on_tertiary_container};">🎁 <strong>Travel Voucher</strong><br/>15% off car rentals in Gangwon</p>
   </div>
 </div>
         """,
@@ -981,15 +1050,20 @@ def render_welcome_banner() -> None:
 
 
 def render_home_chat_section(last_query: str = "") -> None:
-    ai_msg = "강릉·속초 해안과 힐링 스팟을 묶은 당일 드라이브 코스를 추천해 드릴게요."
-    user_msg = last_query or "해안 드라이브와 조용한 카페가 있는 반나절 코스를 원해요."
+    ai_msg = (
+        "Based on your interest in photography and coastal views, I recommend "
+        "starting at Nami Island and moving toward the East Sea coast."
+    )
+    user_msg = last_query or (
+        "That sounds perfect. Can we include a stop at a famous local coffee shop too?"
+    )
     st.markdown(
         f"""
 <div class="vx-chat-box">
   <div class="vx-bubble-ai">✦ {html.escape(ai_msg)}</div>
   <div class="vx-bubble-user">{html.escape(user_msg)}</div>
   <div class="vx-quick-pills">
-    <span>강릉 카페거리</span><span>일몰 포인트</span><span>주차 정보</span>
+    <span>Coffee Shops in Gangneung</span><span>Sunset Spots</span><span>Parking Info</span>
   </div>
 </div>
         """,
@@ -997,37 +1071,48 @@ def render_home_chat_section(last_query: str = "") -> None:
     )
 
 
-def _course_card_html(step: dict, spot: dict, active: bool) -> str:
+def _planner_course_pill_label(step: dict, spot: dict) -> str:
     theme = step.get("theme") or spot.get("theme") or "힐링"
     badge = THEME_BADGE.get(theme, "SPOT")
-    img = THEME_IMAGE.get(theme, DEFAULT_IMAGE)
-    why = html.escape((step.get("why") or spot.get("description") or "").strip())
+    name = step["spot_name"]
+    region = step.get("region") or spot.get("region") or ""
     stay = step.get("stay_minutes")
     price = f"약 {stay}분" if stay else "추천 코스"
-    on = " on" if active else ""
-    return f"""
-<div class="course-card{on}" id="course-{int(step['order'])}">
-  <div class="course-img-wrap">
-    <img src="{img}" alt=""/>
-    <span class="course-badge">{badge}</span>
-  </div>
-  <div class="course-card-body">
-    <div class="course-card-top">
-      <h3>{html.escape(step['spot_name'])}</h3>
-      <span class="course-price">{html.escape(price)}</span>
-    </div>
-    <p class="course-loc">📍 {html.escape(step.get('region', spot.get('region', '')))}</p>
-    <div class="course-ai">
-      <div class="course-ai-label">✦ AI INSIGHT</div>
-      <p>{why}</p>
-    </div>
-  </div>
-</div>"""
+    why = (step.get("why") or spot.get("description") or "").strip()
+    if len(why) > 88:
+        why = why[:85] + "…"
+    return f"{badge}  ·  {price}\n{name}\n📍 {region}\n✦ {why}"
+
+
+def _inject_planner_course_button_styles(steps: list[dict]) -> None:
+    """일정별 히어로 이미지 — st-key-course_pick_N 버튼에 적용."""
+    rules: list[str] = []
+    for step in steps:
+        order = int(step["order"])
+        theme = step.get("theme") or "힐링"
+        img = THEME_IMAGE.get(theme, DEFAULT_IMAGE)
+        bg = (
+            f"linear-gradient(180deg, rgba(255,255,255,0.05) 0%, "
+            f"rgba(23,29,28,0.82) 100%), url(\"{img}\")"
+        )
+        rules.append(
+            f"""
+div.st-key-course_pick_{order} button {{
+  background: {bg} center/cover no-repeat !important;
+  color: #fff !important;
+}}
+"""
+        )
+    if rules:
+        st.markdown(f"<style>{''.join(rules)}</style>", unsafe_allow_html=True)
 
 
 def render_tailored_header(meta: dict, query: str, step_count: int) -> None:
     title = html.escape(meta.get("title") or "Tailored for You")
-    summary = html.escape(meta.get("summary") or "AI가 당신의 취향에 맞춘 강원도 코스입니다.")
+    summary = html.escape(
+        meta.get("summary")
+        or "Based on your preferences for nature, calm landscapes, and scenic drives in Gangwon province."
+    )
     duration = html.escape(meta.get("total_duration") or "당일 코스")
     q = html.escape((query[:48] + "…") if len(query) > 48 else query)
     st.markdown(
@@ -1056,38 +1141,57 @@ def render_course_cards_list(
     curated: list[dict],
     focus_order: int,
 ) -> int:
-    """Stitch 스타일 Daily Course 카드 + 탭 선택."""
+    """Daily Course — 카드 전체가 클릭 가능한 wide button (「이 코스 보기」 없음)."""
+    orders = [int(s["order"]) for s in steps]
+    if not orders:
+        return int(focus_order or 1)
+
+    spot_by = {s["name"]: s for s in curated}
+    focus = int(focus_order or orders[0])
+    if focus not in orders:
+        focus = orders[0]
+
     st.markdown(
         '<p class="mt-panel-label" style="margin-top:0;">Daily Courses</p>',
         unsafe_allow_html=True,
     )
+    _inject_planner_course_button_styles(steps)
+
+    picked = focus
     for step in steps:
         order = int(step["order"])
-        spot = next((s for s in curated if s["name"] == step["spot_name"]), {})
-        active = order == focus_order
-        st.markdown(_course_card_html(step, spot, active), unsafe_allow_html=True)
+        spot = spot_by.get(step["spot_name"], {})
+        label = _planner_course_pill_label(step, spot)
         if st.button(
-            "이 코스 보기" if not active else "✓ 선택됨",
-            key=f"course_{order}",
-            type="primary" if active else "secondary",
+            label,
+            key=f"course_pick_{order}",
+            type="primary" if order == focus else "secondary",
             use_container_width=True,
         ):
-            st.session_state.focus_order = order
-            st.rerun()
-    return int(st.session_state.focus_order)
+            picked = order
+
+    if picked != focus:
+        st.session_state.focus_order = picked
+        st.rerun()
+
+    st.session_state.focus_order = picked
+    return int(picked)
 
 
 def render_voyage_explore_page(spot_count: int) -> None:
-    """홈 — Explore 시안."""
+    """홈 — Explore 시안 (Stitch 1.md)."""
     render_voyage_top_nav("explore")
-    main_col, side_col = st.columns([2.4, 1], gap="medium")
+    main_col, side_col = st.columns([2.35, 1], gap="medium")
     with main_col:
         render_welcome_banner()
         render_gangwon_dashboard()
         render_home_chat_section(st.session_state.get("last_user_query", ""))
-        st.markdown('<div class="vx-design-bar">', unsafe_allow_html=True)
-        st.caption(f"강원도 관광지 {spot_count}곳 · 필터 없이 AI가 선택합니다")
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="vx-design-shell"><p class="vx-footer-note">'
+            f"Currently indexing {spot_count} major tourist destinations in Gangwon region without filters."
+            f"</p></div>",
+            unsafe_allow_html=True,
+        )
     with side_col:
         render_voyage_profile_sidebar()
 

@@ -85,7 +85,7 @@ if st.session_state.screen == "home":
     with st.form("ai_trip_search", clear_on_submit=True):
         user_prompt = st.text_input(
             "label",
-            placeholder="예: That sounds perfect — include a famous local coffee shop too…",
+            placeholder="e.g., A weekend drive with family to Seorak and the East Sea coast…",
             label_visibility="collapsed",
         )
         submitted = st.form_submit_button("✦ Design AI Course", type="primary", use_container_width=True)
