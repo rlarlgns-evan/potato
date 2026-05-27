@@ -15,6 +15,7 @@ from kakao_map import (
 from ui import (
     inject_styles,
     render_course_cards_list,
+    render_planner_map_chrome,
     render_tailored_header,
     render_voyage_app_sidebar,
     render_voyage_explore_page,
@@ -119,6 +120,13 @@ else:
     steps = st.session_state.route_steps
     focus_order = int(st.session_state.focus_order or 1)
 
+    if st.query_params.get("focus"):
+        try:
+            focus_order = int(st.query_params["focus"])
+            st.session_state.focus_order = focus_order
+        except (ValueError, TypeError):
+            pass
+
     render_voyage_top_nav("planner")
 
     sb_col, main_col = st.columns([0.14, 0.86], gap="small")
@@ -149,16 +157,14 @@ else:
         )
 
         with map_col:
-            st.markdown(
-                f'<p class="mt-panel-label">Live Map · {html.escape(query_chip)}</p>',
-                unsafe_allow_html=True,
-            )
+            st.markdown('<div class="planner-map-shell">', unsafe_allow_html=True)
+            render_planner_map_chrome(query_chip, focus_label)
             center_lat, center_lng = _map_center(curated)
             if focus_spot:
                 center_lat, center_lng = float(focus_spot["lat"]), float(focus_spot["lng"])
             route_url = build_kakao_route_url(route_for_map)
             if route_url:
-                st.link_button("Refine route in Kakao Map", route_url, use_container_width=True)
+                st.link_button("Refine · Kakao Map", route_url, use_container_width=True)
             render_kakao_map(
                 spots=ALL_SPOTS,
                 center_lat=center_lat,
@@ -171,6 +177,7 @@ else:
                 focus_label=focus_label,
                 title="",
             )
+            st.markdown("</div>", unsafe_allow_html=True)
 
         if st.button("새 여행 검색", type="secondary"):
             st.session_state.screen = "home"

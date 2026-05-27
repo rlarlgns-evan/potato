@@ -471,7 +471,10 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
 }}
 
 .vx-tailored-head {{ margin-bottom: 1rem; }}
-.vx-tailored-head h1 {{ margin: 0 0 0.35rem; font-size: 1.45rem; font-weight: 800; color: {PRIMARY_DARK} !important; letter-spacing: -0.03em; }}
+.vx-tailored-head h1 {{
+  margin: 0 0 0.35rem; font-size: 1.55rem; font-weight: 800; color: {PRIMARY} !important;
+  letter-spacing: -0.03em;
+}}
 .vx-tailored-head p {{ margin: 0; font-size: 0.84rem; color: {TEXT_MUTED}; max-width: 520px; line-height: 1.55; }}
 .vx-head-chips {{ display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }}
 .vx-head-chip {{
@@ -479,50 +482,103 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
   background: rgba(102,188,176,0.12); color: {PRIMARY_DARK}; border: 1px solid rgba(102,188,176,0.2);
 }}
 
-.course-card {{
-  background: #fff; border-radius: 20px; overflow: hidden; margin-bottom: 1rem;
-  border: 2px solid transparent; box-shadow: 0 4px 20px rgba(15,23,42,0.06);
-  transition: border-color 0.15s, box-shadow 0.15s;
+.planner-courses {{
+  display: flex; flex-direction: column; gap: 0.85rem;
+  max-height: min(72vh, 640px); overflow-y: auto; padding-right: 0.25rem;
+  scrollbar-width: thin; scrollbar-color: {PRIMARY_CONTAINER} transparent;
 }}
-.course-card.on {{ border-color: {PRIMARY_CONTAINER}; box-shadow: 0 12px 36px rgba(0,106,97,0.15); }}
-.course-card img {{ width: 100%; height: 150px; object-fit: cover; display: block; }}
-.course-card-body {{ padding: 0.9rem 1rem 1rem; }}
-.course-card-top {{ display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }}
-.course-card h3 {{ margin: 0; font-size: 0.95rem; font-weight: 800; color: {TEXT} !important; line-height: 1.3; }}
-.course-price {{ font-size: 0.72rem; font-weight: 700; color: {PRIMARY_DARK}; white-space: nowrap; }}
-.course-loc {{ margin: 0.35rem 0 0.65rem; font-size: 0.75rem; color: {TEXT_MUTED}; }}
+a.course-card-link {{
+  display: block; text-decoration: none; color: inherit; cursor: pointer;
+  outline: none; border-radius: 22px;
+}}
+a.course-card-link:focus-visible .course-card {{
+  box-shadow: 0 0 0 3px rgba(102,188,176,0.35);
+}}
+a.course-card-link:hover .course-card {{
+  transform: translateY(-2px);
+  box-shadow: 0 14px 40px rgba(0,106,97,0.12);
+}}
+a.course-card-link.on .course-card {{
+  border-color: {PRIMARY};
+  box-shadow: 0 12px 36px rgba(0,106,97,0.14), 0 0 0 1px {PRIMARY_CONTAINER};
+}}
+.course-card {{
+  background: {T.surface_container_lowest}; border-radius: 22px; overflow: hidden;
+  border: 2px solid {T.outline_variant}; box-shadow: 0 4px 24px rgba(0,106,97,0.06);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}}
+.course-card img {{
+  width: 100%; height: 168px; object-fit: cover; display: block;
+}}
+.course-card-body {{ padding: 1rem 1.1rem 1.1rem; }}
+.course-card-top {{
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 0.65rem;
+}}
+.course-card h3 {{
+  margin: 0; font-size: 1.02rem; font-weight: 800; color: {TEXT} !important;
+  line-height: 1.3; letter-spacing: -0.02em;
+}}
+.course-price {{
+  font-size: 0.72rem; font-weight: 700; color: {T.on_primary_container};
+  white-space: nowrap; background: {T.surface_container_low};
+  padding: 0.2rem 0.55rem; border-radius: 999px;
+}}
+.course-loc {{
+  margin: 0.4rem 0 0.75rem; font-size: 0.78rem; color: {TEXT_MUTED};
+  display: flex; align-items: center; gap: 0.25rem;
+}}
+.course-loc::before {{ content: "📍"; font-size: 0.72rem; }}
+.course-img-wrap {{ position: relative; }}
+.course-step {{
+  position: absolute; left: 12px; bottom: 12px; font-size: 0.62rem; font-weight: 800;
+  letter-spacing: 0.08em; color: #fff; background: rgba(0,106,97,0.75);
+  padding: 0.28rem 0.5rem; border-radius: 8px; backdrop-filter: blur(6px);
+}}
 .course-badge {{
   position: absolute; top: 12px; right: 12px; font-size: 0.62rem; font-weight: 800;
-  letter-spacing: 0.06em; padding: 0.25rem 0.5rem; border-radius: 8px;
-  background: rgba(255,255,255,0.92); color: {PRIMARY_DARK};
+  letter-spacing: 0.06em; padding: 0.28rem 0.55rem; border-radius: 8px;
 }}
-.course-img-wrap {{ position: relative; }}
+.badge-nature {{ background: {PRIMARY_CONTAINER}; color: {T.on_primary_container}; }}
+.badge-calm {{ background: {SOFT_ORANGE}; color: #9a3412; }}
+.badge-experience {{ background: {SKY}; color: {T.on_secondary_container}; }}
+.badge-night {{ background: #1e293b; color: #e2e8f0; }}
+.badge-culture {{ background: {LAVENDER}; color: {T.on_tertiary_container}; }}
+.badge-drive {{ background: #d1fae5; color: #065f46; }}
+.badge-default {{ background: rgba(255,255,255,0.92); color: {PRIMARY_DARK}; }}
 .course-ai {{
-  background: linear-gradient(135deg, rgba(102,188,176,0.08), rgba(186,230,253,0.15));
-  border-radius: 14px; padding: 0.65rem 0.75rem; border: 1px solid rgba(102,188,176,0.12);
+  background: linear-gradient(135deg, rgba(0,106,97,0.06), rgba(136,214,253,0.14));
+  border-radius: 16px; padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(0,106,97,0.1);
 }}
-.course-ai-label {{ font-size: 0.62rem; font-weight: 800; color: {PRIMARY_DARK}; letter-spacing: 0.08em; margin-bottom: 0.25rem; }}
-.course-ai p {{ margin: 0; font-size: 0.78rem; color: {TEXT}; line-height: 1.5; }}
+.course-ai-label {{
+  font-size: 0.62rem; font-weight: 800; color: {PRIMARY};
+  letter-spacing: 0.08em; margin-bottom: 0.3rem;
+}}
+.course-ai p {{ margin: 0; font-size: 0.8rem; color: {TEXT}; line-height: 1.55; }}
 
-/* Planner: 일정 카드 = 전체 너비 버튼 (st-key-course_pick_N) */
-div[class*="st-key-course_pick_"] button {{
-  min-height: 11.25rem !important; height: auto !important; width: 100% !important;
-  white-space: pre-wrap !important; text-align: left !important;
-  justify-content: flex-start !important; align-items: flex-end !important;
-  padding: 6.25rem 1rem 1rem !important; border-radius: 20px !important;
-  margin-bottom: 0.15rem !important; color: #fff !important;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.55); line-height: 1.45 !important;
-  font-size: 0.83rem !important; font-weight: 500 !important;
-  border: 1px solid rgba(255,255,255,0.2) !important;
-  box-shadow: 0 4px 20px rgba(15,23,42,0.08) !important;
+.planner-map-shell {{
+  background: {T.surface_container_lowest}; border-radius: 24px;
+  border: 1px solid {T.outline_variant}; box-shadow: {SHADOW};
+  padding: 0.65rem; overflow: hidden;
 }}
-div[class*="st-key-course_pick_"] button[kind="primary"] {{
-  border: 2px solid {PRIMARY_CONTAINER} !important;
-  box-shadow: 0 0 0 4px rgba(102,188,176,0.35), 0 8px 28px rgba(0,106,97,0.2) !important;
-  font-weight: 600 !important;
+.planner-map-float {{
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  flex-wrap: wrap; margin-bottom: 0.65rem; padding: 0.55rem 0.85rem;
+  background: {GLASS}; backdrop-filter: blur(16px);
+  border-radius: 999px; border: 1px solid rgba(255,255,255,0.9);
 }}
-div[class*="st-key-course_pick_"] button[kind="secondary"] {{
-  background-color: transparent !important; color: #fff !important;
+.planner-map-query {{
+  font-size: 0.8rem; font-weight: 600; color: {TEXT}; flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}}
+.planner-map-focus {{
+  font-size: 0.72rem; font-weight: 700; color: {PRIMARY};
+  background: rgba(0,106,97,0.08); padding: 0.25rem 0.6rem; border-radius: 999px;
+}}
+div[data-testid="stLinkButton"] a {{
+  border-radius: 999px !important; font-weight: 600 !important; font-size: 0.8rem !important;
+  border: 1px solid {T.outline_variant} !important;
+  background: {T.surface_container_lowest} !important;
 }}
 
 .vx-design-shell {{ margin-top: 1rem; }}
@@ -953,6 +1009,15 @@ THEME_BADGE = {
     "자전거": "DRIVE",
 }
 
+THEME_BADGE_CLASS = {
+    "트레킹": "badge-nature",
+    "힐링": "badge-calm",
+    "체험": "badge-experience",
+    "야경": "badge-night",
+    "역사": "badge-culture",
+    "자전거": "badge-drive",
+}
+
 THEME_IMAGE = {
     "트레킹": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=320&fit=crop&q=80",
     "힐링": "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=600&h=320&fit=crop&q=80",
@@ -1071,40 +1136,54 @@ def render_home_chat_section(last_query: str = "") -> None:
     )
 
 
-def _planner_course_pill_label(step: dict, spot: dict) -> str:
+def _course_card_html(step: dict, spot: dict, active: bool) -> str:
+    """Stitch Daily Course 카드 — 링크로 탭 시 ?focus= 지도 연동."""
+    order = int(step["order"])
     theme = step.get("theme") or spot.get("theme") or "힐링"
     badge = THEME_BADGE.get(theme, "SPOT")
-    name = step["spot_name"]
-    region = step.get("region") or spot.get("region") or ""
+    badge_cls = THEME_BADGE_CLASS.get(theme, "badge-default")
+    img = THEME_IMAGE.get(theme, DEFAULT_IMAGE)
+    why = html.escape((step.get("why") or spot.get("description") or "").strip())
     stay = step.get("stay_minutes")
     price = f"약 {stay}분" if stay else "추천 코스"
-    why = (step.get("why") or spot.get("description") or "").strip()
-    if len(why) > 88:
-        why = why[:85] + "…"
-    return f"{badge}  ·  {price}\n{name}\n📍 {region}\n✦ {why}"
+    on = " on" if active else ""
+    name = html.escape(step["spot_name"])
+    region = html.escape(step.get("region", spot.get("region", "")))
+    return f"""
+<a href="?focus={order}" class="course-card-link{on}" aria-current="{"true" if active else "false"}">
+  <article class="course-card">
+    <div class="course-img-wrap">
+      <img src="{img}" alt="" loading="lazy"/>
+      <span class="course-badge {badge_cls}">{badge}</span>
+      <span class="course-step">STEP {order:02d}</span>
+    </div>
+    <div class="course-card-body">
+      <div class="course-card-top">
+        <h3>{name}</h3>
+        <span class="course-price">{html.escape(price)}</span>
+      </div>
+      <p class="course-loc">{region}</p>
+      <div class="course-ai">
+        <div class="course-ai-label">✦ AI INSIGHT</div>
+        <p>{why}</p>
+      </div>
+    </div>
+  </article>
+</a>"""
 
 
-def _inject_planner_course_button_styles(steps: list[dict]) -> None:
-    """일정별 히어로 이미지 — st-key-course_pick_N 버튼에 적용."""
-    rules: list[str] = []
-    for step in steps:
-        order = int(step["order"])
-        theme = step.get("theme") or "힐링"
-        img = THEME_IMAGE.get(theme, DEFAULT_IMAGE)
-        bg = (
-            f"linear-gradient(180deg, rgba(255,255,255,0.05) 0%, "
-            f"rgba(23,29,28,0.82) 100%), url(\"{img}\")"
-        )
-        rules.append(
-            f"""
-div.st-key-course_pick_{order} button {{
-  background: {bg} center/cover no-repeat !important;
-  color: #fff !important;
-}}
-"""
-        )
-    if rules:
-        st.markdown(f"<style>{''.join(rules)}</style>", unsafe_allow_html=True)
+def render_planner_map_chrome(query_chip: str, focus_label: str) -> None:
+    q = html.escape(query_chip or "Autumn drives in Gangwon")
+    focus = html.escape(focus_label or "Select a stop")
+    st.markdown(
+        f"""
+<div class="planner-map-float">
+  <span class="planner-map-query">Showing · {q}</span>
+  <span class="planner-map-focus">{focus}</span>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_tailored_header(meta: dict, query: str, step_count: int) -> None:
@@ -1141,7 +1220,7 @@ def render_course_cards_list(
     curated: list[dict],
     focus_order: int,
 ) -> int:
-    """Daily Course — 카드 전체가 클릭 가능한 wide button (「이 코스 보기」 없음)."""
+    """Daily Course — Stitch 카드 HTML, 카드 탭 = ?focus= (별도 버튼 없음)."""
     orders = [int(s["order"]) for s in steps]
     if not orders:
         return int(focus_order or 1)
@@ -1152,30 +1231,22 @@ def render_course_cards_list(
         focus = orders[0]
 
     st.markdown(
-        '<p class="mt-panel-label" style="margin-top:0;">Daily Courses</p>',
+        '<p class="mt-panel-label" style="margin-top:0;">Daily Courses</p>'
+        '<p style="margin:-0.35rem 0 0.75rem;font-size:0.76rem;color:'
+        f'{TEXT_MUTED};">카드를 탭하면 지도 포커스가 이동합니다</p>',
         unsafe_allow_html=True,
     )
-    _inject_planner_course_button_styles(steps)
-
-    picked = focus
+    cards = []
     for step in steps:
         order = int(step["order"])
         spot = spot_by.get(step["spot_name"], {})
-        label = _planner_course_pill_label(step, spot)
-        if st.button(
-            label,
-            key=f"course_pick_{order}",
-            type="primary" if order == focus else "secondary",
-            use_container_width=True,
-        ):
-            picked = order
-
-    if picked != focus:
-        st.session_state.focus_order = picked
-        st.rerun()
-
-    st.session_state.focus_order = picked
-    return int(picked)
+        cards.append(_course_card_html(step, spot, order == focus))
+    st.markdown(
+        f'<div class="planner-courses">{"".join(cards)}</div>',
+        unsafe_allow_html=True,
+    )
+    st.session_state.focus_order = focus
+    return focus
 
 
 def render_voyage_explore_page(spot_count: int) -> None:
