@@ -162,12 +162,24 @@ if st.session_state.screen == "home":
     render_voyage_explore_page(len(ALL_SPOTS))
 
     with st.form("ai_trip_search", clear_on_submit=True):
-        user_prompt = st.text_input(
-            "label",
-            placeholder="e.g., A weekend drive with family to Seorak and the East Sea coast…",
-            label_visibility="collapsed",
-        )
-        submitted = st.form_submit_button("✦ Design AI Course", type="primary", use_container_width=True)
+        in_col, btn_col = st.columns([3, 1], gap="small", vertical_alignment="center")
+        with in_col:
+            user_prompt = st.text_input(
+                "label",
+                placeholder="예: 가족과 함께 설악산과 동해 바다를 둘러보는 주말 드라이브…",
+                label_visibility="collapsed",
+            )
+        with btn_col:
+            submitted = st.form_submit_button(
+                "✦ Design AI Course", type="primary", use_container_width=True
+            )
+
+    st.markdown(
+        f'<p style="text-align:center;font-size:0.74rem;color:#3e4947;margin-top:0.6rem;">'
+        f"강원도 주요 관광지 {len(ALL_SPOTS)}곳을 필터 없이 AI가 실시간 탐색합니다."
+        f"</p>",
+        unsafe_allow_html=True,
+    )
 
     if submitted and user_prompt.strip():
         _run_curation(user_prompt.strip())
@@ -223,7 +235,6 @@ else:
         )
 
         with map_col:
-            st.markdown('<div class="planner-map-shell">', unsafe_allow_html=True)
             render_planner_map_chrome(query_chip, focus_label)
             center_lat, center_lng = _map_center(curated)
             if focus_spot:
@@ -243,7 +254,6 @@ else:
                 focus_label=focus_label,
                 title="",
             )
-            st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown('<div style="height:0.5rem;"></div>', unsafe_allow_html=True)
         new_col, _spacer = st.columns([1, 2])

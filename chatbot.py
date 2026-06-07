@@ -182,7 +182,7 @@ def _fallback_curation(user_message: str, spots: list[dict[str, Any]]) -> dict[s
 
     parsed = {
         "itinerary_title": "🥔 로컬 추천 코스",
-        "summary": "입력하신 키워드와 가장 잘 맞는 한적한 강원도 spot을 순서대로 묶었어요.",
+        "summary": "입력하신 키워드와 가장 잘 맞는 강원도 명소를 순서대로 묶었어요.",
         "recommended_spots": names,
         "route_order": names,
         "route_steps": route_steps,

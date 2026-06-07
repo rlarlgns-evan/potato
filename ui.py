@@ -34,17 +34,17 @@ GLASS = "rgba(255,255,255,0.85)"
 SHADOW = "0 8px 30px rgba(0,106,97,0.08)"
 
 BOX_STYLE = (
-    f"background:{GLASS};backdrop-filter:blur(20px);"
-    f"border-radius:24px;padding:1rem 1.1rem;"
-    f"box-shadow:{SHADOW};border:1px solid rgba(255,255,255,0.9);"
-    f"min-height:152px;box-sizing:border-box;"
+    f"background:{T.surface_container_lowest};"
+    f"border-radius:20px;padding:1rem 1.15rem;"
+    f"box-shadow:0 2px 14px rgba(0,106,97,0.05);border:1px solid {T.outline_variant};"
+    f"min-height:158px;box-sizing:border-box;"
 )
 LBL_STYLE = (
-    f"margin:0 0 0.65rem 0;font-size:12px;font-weight:700;color:{TEXT_MUTED};"
-    "text-transform:uppercase;letter-spacing:0.05em;font-family:Inter,sans-serif;"
+    f"margin:0 0 0.7rem 0;font-size:11px;font-weight:700;color:{TEXT_MUTED};"
+    "text-transform:uppercase;letter-spacing:0.08em;font-family:Inter,sans-serif;"
 )
 SUB_STYLE = (
-    f"margin:0.5rem 0 0;font-size:14px;color:{TEXT_MUTED};line-height:1.5;"
+    f"margin:0.5rem 0 0;font-size:13px;color:{TEXT_MUTED};line-height:1.55;"
     "font-family:Inter,sans-serif;"
 )
 
@@ -64,11 +64,11 @@ html, body, [class*="css"] {{ font-family: 'Inter', system-ui, sans-serif; }}
 .stApp {{
   background: {SURFACE};
   background-image:
-    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(0,106,97,0.1), transparent),
-    radial-gradient(ellipse 60% 40% at 95% 5%, rgba(136,214,253,0.28), transparent),
-    radial-gradient(ellipse 50% 30% at 50% 100%, rgba(230,222,255,0.22), transparent);
+    radial-gradient(ellipse 70% 40% at 0% -5%, rgba(0,106,97,0.05), transparent),
+    radial-gradient(ellipse 50% 35% at 100% 0%, rgba(136,214,253,0.12), transparent);
+  background-attachment: fixed;
 }}
-.block-container {{ padding-top: 1rem; max-width: 1120px; }}
+.block-container {{ padding-top: 1.25rem; max-width: 1180px; }}
 #MainMenu, footer, header {{ visibility: hidden; }}
 
 h1, h2, h3, h4 {{ color: {TEXT} !important; letter-spacing: -0.03em; }}
@@ -427,25 +427,27 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
 .vx-topnav .nav-right a:hover {{ color: {PRIMARY}; }}
 
 .vx-sidebar {{
-  background: {T.inverse_surface};
-  border-radius: 24px; padding: 1.1rem 0.85rem; min-height: 520px;
+  background: {T.surface_container_lowest};
+  border-radius: 24px; padding: 1.1rem 0.85rem; min-height: 560px;
   display: flex; flex-direction: column; box-shadow: {SHADOW};
+  border: 1px solid {T.outline_variant};
 }}
-.vx-sidebar .sb-logo {{ font-size: 1rem; font-weight: 800; color: #fff; margin-bottom: 1.25rem; padding: 0 0.35rem; }}
+.vx-sidebar .sb-logo {{ font-size: 1.05rem; font-weight: 800; color: {PRIMARY}; margin-bottom: 1.5rem; padding: 0 0.35rem; letter-spacing: -0.03em; }}
 .vx-sidebar .sb-item {{
-  display: flex; align-items: center; gap: 0.55rem; padding: 0.55rem 0.65rem;
-  border-radius: 12px; font-size: 0.8rem; font-weight: 600; color: rgba(255,255,255,0.55);
-  margin-bottom: 0.25rem; text-decoration: none; cursor: pointer;
+  display: flex; align-items: center; gap: 0.55rem; padding: 0.6rem 0.7rem;
+  border-radius: 12px; font-size: 0.82rem; font-weight: 600; color: {TEXT_MUTED};
+  margin-bottom: 0.3rem; text-decoration: none; cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }}
-.vx-sidebar .sb-item:hover {{ background: rgba(255,255,255,0.08); color: #fff; }}
-.vx-sidebar .sb-item.on {{ background: {PRIMARY}; color: {T.on_primary}; }}
-.vx-sidebar .sb-item.on:hover {{ background: {PRIMARY}; }}
+.vx-sidebar .sb-item:hover {{ background: {T.surface_container_low}; color: {TEXT}; }}
+.vx-sidebar .sb-item.on {{ background: {PRIMARY_CONTAINER}; color: {T.on_primary_container}; }}
+.vx-sidebar .sb-item.on:hover {{ background: {PRIMARY_CONTAINER}; }}
 .vx-sidebar .sb-foot {{
-  margin-top: auto; padding-top: 1rem; color: #f87171; font-size: 0.78rem; font-weight: 600;
+  margin-top: auto; padding: 0.6rem 0.7rem; color: #ba1a1a; font-size: 0.8rem; font-weight: 600;
   text-decoration: none; cursor: pointer; transition: color 0.15s;
+  border-top: 1px solid {T.outline_variant}; padding-top: 1rem;
 }}
-.vx-sidebar .sb-foot:hover {{ color: #fca5a5; }}
+.vx-sidebar .sb-foot:hover {{ color: #93000a; }}
 
 .vx-welcome {{
   background: linear-gradient(135deg, {SKY} 0%, {T.surface_container_low} 45%, {SURFACE} 100%);
@@ -546,9 +548,7 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
 }}
 
 .planner-courses {{
-  display: flex; flex-direction: column; gap: 0.85rem;
-  max-height: min(72vh, 640px); overflow-y: auto; padding-right: 0.25rem;
-  scrollbar-width: thin; scrollbar-color: {PRIMARY_CONTAINER} transparent;
+  display: flex; flex-direction: column; gap: 0.9rem;
 }}
 a.course-card-link {{
   display: block; text-decoration: none; color: inherit; cursor: pointer;
@@ -737,9 +737,9 @@ def _build_festival_rows_html() -> str:
         rows.append(
             f'<div style="display:flex;align-items:center;gap:10px;padding:6px 0;">'
             f"{_icon_thumb_html(icon, grads[i % 4])}"
-            f'<div><strong style="display:block;font-size:0.8rem;color:#134E4A;">'
+            f'<div><strong style="display:block;font-size:0.8rem;color:{TEXT};font-weight:700;">'
             f"{html.escape(f['title'])}</strong>"
-            f'<span style="font-size:0.72rem;color:#64748B;">'
+            f'<span style="font-size:0.72rem;color:{TEXT_MUTED};">'
             f"{html.escape(f['place'])} · {html.escape(f['period'])}</span></div></div>"
         )
     return "".join(rows) * 2
@@ -750,8 +750,8 @@ def render_gangwon_dashboard() -> None:
     cities_json = json.dumps(cities, ensure_ascii=False)
     fest_html = _build_festival_rows_html()
     tip_text = (
-        '<span style="font-style:italic;color:#5b21b6;">'
-        '"The best time to drive the coastal road is just before sunset for that golden hour glow."</span>'
+        '<span style="font-style:italic;color:#48359b;">'
+        '"해안도로는 해 지기 직전이 가장 아름다워요. 황금빛 노을 드라이브를 놓치지 마세요."</span>'
     )
 
     html_page = f"""
@@ -759,12 +759,12 @@ def render_gangwon_dashboard() -> None:
 <html>
 <head>
 <meta charset="utf-8"/>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   * {{ box-sizing: border-box; }}
   body {{
     margin: 0; padding: 0; background: transparent;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
   }}
   .grid {{
     display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; width: 100%;
@@ -773,9 +773,11 @@ def render_gangwon_dashboard() -> None:
   .lbl {{ {LBL_STYLE} }}
   .sub {{ {SUB_STYLE} }}
   .w-row {{ display: flex; align-items: center; gap: 12px; }}
-  .w-city {{ margin: 0; font-size: 0.95rem; font-weight: 700; color: #134E4A; }}
-  .w-temp {{ margin: 4px 0 0; font-size: 1.2rem; font-weight: 800; color: {TEAL_DARK}; }}
-  .w-meta {{ margin: 0; font-size: 0.78rem; color: #64748B; }}
+  .w-city {{ margin: 0; font-size: 0.9rem; font-weight: 600; color: {TEXT_MUTED}; }}
+  .w-temp {{ margin: 3px 0 0; font-size: 1.4rem; font-weight: 800; color: {TEXT}; letter-spacing: -0.02em; }}
+  .w-meta {{ margin: 2px 0 0; font-size: 0.76rem; color: {TEXT_MUTED}; }}
+  .w-row .sub {{ font-style: italic; }}
+  .fest-row strong, .fest-row b {{ color: {TEXT} !important; }}
   .dots {{ display: flex; gap: 3px; align-items: center; margin-top: 10px; }}
   .dots i {{
     width: 14px; height: 14px; padding: 0; margin: 0; border: none;
@@ -876,21 +878,7 @@ resetWeatherTimer();
 </body>
 </html>
     """
-    components.html(html_page, height=178, scrolling=False)
-
-    highlights = get_highlights()
-    cards = []
-    for h in highlights:
-        cards.append(
-            f"""
-<div class="highlight-card" style="background:{h.get('gradient', h.get('thumb_bg', '#0D9488'))};">
-  <div class="ui-icon-thumb" style="background:rgba(255,255,255,0.25);">{html.escape(h.get('icon', h.get('emoji', '★')))}</div>
-  <strong>{html.escape(h['title'])}</strong>
-  <span>{html.escape(h['region'])}</span>
-</div>
-            """
-        )
-    st.markdown(f'<div class="highlight-scroll">{"".join(cards)}</div>', unsafe_allow_html=True)
+    components.html(html_page, height=186, scrolling=False)
 
 
 def render_my_trip_hero(meta: dict, step_count: int, query: str) -> None:
@@ -1356,12 +1344,6 @@ def render_voyage_explore_page(spot_count: int) -> None:
         render_welcome_banner()
         render_gangwon_dashboard()
         render_home_chat_section(st.session_state.get("last_user_query", ""))
-        st.markdown(
-            f'<div class="vx-design-shell"><p class="vx-footer-note">'
-            f"강원도 주요 관광지 {spot_count}곳을 필터 없이 AI가 실시간 탐색합니다."
-            f"</p></div>",
-            unsafe_allow_html=True,
-        )
     with side_col:
         render_voyage_profile_sidebar()
 
