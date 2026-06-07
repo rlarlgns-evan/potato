@@ -481,7 +481,9 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
 }}
 .vx-profile .avatar {{
   width: 56px; height: 56px; border-radius: 50%;
-  background: linear-gradient(135deg, {PRIMARY}, #7dd3fc); margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, {PRIMARY}, {SKY}); margin-bottom: 0.5rem;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em;
 }}
 .vx-profile h4 {{ margin: 0; font-size: 0.95rem; font-weight: 800; color: {TEXT} !important; }}
 .vx-profile .elite {{ font-size: 0.65rem; font-weight: 700; color: {PRIMARY_DARK}; letter-spacing: 0.08em; }}
@@ -593,9 +595,9 @@ a.course-card-link.on .course-card {{
 .course-loc::before {{ content: "📍"; font-size: 0.72rem; }}
 .course-img-wrap {{ position: relative; }}
 .course-step {{
-  position: absolute; left: 12px; bottom: 12px; font-size: 0.62rem; font-weight: 800;
-  letter-spacing: 0.08em; color: #fff; background: rgba(0,106,97,0.75);
-  padding: 0.28rem 0.5rem; border-radius: 8px; backdrop-filter: blur(6px);
+  position: absolute; left: 12px; bottom: 12px; font-size: 0.7rem; font-weight: 800;
+  letter-spacing: 0.06em; color: #fff; background: rgba(0,74,67,0.85);
+  padding: 0.3rem 0.6rem; border-radius: 8px; backdrop-filter: blur(6px);
 }}
 .course-badge {{
   position: absolute; top: 12px; right: 12px; font-size: 0.62rem; font-weight: 800;
@@ -1143,7 +1145,7 @@ def render_voyage_profile_sidebar() -> None:
     st.markdown(
         f"""
 <div class="vx-profile">
-  <div class="avatar"></div>
+  <div class="avatar">AJ</div>
   <p class="elite">ELITE EXPLORER ✓</p>
   <h4>Alex Jung</h4>
   <div class="vx-stat-row">

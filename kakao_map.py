@@ -15,12 +15,6 @@ from config import get_env
 _COMPONENT_DIR = Path(__file__).resolve().parent / "kakao_map_component"
 _MAP_JS = (_COMPONENT_DIR / "map_logic.js").read_text(encoding="utf-8")
 
-_DOMAIN_HINT = (
-    "Kakao Developers → JavaScript 키 → **JavaScript SDK 도메인** (공백 없이):\n"
-    "- `https://kangwon-potato.streamlit.app`\n"
-    "- `http://localhost:8501`"
-)
-
 
 def get_kakao_app_key() -> str:
     load_dotenv(Path(__file__).resolve().parent / ".env", override=False)
@@ -120,71 +114,57 @@ def _build_map_html(
         "height": int(height),
     }
     cfg_js = json.dumps(cfg, ensure_ascii=False)
-    safe_focus = html_module.escape(focus_label or "")
-    safe_title = html_module.escape(title) if title else ""
-    badge = safe_focus if safe_focus else ""
-    show_head = bool(safe_title or badge)
-    head_html = (
-        f"""<div class="map-head">
-      <span class="map-label" id="map-label">{safe_title}</span>
-      <span class="map-focus" id="map-focus-badge">{badge}</span>
-    </div>"""
-        if show_head
-        else ""
-    )
+    head_html = ""  # 헤더/포커스 칩은 app.py(render_planner_map_chrome)에서 표시
 
     return f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="utf-8"/>
-  <meta name="referrer" content="origin"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     * {{ box-sizing: border-box; }}
-    html, body {{ margin: 0; padding: 0; width: 100%; font-family: sans-serif; }}
-    .map-shell {{
-      background: transparent; border-radius: 14px; padding: 0;
-      border: none; box-shadow: none;
-    }}
+    html, body {{ margin: 0; padding: 0; width: 100%; font-family: 'Inter', system-ui, sans-serif; }}
+    .map-shell {{ background: transparent; }}
     .map-head {{
       display: flex; justify-content: space-between; align-items: center;
-      padding: 0.25rem 0.35rem 0.55rem; gap: 10px; flex-wrap: wrap;
+      padding: 0.1rem 0.2rem 0.55rem; gap: 10px; flex-wrap: wrap;
     }}
-    .map-label {{ font-weight: 800; color: #134E4A; font-size: 0.88rem; }}
+    .map-label {{ font-weight: 800; color: #006a61; font-size: 0.88rem; }}
     .map-focus {{
-      font-size: 0.7rem; font-weight: 700; color: #fff;
-      background: linear-gradient(135deg, #4fa89c, #66bcb0);
-      padding: 0.35rem 0.7rem; border-radius: 999px; max-width: 72%;
+      font-size: 0.7rem; font-weight: 700; color: #004a43;
+      background: #66bcb0; padding: 0.32rem 0.7rem; border-radius: 999px; max-width: 72%;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }}
     #map-wrap {{
       width: 100%; position: relative; overflow: hidden;
-      border-radius: 16px; background: #F1F5F9; border: 1px solid #E2E8F0;
+      border-radius: 18px; background: #eef3f2; border: 1px solid #bdc9c6;
+      box-shadow: 0 6px 24px rgba(0,106,97,0.07);
     }}
     #map-loading {{
       position: absolute; inset: 0; z-index: 5; display: flex; align-items: center;
-      justify-content: center; color: #64748B; font-size: 0.85rem; background: #F1F5F9;
-    }}
-    #map-error {{
-      display: none; padding: 8px 10px; color: #92400E; font-size: 11px;
-      background: #FFFBEB; border-radius: 10px; margin-bottom: 6px; line-height: 1.45;
+      justify-content: center; color: #3e4947; font-size: 0.85rem; background: #eef3f2;
     }}
     #map {{ width: 100%; height: {height}px; }}
+    .leaflet-container {{ font-family: 'Inter', sans-serif; background: #eef3f2; }}
+    .leaflet-popup-content-wrapper {{ border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,0.14); }}
     .order-pin {{
-      background: #66bcb0; color: #fff; font-weight: 700; font-size: 12px;
-      width: 26px; height: 26px; border-radius: 50%; display: flex;
-      align-items: center; justify-content: center;
-      border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      background: #006a61; color: #fff; font-weight: 800; font-size: 12px;
+      width: 28px; height: 28px; border-radius: 50% 50% 50% 4px; display: flex;
+      align-items: center; justify-content: center; transform: rotate(0deg);
+      border: 2.5px solid #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.28);
     }}
-    .order-pin.focus {{ background: #4fa89c; width: 32px; height: 32px; box-shadow: 0 0 0 4px rgba(102,188,176,0.35); }}
+    .order-pin.focus {{
+      background: #004a43; width: 34px; height: 34px;
+      box-shadow: 0 0 0 5px rgba(102,188,176,0.4), 0 3px 10px rgba(0,0,0,0.3);
+    }}
   </style>
 </head>
 <body>
   <div class="map-shell">
     {head_html}
-    <div id="map-error"></div>
     <div id="map-wrap">
-      <div id="map-loading">카카오 지도 불러오는 중…</div>
+      <div id="map-loading">지도 불러오는 중…</div>
       <div id="map"></div>
     </div>
   </div>
@@ -254,19 +234,9 @@ def render_kakao_map(
         title=title,
         height=height,
     )
-    # key= 는 일부 Cloud Streamlit 버전에서 TypeError → HTML에 focus 넣어 갱신
+    # key= 는 일부 Cloud Streamlit 버전에서 TypeError → HTML 주석으로 focus 갱신
     components.html(
         f"<!-- map-focus-{int(focus_order or 0)} -->\n{html_page}",
-        height=height + 88,
+        height=height + 70,
         scrolling=False,
     )
-
-    if not app_key:
-        st.info("Secrets에 `KAKAO_MAP_APP_KEY`(JavaScript 키)를 설정하세요.")
-    else:
-        with st.expander("OpenStreetMap으로만 보이나요?"):
-            st.markdown(_DOMAIN_HINT)
-            st.caption(
-                "앱 안에서는 카카오 iframe 제한으로 OSM이 나올 수 있습니다. "
-                "위 **카카오맵에서 전체 동선 보기** 버튼을 이용하세요."
-            )

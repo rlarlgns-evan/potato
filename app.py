@@ -1,5 +1,7 @@
 import config  # noqa: F401 — .env 로드
 
+import os
+
 import streamlit as st
 
 from chatbot import curate_trip
@@ -75,14 +77,17 @@ def _apply_curation_result(result: dict, user_prompt: str) -> None:
         st.session_state.screen = "results"
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def _cached_curation(prompt: str, provider: str) -> dict:
+    """같은 질문은 캐시로 반환 → 불필요한 AI(API) 호출 방지."""
+    return curate_trip(user_message=prompt, spots=ALL_SPOTS, chat_history=[])
+
+
 def _run_curation(user_prompt: str) -> None:
+    provider = os.getenv("AI_PROVIDER", "openai").lower()
     st.session_state.messages = [{"role": "user", "content": user_prompt}]
     with st.spinner("AI가 맞춤 동선을 설계하는 중…"):
-        result = curate_trip(
-            user_message=user_prompt,
-            spots=ALL_SPOTS,
-            chat_history=[],
-        )
+        result = _cached_curation(user_prompt, provider)
     st.session_state.messages.append(
         {"role": "assistant", "content": result["message"]}
     )
@@ -241,7 +246,9 @@ else:
                 center_lat, center_lng = float(focus_spot["lat"]), float(focus_spot["lng"])
             route_url = build_kakao_route_url(route_for_map)
             if route_url:
-                st.link_button("Refine · Kakao Map", route_url, use_container_width=True)
+                st.link_button(
+                    "🧭 카카오맵에서 길찾기", route_url, use_container_width=True
+                )
             render_kakao_map(
                 spots=ALL_SPOTS,
                 center_lat=center_lat,
