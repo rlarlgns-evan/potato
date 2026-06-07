@@ -2,6 +2,7 @@
 
 import html
 import json
+import re
 from typing import Any
 from urllib.parse import quote
 
@@ -46,6 +47,12 @@ SUB_STYLE = (
     f"margin:0.5rem 0 0;font-size:14px;color:{TEXT_MUTED};line-height:1.5;"
     "font-family:Inter,sans-serif;"
 )
+
+
+def _inline_md(text: str) -> str:
+    """HTML 안전 이스케이프 + **bold** → <b> 변환."""
+    escaped = html.escape(text or "")
+    return re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", escaped)
 
 
 def inject_styles() -> None:
@@ -398,17 +405,26 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
 }}
 .vx-topnav .logo {{ font-size: 1.1rem; font-weight: 800; color: {PRIMARY}; letter-spacing: -0.03em; }}
 .vx-nav-search {{
-  max-width: 360px; margin: 0 auto; width: 100%;
+  display: block; max-width: 360px; margin: 0 auto; width: 100%;
   padding: 0.55rem 1rem 0.55rem 2.25rem; border-radius: 999px;
-  background: {T.surface_container_lowest}; border: 1px solid {T.outline_variant};
-  font-size: 0.82rem; color: {TEXT_MUTED};
+  background-color: {T.surface_container_lowest}; border: 1px solid {T.outline_variant};
+  font-size: 0.82rem; color: {TEXT_MUTED}; text-decoration: none; cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236e7977' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.106a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: 0.75rem center;
 }}
+.vx-nav-search:hover {{ border-color: {PRIMARY_CONTAINER}; box-shadow: 0 0 0 3px rgba(102,188,176,0.15); }}
 .vx-topnav .nav-links {{ display: flex; gap: 1.1rem; justify-content: center; flex-wrap: wrap; }}
-.vx-topnav .nav-links span {{ font-size: 0.82rem; font-weight: 600; color: {TEXT_MUTED}; }}
-.vx-topnav .nav-links span.on {{ color: {PRIMARY}; border-bottom: 2px solid {PRIMARY_CONTAINER}; padding-bottom: 2px; }}
+.vx-topnav .nav-links a {{
+  font-size: 0.82rem; font-weight: 600; color: {TEXT_MUTED};
+  text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s; cursor: pointer;
+}}
+.vx-topnav .nav-links a:hover {{ color: {PRIMARY}; }}
+.vx-topnav .nav-links a.on {{ color: {PRIMARY}; border-bottom: 2px solid {PRIMARY_CONTAINER}; }}
 .vx-topnav .nav-right {{ display: flex; align-items: center; gap: 0.75rem; font-size: 1.05rem; color: {TEXT_MUTED}; justify-content: flex-end; }}
+.vx-topnav .nav-right a {{ text-decoration: none; color: {TEXT_MUTED}; cursor: pointer; transition: color 0.15s; }}
+.vx-topnav .nav-right a:hover {{ color: {PRIMARY}; }}
 
 .vx-sidebar {{
   background: {T.inverse_surface};
@@ -419,21 +435,42 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
 .vx-sidebar .sb-item {{
   display: flex; align-items: center; gap: 0.55rem; padding: 0.55rem 0.65rem;
   border-radius: 12px; font-size: 0.8rem; font-weight: 600; color: rgba(255,255,255,0.55);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.25rem; text-decoration: none; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }}
+.vx-sidebar .sb-item:hover {{ background: rgba(255,255,255,0.08); color: #fff; }}
 .vx-sidebar .sb-item.on {{ background: {PRIMARY}; color: {T.on_primary}; }}
-.vx-sidebar .sb-foot {{ margin-top: auto; padding-top: 1rem; color: #f87171; font-size: 0.78rem; font-weight: 600; }}
+.vx-sidebar .sb-item.on:hover {{ background: {PRIMARY}; }}
+.vx-sidebar .sb-foot {{
+  margin-top: auto; padding-top: 1rem; color: #f87171; font-size: 0.78rem; font-weight: 600;
+  text-decoration: none; cursor: pointer; transition: color 0.15s;
+}}
+.vx-sidebar .sb-foot:hover {{ color: #fca5a5; }}
 
 .vx-welcome {{
   background: linear-gradient(135deg, {SKY} 0%, {T.surface_container_low} 45%, {SURFACE} 100%);
   border-radius: 24px; padding: 1.35rem 1.5rem; margin-bottom: 1rem;
   border: 1px solid rgba(255,255,255,0.8); box-shadow: {SHADOW};
 }}
+.vx-welcome-row {{
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem; margin-bottom: 0.55rem;
+}}
+.vx-welcome-kicker {{
+  font-size: 0.66rem; font-weight: 800; letter-spacing: 0.16em;
+  color: {PRIMARY}; text-transform: uppercase;
+}}
+.vx-welcome-badge {{
+  font-size: 0.64rem; font-weight: 700; letter-spacing: 0.08em;
+  color: {T.on_primary_container}; background: rgba(255,255,255,0.6);
+  padding: 0.25rem 0.6rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.8);
+}}
 .vx-welcome h2 {{
-  margin: 0 0 0.4rem; font-size: 1.25rem; font-weight: 700; color: {TEXT} !important;
+  margin: 0 0 0.4rem; font-size: 1.35rem; font-weight: 800; color: {TEXT} !important;
   letter-spacing: -0.02em; text-transform: uppercase;
 }}
 .vx-welcome p {{ margin: 0; font-size: 0.88rem; color: {TEXT_MUTED}; line-height: 1.6; }}
+.vx-welcome p b {{ color: {PRIMARY}; font-weight: 700; }}
 
 .vx-profile {{
   background: rgba(255,255,255,0.75); backdrop-filter: blur(12px);
@@ -455,6 +492,23 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
   background: rgba(255,255,255,0.8); border-radius: 20px; padding: 1rem 1.1rem;
   border: 1px solid rgba(102,188,176,0.12); margin: 1rem 0;
 }}
+.vx-chat-head {{
+  display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.75rem;
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em;
+  color: {PRIMARY}; text-transform: uppercase;
+}}
+.vx-chat-dot {{
+  width: 8px; height: 8px; border-radius: 50%; background: {PRIMARY};
+  box-shadow: 0 0 0 4px rgba(0,106,97,0.15);
+  animation: vxPulse 2s ease-in-out infinite;
+}}
+@keyframes vxPulse {{
+  0%, 100% {{ opacity: 1; }} 50% {{ opacity: 0.4; }}
+}}
+.vx-chat-suggest-label {{
+  margin: 0.85rem 0 0.4rem; font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: {TEXT_MUTED};
+}}
 .vx-bubble-ai, .vx-bubble-user {{
   max-width: 92%; padding: 0.75rem 0.9rem; border-radius: 16px; margin-bottom: 0.65rem;
   font-size: 0.84rem; line-height: 1.5;
@@ -465,10 +519,19 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
   border-bottom-right-radius: 4px;
 }}
 .vx-quick-pills {{ display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }}
-.vx-quick-pills span {{
-  font-size: 0.72rem; padding: 0.35rem 0.65rem; border-radius: 999px;
-  background: #f1f5f9; color: {TEXT_MUTED}; font-weight: 600;
+.vx-quick-pills a {{
+  font-size: 0.72rem; padding: 0.4rem 0.75rem; border-radius: 999px;
+  background: {T.surface_container_low}; color: {PRIMARY}; font-weight: 600;
+  text-decoration: none; cursor: pointer; border: 1px solid {T.outline_variant};
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }}
+.vx-quick-pills a:hover {{
+  background: {PRIMARY}; color: {T.on_primary}; border-color: {PRIMARY};
+}}
+.vx-theme-tag.toggle {{
+  cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.15s;
+}}
+.vx-theme-tag.toggle:hover {{ background: {PRIMARY_CONTAINER}; color: {T.on_primary_container}; }}
 
 .vx-tailored-head {{ margin-bottom: 1rem; }}
 .vx-tailored-head h1 {{
@@ -1037,17 +1100,18 @@ def render_voyage_top_nav(active: str = "explore") -> None:
         ("community", "Community"),
     ]
     links = "".join(
-        f'<span class="{"on" if key == active else ""}">{label}</span>' for key, label in tabs
+        f'<a class="{"on" if key == active else ""}" href="?nav={key}" target="_self">{label}</a>'
+        for key, label in tabs
     )
     st.markdown(
         f"""
 <div class="vx-topnav">
   <div class="vx-topnav-grid">
-    <span class="logo">VoyageAI</span>
+    <a class="logo" href="?nav=explore" target="_self" style="text-decoration:none;">VoyageAI</a>
     <div class="nav-links">{links}</div>
-    <div class="nav-right">🔔 ⚙ <span style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,{PRIMARY_CONTAINER},{SKY});display:inline-block;vertical-align:middle;"></span></div>
+    <div class="nav-right"><a href="?sb=favorites" target="_self">🔔</a> <a href="?sb=dashboard" target="_self">⚙</a> <a href="?nav=community" target="_self"><span style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,{PRIMARY_CONTAINER},{SKY});display:inline-block;vertical-align:middle;"></span></a></div>
   </div>
-  <div class="vx-nav-search">Search destinations…</div>
+  <a class="vx-nav-search" href="?nav=explore" target="_self">Search destinations…</a>
 </div>
         """,
         unsafe_allow_html=True,
@@ -1062,15 +1126,32 @@ def render_voyage_app_sidebar(active: str = "itinerary") -> None:
         ("favorites", "♡ Favorites"),
     ]
     rows = "".join(
-        f'<div class="sb-item {"on" if k == active else ""}">{label}</div>' for k, label in items
+        f'<a class="sb-item {"on" if k == active else ""}" href="?sb={k}" target="_self">{label}</a>'
+        for k, label in items
     )
     st.markdown(
-        f'<div class="vx-sidebar"><div class="sb-logo">VoyageAI</div>{rows}<div class="sb-foot">↪ Logout</div></div>',
+        f'<div class="vx-sidebar"><div class="sb-logo">VoyageAI</div>{rows}'
+        f'<a class="sb-foot" href="?sb=logout" target="_self">↪ Logout</a></div>',
         unsafe_allow_html=True,
     )
 
 
 def render_voyage_profile_sidebar() -> None:
+    show_all = st.session_state.get("show_all_interests", False)
+    base_tags = (
+        f'<span class="vx-theme-tag" style="background:{PRIMARY_CONTAINER};color:{T.on_primary_container};">Coastal Drive</span>'
+        f'<span class="vx-theme-tag" style="background:{SKY};color:{T.on_secondary_container};">Gastronomy</span>'
+        f'<span class="vx-theme-tag" style="background:{LAVENDER};color:{T.on_tertiary_container};">Photography</span>'
+    )
+    if show_all:
+        extra_tags = (
+            '<span class="vx-theme-tag">Hiking</span>'
+            '<span class="vx-theme-tag">Night Views</span>'
+            '<span class="vx-theme-tag">Local Markets</span>'
+            '<a class="vx-theme-tag toggle" href="?interests=less" target="_self">접기</a>'
+        )
+    else:
+        extra_tags = '<a class="vx-theme-tag toggle" href="?interests=all" target="_self">+3 More</a>'
     st.markdown(
         f"""
 <div class="vx-profile">
@@ -1082,12 +1163,7 @@ def render_voyage_profile_sidebar() -> None:
     <div class="vx-stat"><strong>840</strong><span>Points</span></div>
   </div>
   <p style="margin:0.85rem 0 0.4rem;font-size:11px;font-weight:700;color:{TEXT_MUTED};text-transform:uppercase;letter-spacing:0.05em;">Interests ✎</p>
-  <div class="vx-theme-tags">
-    <span class="vx-theme-tag" style="background:{PRIMARY_CONTAINER};color:{T.on_primary_container};">Coastal Drive</span>
-    <span class="vx-theme-tag" style="background:{SKY};color:{T.on_secondary_container};">Gastronomy</span>
-    <span class="vx-theme-tag" style="background:{LAVENDER};color:{T.on_tertiary_container};">Photography</span>
-    <span class="vx-theme-tag">+3 More</span>
-  </div>
+  <div class="vx-theme-tags">{base_tags}{extra_tags}</div>
   <div style="margin-top:1rem;padding:0.75rem;background:{T.surface_container_low};border-radius:16px;border:1px solid {T.outline_variant};">
     <p style="margin:0 0 0.35rem;font-size:11px;font-weight:700;color:{TEXT_MUTED};text-transform:uppercase;">Saved Discovery ♡</p>
     <p style="margin:0;font-size:0.8rem;font-weight:700;color:{TEXT};">East Coast Scenic Route</p>
@@ -1106,8 +1182,12 @@ def render_welcome_banner() -> None:
     st.markdown(
         f"""
 <div class="vx-welcome">
+  <div class="vx-welcome-row">
+    <span class="vx-welcome-kicker">AI JOURNEY CURATOR</span>
+    <span class="vx-welcome-badge">강원 GANGWON</span>
+  </div>
   <h2>HELLO, TRAVELER</h2>
-  <p>{html.escape(get_region_intro())}</p>
+  <p>{_inline_md(get_region_intro())}</p>
 </div>
         """,
         unsafe_allow_html=True,
@@ -1116,20 +1196,34 @@ def render_welcome_banner() -> None:
 
 def render_home_chat_section(last_query: str = "") -> None:
     ai_msg = (
-        "Based on your interest in photography and coastal views, I recommend "
-        "starting at Nami Island and moving toward the East Sea coast."
+        "안녕하세요! 강원도 여행의 무엇이든 물어보세요. "
+        "원하는 분위기·동행·테마를 알려주시면 맞춤 동선과 지도를 만들어 드릴게요."
     )
-    user_msg = last_query or (
-        "That sounds perfect. Can we include a stop at a famous local coffee shop too?"
+    pills = [
+        ("강릉 카페 코스", "강릉 해안 드라이브와 분위기 좋은 카페가 있는 코스"),
+        ("일몰 명소", "강원도 동해안 일몰 명소를 도는 반나절 코스"),
+        ("가족 여행", "주차가 편하고 아이와 함께 가기 좋은 강원도 가족 코스"),
+        ("단풍 트레킹", "설악산 단풍을 즐기는 가벼운 트레킹 코스"),
+    ]
+    pill_html = "".join(
+        f'<a href="?ask={quote(prompt)}" target="_self">{html.escape(label)}</a>'
+        for label, prompt in pills
+    )
+    user_bubble = (
+        f'<div class="vx-bubble-user">{html.escape(last_query)}</div>'
+        if last_query
+        else ""
     )
     st.markdown(
         f"""
 <div class="vx-chat-box">
-  <div class="vx-bubble-ai">✦ {html.escape(ai_msg)}</div>
-  <div class="vx-bubble-user">{html.escape(user_msg)}</div>
-  <div class="vx-quick-pills">
-    <span>Coffee Shops in Gangneung</span><span>Sunset Spots</span><span>Parking Info</span>
+  <div class="vx-chat-head">
+    <span class="vx-chat-dot"></span> AI Concierge · 실시간 추천
   </div>
+  <div class="vx-bubble-ai">✦ {html.escape(ai_msg)}</div>
+  {user_bubble}
+  <p class="vx-chat-suggest-label">이렇게 물어보세요</p>
+  <div class="vx-quick-pills">{pill_html}</div>
 </div>
         """,
         unsafe_allow_html=True,
@@ -1173,13 +1267,13 @@ def _course_card_html(step: dict, spot: dict, active: bool) -> str:
 
 
 def render_planner_map_chrome(query_chip: str, focus_label: str) -> None:
-    q = html.escape(query_chip or "Autumn drives in Gangwon")
-    focus = html.escape(focus_label or "Select a stop")
+    q = html.escape(query_chip or "강원 추천 동선")
+    focus = html.escape(focus_label or "정거장 선택")
     st.markdown(
         f"""
 <div class="planner-map-float">
-  <span class="planner-map-query">Showing · {q}</span>
-  <span class="planner-map-focus">{focus}</span>
+  <span class="planner-map-query">🔍 {q}</span>
+  <span class="planner-map-focus">📍 {focus}</span>
 </div>
         """,
         unsafe_allow_html=True,
@@ -1194,6 +1288,11 @@ def render_tailored_header(meta: dict, query: str, step_count: int) -> None:
     )
     duration = html.escape(meta.get("total_duration") or "당일 코스")
     q = html.escape((query[:48] + "…") if len(query) > 48 else query)
+    query_line = (
+        f'<p style="margin-top:0.35rem;font-size:0.78rem;color:{TEXT_MUTED};">🔍 {q}</p>'
+        if query
+        else ""
+    )
     st.markdown(
         f"""
 <div class="vx-tailored-head">
@@ -1201,7 +1300,7 @@ def render_tailored_header(meta: dict, query: str, step_count: int) -> None:
     <div>
       <h1>{title}</h1>
       <p>{summary}</p>
-      <p style="margin-top:0.35rem;font-size:0.78rem;color:{TEXT_MUTED};">검색 · {q}</p>
+      {query_line}
     </div>
     <div class="vx-head-chips">
       <span class="vx-head-chip">✓ AI OPTIMIZED</span>
@@ -1259,7 +1358,7 @@ def render_voyage_explore_page(spot_count: int) -> None:
         render_home_chat_section(st.session_state.get("last_user_query", ""))
         st.markdown(
             f'<div class="vx-design-shell"><p class="vx-footer-note">'
-            f"Currently indexing {spot_count} major tourist destinations in Gangwon region without filters."
+            f"강원도 주요 관광지 {spot_count}곳을 필터 없이 AI가 실시간 탐색합니다."
             f"</p></div>",
             unsafe_allow_html=True,
         )

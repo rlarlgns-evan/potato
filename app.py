@@ -1,7 +1,5 @@
 import config  # noqa: F401 — .env 로드
 
-import html
-
 import streamlit as st
 
 from chatbot import curate_trip
@@ -77,6 +75,86 @@ def _apply_curation_result(result: dict, user_prompt: str) -> None:
         st.session_state.screen = "results"
 
 
+def _run_curation(user_prompt: str) -> None:
+    st.session_state.messages = [{"role": "user", "content": user_prompt}]
+    with st.spinner("AI가 맞춤 동선을 설계하는 중…"):
+        result = curate_trip(
+            user_message=user_prompt,
+            spots=ALL_SPOTS,
+            chat_history=[],
+        )
+    st.session_state.messages.append(
+        {"role": "assistant", "content": result["message"]}
+    )
+    _apply_curation_result(result, user_prompt)
+    if not result.get("curated_spots"):
+        st.session_state._toast = "조건에 맞는 코스를 찾지 못했어요. 다르게 표현해 보세요."
+
+
+def _handle_query_actions() -> None:
+    """상단 탭·사이드바·추천 칩·관심사 토글 → 쿼리 파라미터 라우팅."""
+    qp = st.query_params
+
+    nav = qp.get("nav")
+    if nav:
+        del qp["nav"]
+        if nav == "explore":
+            st.session_state.screen = "home"
+        elif nav == "planner":
+            if st.session_state.curated_spots:
+                st.session_state.screen = "results"
+            else:
+                st.session_state.screen = "home"
+                st.session_state._toast = "Planner는 AI 코스를 먼저 만들면 열려요."
+        else:
+            st.session_state._toast = "🚧 곧 제공될 기능이에요."
+        st.rerun()
+
+    sb = qp.get("sb")
+    if sb:
+        del qp["sb"]
+        if sb in ("dashboard", "destinations"):
+            st.session_state.screen = "home"
+        elif sb == "itinerary":
+            st.session_state.screen = (
+                "results" if st.session_state.curated_spots else "home"
+            )
+            if not st.session_state.curated_spots:
+                st.session_state._toast = "아직 생성된 일정이 없어요."
+        elif sb == "favorites":
+            st.session_state._toast = "♡ 즐겨찾기는 준비 중이에요."
+        elif sb == "logout":
+            for key in (
+                "screen", "messages", "curated_spots", "route_steps",
+                "itinerary_meta", "focus_order", "last_user_query",
+                "show_all_interests",
+            ):
+                st.session_state.pop(key, None)
+            st.session_state.screen = "home"
+            st.session_state._toast = "로그아웃했어요."
+        st.rerun()
+
+    interests = qp.get("interests")
+    if interests is not None:
+        del qp["interests"]
+        st.session_state.show_all_interests = interests == "all"
+        st.rerun()
+
+    ask = qp.get("ask")
+    if ask:
+        del qp["ask"]
+        prompt = ask.strip()
+        if prompt:
+            _run_curation(prompt)
+        st.rerun()
+
+
+_handle_query_actions()
+
+if st.session_state.get("_toast"):
+    st.toast(st.session_state.pop("_toast"))
+
+
 # =============================================================================
 # ① Explore — AI 채팅 · 강원 컨텍스트
 # =============================================================================
@@ -92,19 +170,7 @@ if st.session_state.screen == "home":
         submitted = st.form_submit_button("✦ Design AI Course", type="primary", use_container_width=True)
 
     if submitted and user_prompt.strip():
-        st.session_state.messages = [
-            {"role": "user", "content": user_prompt.strip()},
-        ]
-        with st.spinner("AI가 맞춤 동선을 설계하는 중…"):
-            result = curate_trip(
-                user_message=user_prompt.strip(),
-                spots=ALL_SPOTS,
-                chat_history=[],
-            )
-        st.session_state.messages.append(
-            {"role": "assistant", "content": result["message"]}
-        )
-        _apply_curation_result(result, user_prompt.strip())
+        _run_curation(user_prompt.strip())
         st.rerun()
 
 # =============================================================================
@@ -129,10 +195,10 @@ else:
 
     render_voyage_top_nav("planner")
 
-    sb_col, main_col = st.columns([0.14, 0.86], gap="small")
+    sb_col, main_col = st.columns([0.16, 0.84], gap="small")
     with sb_col:
         render_voyage_app_sidebar("itinerary")
-        if st.button("← Explore", use_container_width=True):
+        if st.button("← 홈으로", use_container_width=True):
             st.session_state.screen = "home"
             st.rerun()
 
@@ -179,8 +245,12 @@ else:
             )
             st.markdown("</div>", unsafe_allow_html=True)
 
-        if st.button("새 여행 검색", type="secondary"):
-            st.session_state.screen = "home"
-            st.session_state.curated_spots = []
-            st.session_state.messages = []
-            st.rerun()
+        st.markdown('<div style="height:0.5rem;"></div>', unsafe_allow_html=True)
+        new_col, _spacer = st.columns([1, 2])
+        with new_col:
+            if st.button("✦ 새 여행 설계하기", type="primary", use_container_width=True):
+                st.session_state.screen = "home"
+                st.session_state.curated_spots = []
+                st.session_state.messages = []
+                st.session_state.last_user_query = ""
+                st.rerun()
