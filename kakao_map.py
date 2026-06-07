@@ -120,6 +120,7 @@ def _build_map_html(
 <html lang="ko">
 <head>
   <meta charset="utf-8"/>
+  <meta name="referrer" content="origin"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
