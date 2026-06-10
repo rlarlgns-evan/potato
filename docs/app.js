@@ -219,8 +219,100 @@ function routeSummary(steps, legs) {
 }
 
 const SPOT_BY_NAME = Object.fromEntries(ENRICHED_SPOTS.map((s) => [s.name, s]));
+const MAX_SPOTS_IN_PROMPT = 28;
 
-/* ==================== Curation ==================== */
+function normalizeGeminiKey(raw) {
+  let key = String(raw ?? "").trim();
+  key = key.replace(/^value:\s*/i, "").trim();
+  return key;
+}
+
+function compactSpotCatalog(prompt) {
+  const kws = prompt.replace(/,/g, " ").split(/\s+/).filter((w) => w.length >= 2);
+  let pool = ENRICHED_SPOTS;
+  if (kws.length) {
+    const ranked = ENRICHED_SPOTS.map((s) => {
+      const blob = `${s.name} ${s.region} ${s.theme}`;
+      const score = kws.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0);
+      return { score, s };
+    }).sort((a, b) => b.score - a.score || a.s.name.localeCompare(b.s.name));
+    const matched = ranked.filter((r) => r.score > 0).slice(0, MAX_SPOTS_IN_PROMPT).map((r) => r.s);
+    pool = matched.length >= 6 ? matched : ranked.slice(0, MAX_SPOTS_IN_PROMPT).map((r) => r.s);
+  } else {
+    pool = ENRICHED_SPOTS.slice(0, MAX_SPOTS_IN_PROMPT);
+  }
+  return pool.map((s) => `${s.name}|${s.region}|${s.theme}`).join("\n");
+}
+
+function geminiFailToast(e) {
+  if (e.status === 429 || /credit|billing|quota|RESOURCE_EXHAUSTED/i.test(e.detail || e.message || ""))
+    toast("Gemini 크레딧/할당량 부족 — AI Studio 결제를 확인하세요.");
+  else if (e.status === 503 || /high demand|UNAVAILABLE/i.test(e.detail || e.message || ""))
+    toast("Gemini 서버 혼잡 — 잠시 후 다시 시도하세요.");
+  else if (e.status === 400 || e.status === 403)
+    toast("Gemini API 키 오류 — 키·제한 설정을 확인하세요.");
+  else if (/empty response|JSON|no spots matched/i.test(e.message || ""))
+    toast("Gemini 응답 파싱 실패 — 다시 시도하거나 다른 질문을 입력하세요.");
+  else
+    toast("Gemini 호출 실패 — 로컬 큐레이션으로 대체했어요.");
+}
+
+async function callGemini(body, key, retries = 1) {
+  const url =
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+    encodeURIComponent(key);
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (r.ok) return r.json();
+    let detail = "";
+    try {
+      detail = (await r.json())?.error?.message || "";
+    } catch (_) { /* ignore */ }
+    if (r.status === 503 && attempt < retries) {
+      await new Promise((res) => setTimeout(res, 1200 * (attempt + 1)));
+      continue;
+    }
+    const e = new Error("Gemini HTTP " + r.status + (detail ? ": " + detail : ""));
+    e.status = r.status;
+    e.detail = detail;
+    throw e;
+  }
+}
+
+function parseGeminiCuration(raw, prompt) {
+  let text = String(raw ?? "").trim();
+  if (!text) throw new Error("empty response from Gemini");
+  text = text.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
+  const parsed = JSON.parse(text);
+  const steps = (parsed.route_steps || [])
+    .map((st, i) => {
+      const spot =
+        SPOT_BY_NAME[st.spot_name] ||
+        ENRICHED_SPOTS.find((s) => s.name.includes(st.spot_name) || st.spot_name?.includes(s.name));
+      if (!spot) return null;
+      return {
+        order: i + 1,
+        spot,
+        stay: st.stay_minutes ?? spot.stay_min ?? 60,
+        why: (st.why || `${spot.description}. ${spot.tip}`).trim(),
+      };
+    })
+    .filter(Boolean);
+  if (!steps.length) throw new Error("no spots matched");
+  const legs = computeLegs(steps);
+  const sum = routeSummary(steps, legs);
+  return {
+    title: parsed.itinerary_title || "AI 추천 코스",
+    summary: parsed.summary || `총 ${fmtKm(sum.driveKm)} · 체류 ${fmtMin(sum.stayMin)} · 이동 ${fmtMin(sum.driveMin)} (추정)`,
+    duration: parsed.total_duration || (sum.totalMin <= 300 ? "반나절 코스" : "당일 코스"),
+    steps,
+    source: "gemini",
+  };
+}
 function localCuration(prompt) {
   const kws = prompt.replace(/,/g, " ").split(/\s+/).filter((w) => w.length >= 2);
   const ranked = ENRICHED_SPOTS.map((s) => {
@@ -242,13 +334,13 @@ function localCuration(prompt) {
     summary: `총 ${fmtKm(sum.driveKm)} · 체류 ${fmtMin(sum.stayMin)} · 이동 ${fmtMin(sum.driveMin)} (추정)`,
     duration: sum.totalMin <= 300 ? "반나절 코스" : "당일 코스",
     steps,
+    source: "local",
   };
 }
 
+/* ==================== Curation ==================== */
 async function geminiCuration(prompt, key) {
-  const catalog = ENRICHED_SPOTS.map(
-    (s) => `${s.name}|${s.region}|${s.theme}|체류${s.stay_min}분`
-  ).join("\n");
+  const catalog = compactSpotCatalog(prompt);
   const sys =
     "Gangwon (Korea) trip planner. Pick 1-4 spots from catalog; output JSON only. " +
     "Korean text values. Schema: " +
@@ -258,40 +350,20 @@ async function geminiCuration(prompt, key) {
   const body = {
     system_instruction: { parts: [{ text: sys }] },
     contents: [{ role: "user", parts: [{ text: prompt.slice(0, 800) }] }],
-    generationConfig: { temperature: 0.5, maxOutputTokens: 1024, responseMimeType: "application/json" },
+    generationConfig: {
+      temperature: 0.5,
+      maxOutputTokens: 2048,
+      responseMimeType: "application/json",
+      thinkingConfig: { thinkingBudget: 0 },
+    },
   };
-  const r = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
-      encodeURIComponent(key),
-    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
-  );
-  if (!r.ok) throw new Error("Gemini HTTP " + r.status);
-  const d = await r.json();
-  let text = d.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  text = text.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
-  const parsed = JSON.parse(text);
-  const byName = SPOT_BY_NAME;
-  const steps = (parsed.route_steps || [])
-    .map((st, i) => {
-      const spot = byName[st.spot_name] || ENRICHED_SPOTS.find((s) => s.name.includes(st.spot_name) || st.spot_name?.includes(s.name));
-      if (!spot) return null;
-      return {
-        order: i + 1,
-        spot,
-        stay: st.stay_minutes ?? spot.stay_min ?? 60,
-        why: (st.why || `${spot.description}. ${spot.tip}`).trim(),
-      };
-    })
-    .filter(Boolean);
-  if (!steps.length) throw new Error("no spots matched");
-  const legs = computeLegs(steps);
-  const sum = routeSummary(steps, legs);
-  return {
-    title: parsed.itinerary_title || "AI 추천 코스",
-    summary: parsed.summary || `총 ${fmtKm(sum.driveKm)} · 체류 ${fmtMin(sum.stayMin)} · 이동 ${fmtMin(sum.driveMin)} (추정)`,
-    duration: parsed.total_duration || (sum.totalMin <= 300 ? "반나절 코스" : "당일 코스"),
-    steps,
-  };
+  const d = await callGemini(body, key);
+  const c = d.candidates?.[0];
+  const finish = c?.finishReason || "";
+  const text = c?.content?.parts?.map((p) => p.text || "").join("") ?? "";
+  if (!text && finish === "MAX_TOKENS")
+    throw new Error("empty response from Gemini (token limit)");
+  return parseGeminiCuration(text, prompt);
 }
 
 const curationCache = new Map();
@@ -306,19 +378,21 @@ async function runCuration(prompt) {
     if (curationCache.has(prompt)) {
       result = curationCache.get(prompt);
     } else {
-      const key = localStorage.getItem("gemini_key") || "";
+      const key = normalizeGeminiKey(localStorage.getItem("gemini_key") || "");
+      let fromGemini = false;
       if (key) {
         try {
           result = await geminiCuration(prompt, key);
+          fromGemini = true;
         } catch (e) {
           console.warn("Gemini 실패 → 로컬 큐레이션:", e);
-          toast("Gemini 호출 실패 — 로컬 큐레이션으로 대체했어요.");
+          geminiFailToast(e);
           result = localCuration(prompt);
         }
       } else {
         result = localCuration(prompt);
       }
-      curationCache.set(prompt, result);
+      if (fromGemini || !key) curationCache.set(prompt, result);
     }
     state.query = prompt;
     state.meta = { title: result.title, summary: result.summary, duration: result.duration };
@@ -665,8 +739,8 @@ function renderLeaflet() {
 
 /* ==================== Settings modal ==================== */
 function refreshAiNote() {
-  const hasKey = Boolean(localStorage.getItem("gemini_key"));
-  $("ai-mode-note").textContent = hasKey ? "Gemini 연동 중 (내 키)" : "로컬 AI 모드 (⚙에서 Gemini 키 연결)";
+  const key = normalizeGeminiKey(localStorage.getItem("gemini_key") || "");
+  $("ai-mode-note").textContent = key ? "Gemini 연동 중 (내 키)" : "로컬 AI 모드 (⚙에서 Gemini 키 연결)";
 }
 
 $("btn-settings").addEventListener("click", () => {
@@ -677,7 +751,7 @@ $("modal-bg").addEventListener("click", (e) => {
   if (e.target === $("modal-bg")) $("modal-bg").classList.remove("show");
 });
 $("btn-key-save").addEventListener("click", () => {
-  const v = $("gemini-key").value.trim();
+  const v = normalizeGeminiKey($("gemini-key").value);
   if (v) { localStorage.setItem("gemini_key", v); toast("Gemini 키를 저장했어요. (이 브라우저에만)"); }
   else { localStorage.removeItem("gemini_key"); }
   curationCache.clear();
