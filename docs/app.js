@@ -352,6 +352,22 @@ function centerOf(steps) {
   return [lat, lng];
 }
 
+function kakaoKey() {
+  return (typeof window !== "undefined" && window.KAKAO_JS_KEY &&
+    window.KAKAO_JS_KEY !== "YOUR_KAKAO_JAVASCRIPT_KEY")
+    ? window.KAKAO_JS_KEY : "";
+}
+
+function mapNote(msg) {
+  const el = $("map-note");
+  if (!el) return;
+  if (!msg) { el.classList.add("hidden"); return; }
+  el.innerHTML = msg;
+  el.classList.remove("hidden");
+}
+
+let mapBooting = false;
+
 function renderMap() {
   if (!state.steps.length) return;
   if (state.mapEngine === "kakao") renderKakao();
@@ -360,11 +376,26 @@ function renderMap() {
 }
 
 function bootMapEngine() {
-  if (!KAKAO_JS_KEY) { loadLeaflet(); return; }
+  if (mapBooting) return;
+  mapBooting = true;
+  const key = kakaoKey();
+  if (!key) {
+    loadLeaflet("카카오 키가 설정되지 않아 OSM 지도로 표시 중입니다.");
+    return;
+  }
   let settled = false;
-  const timer = setTimeout(() => { if (!settled) { settled = true; loadLeaflet(); } }, 4500);
+  const fail = (why) => {
+    if (settled) return;
+    settled = true;
+    loadLeaflet(
+      "카카오맵 인증 실패(" + why + ") — OSM 지도로 대체했습니다.<br/>" +
+      "Kakao Developers → 내 애플리케이션 → 플랫폼 Web에 <b>" +
+      esc(location.origin) + "</b> 등록 후 새로고침하세요."
+    );
+  };
+  const timer = setTimeout(() => fail("응답 시간 초과 · 도메인 미등록 가능성"), 4500);
   const sdk = document.createElement("script");
-  sdk.src = "https://dapi.kakao.com/v2/maps/sdk.js?appkey=" + encodeURIComponent(KAKAO_JS_KEY) + "&autoload=false";
+  sdk.src = "https://dapi.kakao.com/v2/maps/sdk.js?appkey=" + encodeURIComponent(key) + "&autoload=false";
   sdk.onload = () => {
     try {
       kakao.maps.load(() => {
@@ -372,16 +403,18 @@ function bootMapEngine() {
         settled = true;
         clearTimeout(timer);
         state.mapEngine = "kakao";
+        mapNote("");
         renderKakao();
       });
-    } catch (e) { if (!settled) { settled = true; clearTimeout(timer); loadLeaflet(); } }
+    } catch (e) { clearTimeout(timer); fail("SDK 오류"); }
   };
-  sdk.onerror = () => { if (!settled) { settled = true; clearTimeout(timer); loadLeaflet(); } };
+  sdk.onerror = () => { clearTimeout(timer); fail("스크립트 차단 · 키 오류"); };
   document.head.appendChild(sdk);
 }
 
-function loadLeaflet() {
+function loadLeaflet(noteMsg) {
   state.mapEngine = "leaflet";
+  if (noteMsg) mapNote(noteMsg);
   if (typeof L !== "undefined") { renderLeaflet(); return; }
   const s = document.createElement("script");
   s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";

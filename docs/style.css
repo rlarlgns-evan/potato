@@ -344,6 +344,10 @@ a { color: inherit; }
 }
 .leaflet-container { font-family: "Inter", sans-serif; background: #eef3f2; }
 .leaflet-popup-content-wrapper { border-radius: 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14); }
+.map-note {
+  margin: 0.6rem 0 0; padding: 0.6rem 0.85rem; font-size: 0.74rem; line-height: 1.55;
+  color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px;
+}
 .btn-secondary {
   background: var(--surface-lowest); color: var(--on-surface); border: 1px solid var(--outline-variant);
   border-radius: 999px; font-weight: 600; font-family: inherit; font-size: 0.84rem;

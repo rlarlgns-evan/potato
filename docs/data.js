@@ -76,10 +76,10 @@ const THEME_BADGE = {
 const THEME_IMAGE = {
   "트레킹": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=640&h=340&fit=crop&q=80",
   "힐링": "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=640&h=340&fit=crop&q=80",
-  "체험": "https://images.unsplash.com/photo-1520250497591-112f2f996a74?w=640&h=340&fit=crop&q=80",
+  "체험": "https://images.unsplash.com/photo-1551632811-561732d1e306?w=640&h=340&fit=crop&q=80",
   "야경": "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=640&h=340&fit=crop&q=80",
-  "역사": "https://images.unsplash.com/photo-1590736969955-71cc94901144?w=640&h=340&fit=crop&q=80",
-  "자전거": "https://images.unsplash.com/photo-1541625602330-2277a4fbfad2?w=640&h=340&fit=crop&q=80",
+  "역사": "https://images.unsplash.com/photo-1548115184-bc6544d06a58?w=640&h=340&fit=crop&q=80",
+  "자전거": "https://images.unsplash.com/photo-1471506480208-91b3a4cc78be?w=640&h=340&fit=crop&q=80",
 };
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=640&h=340&fit=crop&q=80";
 
@@ -93,5 +93,6 @@ const SUGGESTIONS = [
   { label: "단풍 트레킹", prompt: "설악산 단풍을 즐기는 가벼운 트레킹 코스" },
 ];
 
-// Kakao JavaScript 키 — 도메인 제한으로 보호됨 (Kakao Developers에 도메인 등록 필요)
-const KAKAO_JS_KEY = "6536ce6f37100f42b2fc1ba35203fb52";
+// Kakao JavaScript 키는 저장소에 두지 않습니다.
+// - 로컬: docs/config.example.js를 config.js로 복사해 키 입력 (gitignore됨)
+// - 배포: GitHub Actions가 Secret(KAKAO_JS_KEY)으로 config.js를 생성해 주입
