@@ -116,6 +116,9 @@ function enrichSpot(raw) {
 
 const ENRICHED_SPOTS = SPOTS.map(enrichSpot);
 
+// gemini-2.5-flash-lite: 할당량 여유 · thinking 없음 (429 완화)
+const GEMINI_MODEL = "gemini-2.5-flash-lite";
+
 const FESTIVAL_ICONS = ["🎪", "🎭", "🎶", "🐟", "☕", "🎿", "🌸", "🍁"];
 
 const WEATHER_ICONS = {

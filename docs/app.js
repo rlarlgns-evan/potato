@@ -220,6 +220,8 @@ function routeSummary(steps, legs) {
 
 const SPOT_BY_NAME = Object.fromEntries(ENRICHED_SPOTS.map((s) => [s.name, s]));
 const MAX_SPOTS_IN_PROMPT = 28;
+const GEMINI_MIN_GAP_MS = 8000;
+let lastGeminiAt = 0;
 
 function normalizeGeminiKey(raw) {
   let key = String(raw ?? "").trim();
@@ -244,10 +246,26 @@ function compactSpotCatalog(prompt) {
   return pool.map((s) => `${s.name}|${s.region}|${s.theme}`).join("\n");
 }
 
+function isBilling429(detail) {
+  return /prepay|credit.*deplet|billing|purchase|payment|depleted/i.test(detail || "");
+}
+
+async function waitGeminiSlot() {
+  const wait = GEMINI_MIN_GAP_MS - (Date.now() - lastGeminiAt);
+  if (wait > 0) await new Promise((res) => setTimeout(res, wait));
+  lastGeminiAt = Date.now();
+}
+
 function geminiFailToast(e) {
-  if (e.status === 429 || /credit|billing|quota|RESOURCE_EXHAUSTED/i.test(e.detail || e.message || ""))
-    toast("Gemini 크레딧/할당량 부족 — AI Studio 결제를 확인하세요.");
-  else if (e.status === 503 || /high demand|UNAVAILABLE/i.test(e.detail || e.message || ""))
+  const d = e.detail || e.message || "";
+  if (e.status === 429) {
+    if (isBilling429(d))
+      toast("Gemini 결제 크레딧 부족 — AI Studio → Billing에서 충전하세요.");
+    else
+      toast("Gemini 요청 한도 초과(429) — 1~2분 기다린 뒤 다시 시도하세요. (분당/일일 한도)");
+    return;
+  }
+  if (e.status === 503 || /high demand|UNAVAILABLE/i.test(d))
     toast("Gemini 서버 혼잡 — 잠시 후 다시 시도하세요.");
   else if (e.status === 400 || e.status === 403)
     toast("Gemini API 키 오류 — 키·제한 설정을 확인하세요.");
@@ -258,8 +276,9 @@ function geminiFailToast(e) {
 }
 
 async function callGemini(body, key, retries = 1) {
+  const model = typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "gemini-2.5-flash-lite";
   const url =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
     encodeURIComponent(key);
   for (let attempt = 0; attempt <= retries; attempt++) {
     const r = await fetch(url, {
@@ -340,6 +359,7 @@ function localCuration(prompt) {
 
 /* ==================== Curation ==================== */
 async function geminiCuration(prompt, key) {
+  await waitGeminiSlot();
   const catalog = compactSpotCatalog(prompt);
   const sys =
     "Gangwon (Korea) trip planner. Pick 1-4 spots from catalog; output JSON only. " +
