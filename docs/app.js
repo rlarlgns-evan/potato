@@ -29,7 +29,7 @@ function toast(msg) {
 /* ==================== View routing ==================== */
 function show(view) {
   if (view === "planner" && !state.steps.length) {
-    toast("Planner는 AI 코스를 먼저 만들면 열려요.");
+    toast("일정은 AI 코스를 먼저 만들면 열려요.");
     view = "explore";
   }
   if (view === "trips" || view === "community") {
@@ -163,36 +163,92 @@ function initFestivals() {
     (f, i) =>
       `<div class="fest-row">
          <div class="fest-thumb" style="background:${grads[i % 4]}">${FESTIVAL_ICONS[i % FESTIVAL_ICONS.length]}</div>
-         <div><strong>${esc(f.title)}</strong><span>${esc(f.place)} · ${esc(f.period)}</span></div>
+         <div><strong>${esc(f.title)}</strong><span>${esc(f.place)} · ${esc(f.period)}</span>${f.desc ? `<span class="fest-desc">${esc(f.desc)}</span>` : ""}</div>
        </div>`
   ).join("");
   $("fest-tr").innerHTML = rows + rows;
 }
 
+/* ==================== Route math ==================== */
+function haversineKm(a, b) {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function estDriveMin(km) {
+  const speed = km > 80 ? 55 : km > 40 ? 48 : 42;
+  return Math.max(8, Math.round((km / speed) * 60));
+}
+
+function fmtKm(km) {
+  return km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(km < 10 ? 1 : 0)}km`;
+}
+
+function fmtMin(m) {
+  if (m < 60) return `${m}분`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r ? `${h}시간 ${r}분` : `${h}시간`;
+}
+
+function computeLegs(steps) {
+  const legs = [];
+  for (let i = 0; i < steps.length - 1; i++) {
+    const from = steps[i].spot;
+    const to = steps[i + 1].spot;
+    const km = haversineKm(from, to);
+    const driveMin = estDriveMin(km);
+    legs.push({ from: steps[i], to: steps[i + 1], km, driveMin });
+    steps[i].move_to_next = `${to.name}까지 ${fmtKm(km)} · 차량 약 ${fmtMin(driveMin)}`;
+  }
+  return legs;
+}
+
+function routeSummary(steps, legs) {
+  const driveKm = legs.reduce((a, l) => a + l.km, 0);
+  const driveMin = legs.reduce((a, l) => a + l.driveMin, 0);
+  const stayMin = steps.reduce((a, s) => a + (s.stay ?? s.spot.stay_min ?? 60), 0);
+  return { stops: steps.length, driveKm, driveMin, stayMin, totalMin: driveMin + stayMin };
+}
+
+const SPOT_BY_NAME = Object.fromEntries(ENRICHED_SPOTS.map((s) => [s.name, s]));
+
 /* ==================== Curation ==================== */
 function localCuration(prompt) {
   const kws = prompt.replace(/,/g, " ").split(/\s+/).filter((w) => w.length >= 2);
-  const ranked = SPOTS.map((s) => {
+  const ranked = ENRICHED_SPOTS.map((s) => {
     const blob = `${s.name} ${s.region} ${s.theme} ${s.description}`;
     const score = kws.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0);
     return { score, s };
   }).sort((a, b) => b.score - a.score || a.s.region.localeCompare(b.s.region));
   const picks = ranked.slice(0, 3).map((r) => r.s);
+  const steps = picks.map((s, i) => ({
+    order: i + 1,
+    spot: s,
+    stay: s.stay_min,
+    why: `${s.description}. ${s.tip}`,
+  }));
+  const legs = computeLegs(steps);
+  const sum = routeSummary(steps, legs);
   return {
     title: "🥔 로컬 추천 코스",
-    summary: "입력하신 키워드와 가장 잘 맞는 강원도 명소를 순서대로 묶었어요.",
-    duration: "반나절~당일",
-    steps: picks.map((s, i) => ({
-      order: i + 1,
-      spot: s,
-      stay: 60,
-      why: s.description,
-    })),
+    summary: `총 ${fmtKm(sum.driveKm)} · 체류 ${fmtMin(sum.stayMin)} · 이동 ${fmtMin(sum.driveMin)} (추정)`,
+    duration: sum.totalMin <= 300 ? "반나절 코스" : "당일 코스",
+    steps,
   };
 }
 
 async function geminiCuration(prompt, key) {
-  const catalog = SPOTS.map((s) => `${s.name}|${s.region}|${s.theme}`).join("\n");
+  const catalog = ENRICHED_SPOTS.map(
+    (s) => `${s.name}|${s.region}|${s.theme}|체류${s.stay_min}분`
+  ).join("\n");
   const sys =
     "Gangwon (Korea) trip planner. Pick 1-4 spots from catalog; output JSON only. " +
     "Korean text values. Schema: " +
@@ -214,19 +270,26 @@ async function geminiCuration(prompt, key) {
   let text = d.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
   text = text.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
   const parsed = JSON.parse(text);
-  const byName = Object.fromEntries(SPOTS.map((s) => [s.name, s]));
+  const byName = SPOT_BY_NAME;
   const steps = (parsed.route_steps || [])
     .map((st, i) => {
-      const spot = byName[st.spot_name] || SPOTS.find((s) => s.name.includes(st.spot_name) || st.spot_name?.includes(s.name));
+      const spot = byName[st.spot_name] || ENRICHED_SPOTS.find((s) => s.name.includes(st.spot_name) || st.spot_name?.includes(s.name));
       if (!spot) return null;
-      return { order: i + 1, spot, stay: st.stay_minutes ?? 60, why: (st.why || spot.description).trim() };
+      return {
+        order: i + 1,
+        spot,
+        stay: st.stay_minutes ?? spot.stay_min ?? 60,
+        why: (st.why || `${spot.description}. ${spot.tip}`).trim(),
+      };
     })
     .filter(Boolean);
   if (!steps.length) throw new Error("no spots matched");
+  const legs = computeLegs(steps);
+  const sum = routeSummary(steps, legs);
   return {
     title: parsed.itinerary_title || "AI 추천 코스",
-    summary: parsed.summary || "",
-    duration: parsed.total_duration || "당일 코스",
+    summary: parsed.summary || `총 ${fmtKm(sum.driveKm)} · 체류 ${fmtMin(sum.stayMin)} · 이동 ${fmtMin(sum.driveMin)} (추정)`,
+    duration: parsed.total_duration || (sum.totalMin <= 300 ? "반나절 코스" : "당일 코스"),
     steps,
   };
 }
@@ -261,8 +324,9 @@ async function runCuration(prompt) {
     state.meta = { title: result.title, summary: result.summary, duration: result.duration };
     state.steps = result.steps;
     state.focusOrder = 1;
-    renderPlanner();
+    resetMapState();
     show("planner");
+    renderPlanner();
   } finally {
     btn.disabled = false;
     $("search-btn-label").classList.remove("hidden");
@@ -274,6 +338,7 @@ async function runCuration(prompt) {
 function courseCardHtml(step, active) {
   const t = THEME_BADGE[step.spot.theme] || { label: "SPOT", cls: "badge-nature" };
   const img = THEME_IMAGE[step.spot.theme] || DEFAULT_IMAGE;
+  const s = step.spot;
   return `
 <a class="course-card${active ? " on" : ""}" data-order="${step.order}">
   <div class="ci-wrap">
@@ -283,10 +348,15 @@ function courseCardHtml(step, active) {
   </div>
   <div class="course-body">
     <div class="course-top">
-      <h3>${esc(step.spot.name)}</h3>
+      <h3>${esc(s.name)}</h3>
       <span class="course-price">약 ${step.stay}분</span>
     </div>
-    <p class="course-loc">📍 ${esc(step.spot.region)}</p>
+    <p class="course-loc">📍 ${esc(s.region)} · ${esc(s.theme)}</p>
+    <div class="course-meta">
+      <span>🕐 ${esc(s.hours)}</span>
+      <span>🅿️ ${esc(s.parking)}</span>
+      <span>💰 ${esc(s.fee)}</span>
+    </div>
     <div class="course-ai">
       <div class="ai-lbl">✦ AI INSIGHT</div>
       <p>${esc(step.why)}</p>
@@ -295,25 +365,91 @@ function courseCardHtml(step, active) {
 </a>`;
 }
 
-function renderPlanner() {
-  const { meta, steps, query } = state;
-  $("plan-title").textContent = meta.title || "Tailored for You";
-  $("plan-summary").textContent = meta.summary || "";
-  $("plan-query").textContent = query ? `🔍 ${query}` : "";
-  $("chip-duration").textContent = `⏱ ${meta.duration || "당일 코스"}`;
-  $("chip-stops").textContent = `${steps.length} stops`;
-  $("courses").innerHTML = steps.map((s) => courseCardHtml(s, s.order === state.focusOrder)).join("");
+function legHtml(leg) {
+  return `<div class="course-leg">🚗 ${esc(leg.from.spot.name)} → ${esc(leg.to.spot.name)} · ${fmtKm(leg.km)} · 약 ${fmtMin(leg.driveMin)}</div>`;
+}
+
+function renderRouteSummary() {
+  const legs = computeLegs(state.steps);
+  const sum = routeSummary(state.steps, legs);
+  $("route-summary").innerHTML = `
+    <div class="route-stat"><strong>${sum.stops}</strong><span>정거장</span></div>
+    <div class="route-stat"><strong>${fmtKm(sum.driveKm)}</strong><span>총 이동</span></div>
+    <div class="route-stat"><strong>${fmtMin(sum.driveMin)}</strong><span>이동 시간</span></div>
+    <div class="route-stat"><strong>${fmtMin(sum.totalMin)}</strong><span>예상 소요</span></div>`;
+  $("chip-route").textContent = `🚗 ${fmtKm(sum.driveKm)} · ${fmtMin(sum.totalMin)}`;
+}
+
+function spotMapUrl(spot) {
+  return `https://map.kakao.com/link/map/${encodeURIComponent(spot.name)},${spot.lat},${spot.lng}`;
+}
+
+function renderSpotDetail() {
+  const step = state.steps.find((s) => s.order === state.focusOrder);
+  const el = $("spot-detail");
+  if (!step) { el.innerHTML = ""; return; }
+  const s = step.spot;
+  const move = step.move_to_next
+    ? `<p class="spot-move">→ ${esc(step.move_to_next)}</p>`
+    : `<p class="spot-move">🏁 마지막 정거장 · ${esc(s.region)} 일대</p>`;
+  el.innerHTML = `
+    <div class="spot-detail-head">
+      <span class="spot-step">STEP ${String(step.order).padStart(2, "0")}</span>
+      <span class="spot-theme">${esc(s.theme)}</span>
+    </div>
+    <h3>${esc(s.name)}</h3>
+    <p class="spot-region">📍 ${esc(s.region)} · 체류 약 ${step.stay}분 · ${esc(s.best_time)} 추천</p>
+    <div class="spot-grid">
+      <div class="spot-fact"><b>운영</b>${esc(s.hours)}</div>
+      <div class="spot-fact"><b>요금</b>${esc(s.fee)}</div>
+      <div class="spot-fact"><b>주차</b>${esc(s.parking)}</div>
+      <div class="spot-fact"><b>좌표</b>${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}</div>
+    </div>
+    ${move}
+    <div class="spot-tip"><b>TRAVEL TIP</b> ${esc(s.tip)}</div>
+    <div class="course-ai" style="margin-top:0.65rem">
+      <div class="ai-lbl">✦ AI INSIGHT</div>
+      <p>${esc(step.why)}</p>
+    </div>
+    <div class="spot-actions">
+      <a class="primary" href="${spotMapUrl(s)}" target="_blank" rel="noopener">🧭 이 장소 열기</a>
+      <a href="${kakaoRouteUrl(state.steps)}" target="_blank" rel="noopener">전체 경로</a>
+    </div>`;
+}
+
+function renderCourses() {
+  const legs = computeLegs(state.steps);
+  const parts = [];
+  state.steps.forEach((step, i) => {
+    parts.push(courseCardHtml(step, step.order === state.focusOrder));
+    if (legs[i]) parts.push(legHtml(legs[i]));
+  });
+  $("courses").innerHTML = parts.join("");
   $("courses").querySelectorAll(".course-card").forEach((card) => {
-    card.addEventListener("click", () => {
+    card.addEventListener("click", (e) => {
+      e.preventDefault();
       state.focusOrder = Number(card.dataset.order);
       $("courses").querySelectorAll(".course-card").forEach((c) =>
         c.classList.toggle("on", Number(c.dataset.order) === state.focusOrder));
       updateMapChrome();
+      renderSpotDetail();
       renderMap();
     });
   });
+}
+
+function renderPlanner() {
+  const { meta, steps, query } = state;
+  $("plan-title").textContent = meta.title || "맞춤 여행 코스";
+  $("plan-summary").textContent = meta.summary || "";
+  $("plan-query").textContent = query ? `🔍 ${query}` : "";
+  $("chip-duration").textContent = `⏱ ${meta.duration || "당일 코스"}`;
+  $("chip-stops").textContent = `${steps.length}곳`;
+  renderRouteSummary();
+  renderCourses();
   $("kakao-link").href = kakaoRouteUrl(steps);
   updateMapChrome();
+  renderSpotDetail();
   renderMap();
 }
 
@@ -340,9 +476,11 @@ function pinDiv(label, focused) {
 }
 
 function popupHtml(step) {
-  return `<div style="min-width:180px;line-height:1.55;font-size:13px;font-family:Inter,sans-serif;padding:2px;">
-    <strong style="color:#171d1c;">${step.order}. ${esc(step.spot.name)}</strong><br/>
-    <span style="color:#3e4947;">${esc(step.spot.region)} · ${esc(step.spot.theme)} · 약 ${step.stay}분</span><br/>
+  const s = step.spot;
+  return `<div style="min-width:200px;line-height:1.55;font-size:13px;font-family:Pretendard,sans-serif;padding:2px;">
+    <strong style="color:#171d1c;">${step.order}. ${esc(s.name)}</strong><br/>
+    <span style="color:#3e4947;">${esc(s.region)} · ${esc(s.theme)} · 약 ${step.stay}분</span><br/>
+    <span style="color:#3e4947;">🕐 ${esc(s.hours)} · 💰 ${esc(s.fee)}</span><br/>
     <span style="color:#3e4947;">${esc(step.why)}</span></div>`;
 }
 
@@ -352,10 +490,23 @@ function centerOf(steps) {
   return [lat, lng];
 }
 
+function normalizeKakaoKey(raw) {
+  let key = String(raw ?? "").trim();
+  if (!key || key === "YOUR_KAKAO_JAVASCRIPT_KEY") return "";
+  // GitHub Secrets UI에서 "Value: xxx" 형태로 복사된 경우 대비
+  key = key.replace(/^value:\s*/i, "").trim();
+  return key;
+}
+
 function kakaoKey() {
-  return (typeof window !== "undefined" && window.KAKAO_JS_KEY &&
-    window.KAKAO_JS_KEY !== "YOUR_KAKAO_JAVASCRIPT_KEY")
-    ? window.KAKAO_JS_KEY : "";
+  return normalizeKakaoKey(typeof window !== "undefined" ? window.KAKAO_JS_KEY : "");
+}
+
+function resetMapState() {
+  state.mapEngine = "";
+  state.map = null;
+  mapBooting = false;
+  mapNote("");
 }
 
 function mapNote(msg) {
@@ -422,11 +573,20 @@ function loadLeaflet(noteMsg) {
   document.head.appendChild(s);
 }
 
+function relayoutKakaoMap(map) {
+  if (!map || typeof map.relayout !== "function") return;
+  map.relayout();
+  requestAnimationFrame(() => map.relayout());
+  setTimeout(() => map.relayout(), 150);
+  setTimeout(() => map.relayout(), 600);
+}
+
 function renderKakao() {
   const el = $("map");
   el.innerHTML = "";
   const [clat, clng] = centerOf(state.steps);
   const map = new kakao.maps.Map(el, { center: new kakao.maps.LatLng(clat, clng), level: 8 });
+  state.map = map;
   map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.LEFT);
 
   const bounds = new kakao.maps.LatLngBounds();
@@ -469,7 +629,7 @@ function renderKakao() {
   } else if (path.length > 1) {
     map.setBounds(bounds);
   }
-  setTimeout(() => map.relayout(), 150);
+  relayoutKakaoMap(map);
 }
 
 function renderLeaflet() {
@@ -554,7 +714,7 @@ $("more-tags").addEventListener("click", () => {
   const expanded = btn.dataset.x === "1";
   document.querySelectorAll("#interest-tags .extra").forEach((t) => t.remove());
   if (!expanded) {
-    ["Hiking", "Night Views", "Local Markets"].forEach((t) => {
+    ["등산", "야경", "현지 시장"].forEach((t) => {
       const span = document.createElement("span");
       span.className = "tag extra";
       span.textContent = t;
@@ -563,7 +723,7 @@ $("more-tags").addEventListener("click", () => {
     btn.textContent = "접기";
     btn.dataset.x = "1";
   } else {
-    btn.textContent = "+3 More";
+    btn.textContent = "+3 더보기";
     btn.dataset.x = "0";
   }
 });
@@ -577,10 +737,21 @@ $("btn-logout").addEventListener("click", (e) => {
   toast("로그아웃했어요.");
 });
 
+function initHighlights() {
+  $("highlights").innerHTML = HIGHLIGHTS.map(
+    (h) =>
+      `<div class="hl-card">
+         <div class="hl-icon" style="background:${h.bg}">${h.icon}</div>
+         <strong>${esc(h.title)}</strong>
+         <span>${esc(h.region)}</span>
+       </div>`
+  ).join("");
+}
+
 /* ==================== Init ==================== */
 function init() {
   $("intro").innerHTML = REGION_INTRO;
-  $("spot-count").textContent = SPOTS.length;
+  $("spot-count").textContent = ENRICHED_SPOTS.length;
   $("suggest-pills").innerHTML = SUGGESTIONS
     .map((s) => `<button type="button" data-prompt="${esc(s.prompt)}">${esc(s.label)}</button>`)
     .join("");
@@ -592,6 +763,7 @@ function init() {
     });
   });
   refreshAiNote();
+  initHighlights();
   initFestivals();
   initWeather();
 }

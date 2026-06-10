@@ -3,10 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="origin" />
   <title>VoyageAI · 강원 — AI Journey Curator</title>
   <meta name="description" content="강원도 당일·반나절 여행 코스를 AI가 큐레이션합니다." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
@@ -18,10 +20,10 @@
       <div class="topnav-grid">
         <a class="logo" data-nav="explore">VoyageAI</a>
         <nav class="nav-links">
-          <a data-nav="explore" class="on">Explore</a>
-          <a data-nav="planner">Planner</a>
-          <a data-nav="trips">My Trips</a>
-          <a data-nav="community">Community</a>
+          <a data-nav="explore" class="on">탐색</a>
+          <a data-nav="planner">일정</a>
+          <a data-nav="trips">내 여행</a>
+          <a data-nav="community">커뮤니티</a>
         </nav>
         <div class="nav-right">
           <button title="알림" data-nav="trips">🔔</button>
@@ -29,7 +31,7 @@
           <span class="avatar-dot">AJ</span>
         </div>
       </div>
-      <a class="nav-search" id="nav-search">Search destinations…</a>
+      <a class="nav-search" id="nav-search">목적지 검색…</a>
     </header>
 
     <!-- ============ Explore ============ -->
@@ -41,22 +43,24 @@
               <span class="kicker">AI Journey Curator</span>
               <span class="welcome-badge">강원 GANGWON</span>
             </div>
-            <h2>Hello, Traveler</h2>
+            <h2>안녕하세요, 여행자님</h2>
             <p id="intro"></p>
           </div>
 
+          <div class="highlights" id="highlights"></div>
+
           <div class="dash">
             <div class="box">
-              <p class="lbl">Weather</p>
+              <p class="lbl">날씨</p>
               <div id="wx-body"></div>
               <div class="dots" id="wx-dots"></div>
             </div>
             <div class="box">
-              <p class="lbl">Festival</p>
+              <p class="lbl">축제</p>
               <div class="fest-vp"><div class="fest-tr" id="fest-tr"></div></div>
             </div>
             <div class="box tip-glass">
-              <p class="lbl">Pro Tip</p>
+              <p class="lbl">여행 팁</p>
               <p class="sub">"해안도로는 해 지기 직전이 가장 아름다워요. 황금빛 노을 드라이브를 놓치지 마세요."</p>
             </div>
           </div>
@@ -72,7 +76,7 @@
           <form class="searchbar" id="search-form">
             <input id="search-input" type="text" placeholder="예: 가족과 함께 설악산과 동해 바다를 둘러보는 주말 드라이브…" autocomplete="off" />
             <button class="btn-primary" id="search-btn" type="submit">
-              <span id="search-btn-label">✦ Design AI Course</span>
+              <span id="search-btn-label">✦ AI 코스 설계</span>
               <span class="spinner" id="search-spin"></span>
             </button>
           </form>
@@ -90,12 +94,12 @@
             <div class="stat"><strong>12</strong><span>Trips</span></div>
             <div class="stat"><strong>840</strong><span>Points</span></div>
           </div>
-          <p class="section-lbl">Interests ✎</p>
+          <p class="section-lbl">관심 테마 ✎</p>
           <div class="tags" id="interest-tags">
-            <span class="tag t1">Coastal Drive</span>
-            <span class="tag t2">Gastronomy</span>
-            <span class="tag t3">Photography</span>
-            <button class="tag toggle" id="more-tags">+3 More</button>
+            <span class="tag t1">해안 드라이브</span>
+            <span class="tag t2">미식</span>
+            <span class="tag t3">사진</span>
+            <button class="tag toggle" id="more-tags">+3 더보기</button>
           </div>
           <div class="saved">
             <p class="s1">Saved Discovery ♡</p>
@@ -123,20 +127,22 @@
         <section>
           <div class="tailored-head">
             <div>
-              <h1 id="plan-title">Tailored for You</h1>
+              <h1 id="plan-title">맞춤 여행 코스</h1>
               <p id="plan-summary"></p>
               <p class="q-line" id="plan-query"></p>
             </div>
             <div class="head-chips">
-              <span class="chip">✓ AI OPTIMIZED</span>
+              <span class="chip">✓ AI 최적화</span>
               <span class="chip" id="chip-duration">⏱ 당일 코스</span>
               <span class="chip" id="chip-stops"></span>
+              <span class="chip chip-route" id="chip-route"></span>
             </div>
           </div>
+          <div class="route-summary" id="route-summary"></div>
           <div class="split">
             <div>
-              <p class="panel-lbl">Daily Courses</p>
-              <p class="panel-hint">카드를 탭하면 지도 포커스가 이동합니다</p>
+              <p class="panel-lbl">일정 타임라인</p>
+              <p class="panel-hint">카드를 탭하면 지도·상세 정보가 갱신됩니다</p>
               <div class="courses" id="courses"></div>
               <button class="btn-secondary" data-nav="explore">✦ 새 여행 설계하기</button>
             </div>
@@ -148,6 +154,7 @@
               <a class="kakao-link" id="kakao-link" target="_blank" rel="noopener">🧭 카카오맵에서 길찾기</a>
               <div id="map-wrap"><div id="map"></div></div>
               <p class="map-note hidden" id="map-note"></p>
+              <div class="spot-detail" id="spot-detail"></div>
             </div>
           </div>
         </section>

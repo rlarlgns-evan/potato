@@ -42,15 +42,79 @@ const GANGWON_CITIES = [
 ];
 
 const FESTIVALS = [
-  { title: "평창 송어축제", period: "1~2월", place: "평창군" },
-  { title: "화천 산천어축제", period: "1월", place: "화천군" },
-  { title: "강릉 커피축제", period: "10월", place: "강릉시" },
-  { title: "정선 아리랑제", period: "10월", place: "정선군" },
-  { title: "춘천 막국수 닭갈비 축제", period: "10월", place: "춘천시" },
-  { title: "속초 설악산 단풍제", period: "10월", place: "속초시" },
-  { title: "삼척 비치 페스티벌", period: "7~8월", place: "삼척시" },
-  { title: "원주 댄싱카니발", period: "9월", place: "원주시" },
+  { title: "평창 송어축제", period: "1~2월", place: "평창군", desc: "얼음낚시·지역 먹거리" },
+  { title: "화천 산천어축제", period: "1월", place: "화천군", desc: "빙어·얼음낚시" },
+  { title: "강릉 커피축제", period: "10월", place: "강릉시", desc: "안목·경포 카페거리" },
+  { title: "정선 아리랑제", period: "10월", place: "정선군", desc: "전통공연·레일바이크" },
+  { title: "춘천 막국수 닭갈비 축제", period: "10월", place: "춘천시", desc: "로컬 먹거리" },
+  { title: "속초 설악산 단풍제", period: "10월", place: "속초시", desc: "단풍·트레킹" },
+  { title: "삼척 비치 페스티벌", period: "7~8월", place: "삼척시", desc: "해변·공연" },
+  { title: "원주 댄싱카니발", period: "9월", place: "원주시", desc: "거리공연·문화" },
 ];
+
+const HIGHLIGHTS = [
+  { title: "설악산 단풍", region: "속초·고성", icon: "▲", bg: "linear-gradient(135deg,#0D9488,#14B8A6)" },
+  { title: "남이섬·소나무", region: "춘천", icon: "♣", bg: "linear-gradient(135deg,#0891B2,#22D3EE)" },
+  { title: "동해 해변 드라이브", region: "동해·삼척", icon: "≈", bg: "linear-gradient(135deg,#0284C7,#38BDF8)" },
+  { title: "평창 대관령 드라이브", region: "평창·횡성", icon: "◇", bg: "linear-gradient(135deg,#6366F1,#A78BFA)" },
+  { title: "강릉·양양 해변·카페", region: "강릉·양양", icon: "◎", bg: "linear-gradient(135deg,#F59E0B,#FCD34D)" },
+];
+
+/** 테마별 기본 메타 (추후 한국관광공사 API contentId 매핑용 필드 포함) */
+const THEME_META = {
+  "트레킹": { stay_min: 90, fee: "무료~有 (시설별 상이)", hours: "09:00–17:00", parking: "입구 주차장", best_time: "오전", tip: "등산화·수분·여벌 양말을 챙기세요" },
+  "힐링": { stay_min: 75, fee: "무료", hours: "연중", parking: "인근 공영·민영 주차", best_time: "해질녘", tip: "느긋한 산책·사진 촬영에 좋아요" },
+  "체험": { stay_min: 90, fee: "체험료 별도", hours: "10:00–17:00", parking: "주차장 완비", best_time: "오후", tip: "사전 예약·마감 시간을 확인하세요" },
+  "야경": { stay_min: 60, fee: "무료~有", hours: "일몰~22:00", parking: "야간 주차 가능 구역", best_time: "일몰 1시간 전", tip: "방한·삼각대를 준비하면 좋아요" },
+  "역사": { stay_min: 60, fee: "무료~有", hours: "09:00–18:00", parking: "관광지 인근", best_time: "오전", tip: "해설·유적 이야기를 함께 즐겨보세요" },
+  "자전거": { stay_min: 80, fee: "대여료 별도", hours: "10:00–17:00", parking: "출발점 주차", best_time: "오전~오후", tip: "헬멧·장갑·물을 챙기세요" },
+};
+
+/** 명소별 세부 (API 연동 전 수동 시드 — contentId는 추후 KTO API 매핑) */
+const SPOT_OVERRIDES = {
+  "방태산 자연휴양림 숲길": { stay_min: 80, hours: "08:00–18:00", parking: "휴양림 주차장", tip: "숲길 2~3km 완만 · 가족 산책 적합" },
+  "만항재 은하수 전망지": { stay_min: 45, fee: "무료", hours: "야간 (일몰 후)", tip: "별·야경 촬영 · 겨울 방한 필수" },
+  "삼척 덕풍계곡 비경길": { stay_min: 90, parking: "덕풍계곡 주차장", tip: "계곡 트레킹 · 여름 피서 인기" },
+  "영월 청령포 고요 산책": { stay_min: 50, fee: "무료", tip: "동강·청령포 산책로 · 유네스코 지질공원 인근" },
+  "평창 백룡동굴 탐방": { stay_min: 70, fee: "성인 약 6,000원", hours: "09:00–17:30", tip: "동굴 내 온도 8~12°C · 겉옷 필요" },
+  "양구 파로호 둘레길": { stay_min: 90, fee: "무료", tip: "자전거·산책 겸용 · 호수 전망" },
+  "속초 설악산 국립공원": { stay_min: 120, fee: "케이블카 별도", hours: "08:00–18:00", parking: "설악산 입구 주차장", tip: "케이블카·권금성·대청봉 코스 선택" },
+  "강릉 경포대·해변": { stay_min: 70, fee: "경포대 무료", tip: "호수·해변 연계 산책 · 자전거 대여 가능" },
+  "강릉 안목해변 커피거리": { stay_min: 60, fee: "무료", best_time: "일몰", tip: "카페·일몰 드라이브 · 주말 혼잡" },
+  "춘천 남이섬": { stay_min: 120, fee: "왕복선·입장료 별도", hours: "09:00–18:00", parking: "남이섬 선착장", tip: "유람선·자전거·메타세쿼이아길" },
+  "춘천 소양강 스카이워크": { stay_min: 40, fee: "약 2,000원", hours: "09:00–18:00", tip: "유리 전망대 · 소양강·춘천 시내 조망" },
+  "원주 치악산 케이블카": { stay_min: 90, fee: "케이블카 별도", hours: "09:00–17:00", tip: "단풍 시즌(10월) 인기 · 전망대" },
+  "홍천 비내섭계곡": { stay_min: 80, fee: "무료", tip: "여름 물놀이 · 계곡 피서" },
+  "태백산 천제단": { stay_min: 100, fee: "입장료 별도", hours: "04:00–(일출)", tip: "일출·눈꽃 · 고산 기온 낮음" },
+  "정선 레일바이크": { stay_min: 60, fee: "레일바이크 별도", hours: "09:30–17:00", tip: "아리랑마을 연계 · 사전 예약 권장" },
+  "정선 하이원 리조트 전망": { stay_min: 50, fee: "무료(전망)", tip: "산악 드라이브 · 스키 시즌 연계" },
+  "동해 무릉계곡": { stay_min: 80, parking: "무릉계곡 주차장", tip: "폭포·계곡 산책 · 여름 인기" },
+  "동해 무릉 건강숲": { stay_min: 70, tip: "숲길 트레킹 · 무릉계곡과 연계 가능" },
+  "삼척 케이블카·용화해수욕장": { stay_min: 90, fee: "케이블카 별도", tip: "해안 케이블카·해변 · 동해안 드라이브" },
+  "고성 통일전망대": { stay_min: 45, fee: "무료~有", tip: "DMZ·전망 · 신분증 지참" },
+  "양양 서피비치": { stay_min: 90, fee: "무료", tip: "서핑·해변 · 장비 대여 가능" },
+  "인제 원대리 자작나무숲": { stay_min: 60, fee: "무료", tip: "포토스팟 · 가을·겨울 인기" },
+  "횡성 한우·둔내 온천": { stay_min: 120, fee: "온천·식사 별도", tip: "한우·온천 힐링 · 저녁 식사 연계" },
+  "화천 산천어축제 거리": { stay_min: 90, fee: "체험별 상이", hours: "1월 시즌", tip: "겨울 축제 · 얼음낚시·먹거리" },
+};
+
+function enrichSpot(raw) {
+  const theme = THEME_META[raw.theme] || {};
+  const extra = SPOT_OVERRIDES[raw.name] || {};
+  return {
+    ...raw,
+    stay_min: extra.stay_min ?? theme.stay_min ?? 60,
+    fee: extra.fee ?? theme.fee ?? "현장 확인",
+    hours: extra.hours ?? theme.hours ?? "연중",
+    parking: extra.parking ?? theme.parking ?? "인근 주차 가능",
+    best_time: extra.best_time ?? theme.best_time ?? "주말·휴일",
+    tip: extra.tip ?? theme.tip ?? raw.description,
+    contentId: extra.contentId ?? raw.contentId ?? null,
+    tags: extra.tags ?? [raw.theme, raw.region.replace(/[시군]$/, "")],
+  };
+}
+
+const ENRICHED_SPOTS = SPOTS.map(enrichSpot);
 
 const FESTIVAL_ICONS = ["🎪", "🎭", "🎶", "🐟", "☕", "🎿", "🌸", "🍁"];
 

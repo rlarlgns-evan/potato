@@ -26,7 +26,10 @@ jobs:
 
       - name: Inject Kakao JS key from secret
         run: |
-          echo "window.KAKAO_JS_KEY = \"${KAKAO_JS_KEY}\";" > docs/config.js
+          KEY="${KAKAO_JS_KEY#Value: }"
+          KEY="${KEY#value: }"
+          KEY="$(printf '%s' "$KEY" | sed 's/^[Vv][Aa][Ll][Uu][Ee]:[[:space:]]*//')"
+          printf 'window.KAKAO_JS_KEY = "%s";\n' "$KEY" > docs/config.js
         env:
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
 
