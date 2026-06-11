@@ -1093,15 +1093,6 @@ function renderLeaflet() {
   setTimeout(() => map.invalidateSize(), 150);
 }
 
-/* ==================== Service status ==================== */
-function refreshAiNote() {
-  const el = $("ai-mode-note");
-  if (!el) return;
-  el.textContent = geminiAvailable()
-    ? "AI 여행 코디네이터 · Gemini"
-    : "로컬 미리보기 (config.js에 GOOGLE_API_KEY 필요)";
-}
-
 /* ==================== Misc interactions ==================== */
 $("agent-form")?.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -1167,7 +1158,8 @@ function initHighlights() {
 /* ==================== Init ==================== */
 function init() {
   $("intro").innerHTML = REGION_INTRO;
-  $("spot-count").textContent = ENRICHED_SPOTS.length;
+  const spotEl = $("spot-count");
+  if (spotEl) spotEl.textContent = ENRICHED_SPOTS.length;
   $("suggest-pills").innerHTML = SUGGESTIONS
     .map((s) => `<button type="button" data-prompt="${esc(s.prompt)}">${esc(s.label)}</button>`)
     .join("");
@@ -1177,7 +1169,6 @@ function init() {
   ensureAgentWelcome();
   renderAgentChat();
   if ($("agent-spin")) $("agent-spin").style.display = "none";
-  refreshAiNote();
   initHighlights();
   initFestivals();
   initWeather();

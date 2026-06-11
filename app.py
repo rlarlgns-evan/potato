@@ -18,7 +18,6 @@ from ui import (
     render_planner_map_chrome,
     render_tailored_header,
     render_trip_plan_panel,
-    render_agent_starters,
     render_voyage_app_sidebar,
     render_voyage_explore_page,
     render_voyage_top_nav,
@@ -177,24 +176,41 @@ if st.session_state.get("_toast"):
 if st.session_state.screen == "home":
     render_voyage_explore_page(len(ALL_SPOTS))
 
+    from content_loader import load_suggestions
+
     welcome = (
         "✦ 안녕하세요! 강원도 여행의 무엇이든 물어보세요.\n\n"
         "출발지·교통·일정·동행·테마를 알려주시면 맞춤 동선과 지도를 만들어 드릴게요."
     )
-    if not st.session_state.messages:
-        with st.chat_message("assistant", avatar="✦"):
-            st.markdown(welcome)
-        render_agent_starters()
-    else:
-        for msg in st.session_state.messages:
-            with st.chat_message(
-                msg["role"],
-                avatar="✦" if msg["role"] == "assistant" else None,
-            ):
-                st.markdown(msg["content"])
+    suggestions = load_suggestions()[:4]
+
+    with st.container(border=True):
+        st.caption("● AI Concierge · 실시간 여행 추천")
+        if not st.session_state.messages:
+            with st.chat_message("assistant", avatar="✦"):
+                st.markdown(welcome)
+            st.markdown(
+                '<p style="margin:0.5rem 0 0.35rem;font-size:0.68rem;font-weight:700;'
+                'letter-spacing:0.06em;text-transform:uppercase;color:#3e4947;">'
+                "이렇게 물어보세요</p>",
+                unsafe_allow_html=True,
+            )
+            pill_cols = st.columns(min(len(suggestions), 4))
+            for i, s in enumerate(suggestions):
+                with pill_cols[i % len(pill_cols)]:
+                    if st.button(s["label"], key=f"agent_pill_{i}", use_container_width=True):
+                        _run_curation(s["prompt"])
+                        st.rerun()
+        else:
+            for msg in st.session_state.messages:
+                with st.chat_message(
+                    msg["role"],
+                    avatar="✦" if msg["role"] == "assistant" else None,
+                ):
+                    st.markdown(msg["content"])
 
     if user_prompt := st.chat_input(
-        "여행 조건을 알려주세요 — 출발지, 교통, 일정, 동행, 테마…",
+        "출발지, 교통, 일정, 동행, 테마를 자유롭게 입력하세요…",
         key="agent_chat_input",
     ):
         _run_curation(user_prompt.strip())

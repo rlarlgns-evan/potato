@@ -64,25 +64,31 @@
             </div>
           </div>
 
-          <div class="agent-panel" id="agent-panel">
-            <div class="agent-head"><span class="chat-dot"></span> AI Concierge · 실시간 추천</div>
-            <div class="agent-messages" id="agent-messages"></div>
-            <div class="agent-starters" id="agent-starters">
-              <p class="suggest-label">이렇게 물어보세요</p>
-              <div class="pills" id="suggest-pills"></div>
-            </div>
-            <form class="agent-compose" id="agent-form">
-              <textarea id="agent-input" rows="1" placeholder="여행 조건을 알려주세요 — 출발지, 교통, 일정, 동행, 테마…" autocomplete="off"></textarea>
-              <button class="btn-primary agent-send" id="agent-send" type="submit" title="전송">
-                <span id="agent-send-label">↑</span>
-                <span class="spinner" id="agent-spin"></span>
-              </button>
-            </form>
+          <div class="chat-shell" id="chat-shell">
+            <header class="chat-shell-header">
+              <span class="chat-dot"></span>
+              <div class="chat-shell-title">
+                <strong>AI Concierge</strong>
+                <span>실시간 여행 추천 · 강원 <span id="spot-count"></span>곳</span>
+              </div>
+            </header>
+            <div class="chat-body" id="agent-messages" role="log" aria-live="polite"></div>
+            <footer class="chat-footer">
+              <div class="chat-starters" id="agent-starters">
+                <p class="suggest-label">이렇게 물어보세요</p>
+                <div class="pills" id="suggest-pills"></div>
+              </div>
+              <form class="chat-input-bar" id="agent-form">
+                <div class="chat-input-inner">
+                  <textarea id="agent-input" rows="1" placeholder="출발지, 교통, 일정, 동행, 테마를 자유롭게 입력하세요…" autocomplete="off"></textarea>
+                  <button class="chat-send-btn" id="agent-send" type="submit" aria-label="전송">
+                    <span id="agent-send-label">↑</span>
+                    <span class="spinner" id="agent-spin"></span>
+                  </button>
+                </div>
+              </form>
+            </footer>
           </div>
-          <p class="footer-note">
-            강원도 주요 관광지 <span id="spot-count"></span>곳 ·
-            <a id="ai-mode-note"></a>
-          </p>
         </section>
 
         <aside class="profile">
