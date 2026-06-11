@@ -2,6 +2,19 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
+  <script>
+    (function () {
+      var path = location.pathname;
+      if (!path.endsWith("/")) {
+        path = path.lastIndexOf(".") > path.lastIndexOf("/")
+          ? path.slice(0, path.lastIndexOf("/") + 1)
+          : path + "/";
+      }
+      var base = document.createElement("base");
+      base.href = path;
+      document.head.appendChild(base);
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="referrer" content="origin" />
   <title>VoyageAI · 강원 — AI Journey Curator</title>
@@ -10,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=3" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body>
@@ -46,6 +59,34 @@
             <p id="intro"></p>
           </div>
 
+          <div class="chat-shell" id="chat-shell">
+            <div class="chat-shell-header">
+              <span class="chat-dot"></span>
+              <div class="chat-shell-title">
+                <strong>AI Concierge</strong>
+                <span>실시간 여행 추천 · 강원 <span id="spot-count">24</span>곳</span>
+              </div>
+            </div>
+            <div class="chat-body" id="agent-messages" role="log" aria-live="polite">
+              <div class="bubble-ai" id="agent-welcome-fallback">✦ 안녕하세요! 강원도 여행의 무엇이든 물어보세요. 출발지·교통·일정·동행·테마를 알려주시면 맞춤 동선과 지도를 만들어 드릴게요.</div>
+            </div>
+            <div class="chat-footer">
+              <div class="chat-starters" id="agent-starters">
+                <p class="suggest-label">이렇게 물어보세요</p>
+                <div class="pills" id="suggest-pills"></div>
+              </div>
+              <form class="chat-input-bar" id="agent-form">
+                <div class="chat-input-inner">
+                  <textarea id="agent-input" rows="1" placeholder="메시지를 입력하세요…" autocomplete="off"></textarea>
+                  <button class="chat-send-btn" id="agent-send" type="submit" aria-label="전송">
+                    <span id="agent-send-label">↑</span>
+                    <span class="spinner" id="agent-spin"></span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
           <div class="highlights" id="highlights"></div>
 
           <div class="dash">
@@ -64,31 +105,6 @@
             </div>
           </div>
 
-          <div class="chat-shell" id="chat-shell">
-            <header class="chat-shell-header">
-              <span class="chat-dot"></span>
-              <div class="chat-shell-title">
-                <strong>AI Concierge</strong>
-                <span>실시간 여행 추천 · 강원 <span id="spot-count"></span>곳</span>
-              </div>
-            </header>
-            <div class="chat-body" id="agent-messages" role="log" aria-live="polite"></div>
-            <footer class="chat-footer">
-              <div class="chat-starters" id="agent-starters">
-                <p class="suggest-label">이렇게 물어보세요</p>
-                <div class="pills" id="suggest-pills"></div>
-              </div>
-              <form class="chat-input-bar" id="agent-form">
-                <div class="chat-input-inner">
-                  <textarea id="agent-input" rows="1" placeholder="출발지, 교통, 일정, 동행, 테마를 자유롭게 입력하세요…" autocomplete="off"></textarea>
-                  <button class="chat-send-btn" id="agent-send" type="submit" aria-label="전송">
-                    <span id="agent-send-label">↑</span>
-                    <span class="spinner" id="agent-spin"></span>
-                  </button>
-                </div>
-              </form>
-            </footer>
-          </div>
         </section>
 
         <aside class="profile">
@@ -171,7 +187,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="config.js"></script>
-  <script src="data.js"></script>
-  <script src="app.js"></script>
+  <script src="data.js?v=3"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

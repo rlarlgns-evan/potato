@@ -63,6 +63,10 @@ function renderAgentChat() {
   }
 }
 
+function pillPromptAttr(prompt) {
+  return encodeURIComponent(String(prompt ?? ""));
+}
+
 function ensureAgentWelcome() {
   if (!state.chat.length) {
     state.chat.push({ role: "assistant", text: AGENT_WELCOME });
@@ -1107,13 +1111,13 @@ $("agent-input")?.addEventListener("keydown", (e) => {
   }
 });
 
-$("nav-search").addEventListener("click", (e) => {
+$("nav-search")?.addEventListener("click", (e) => {
   e.preventDefault();
   show("explore");
   $("agent-input")?.focus();
 });
 
-$("more-tags").addEventListener("click", () => {
+$("more-tags")?.addEventListener("click", () => {
   const btn = $("more-tags");
   const expanded = btn.dataset.x === "1";
   document.querySelectorAll("#interest-tags .extra").forEach((t) => t.remove());
@@ -1132,7 +1136,7 @@ $("more-tags").addEventListener("click", () => {
   }
 });
 
-$("btn-logout").addEventListener("click", (e) => {
+$("btn-logout")?.addEventListener("click", (e) => {
   e.preventDefault();
   state.steps = [];
   state.query = "";
@@ -1157,21 +1161,36 @@ function initHighlights() {
 
 /* ==================== Init ==================== */
 function init() {
-  $("intro").innerHTML = REGION_INTRO;
-  const spotEl = $("spot-count");
-  if (spotEl) spotEl.textContent = ENRICHED_SPOTS.length;
-  $("suggest-pills").innerHTML = SUGGESTIONS
-    .map((s) => `<button type="button" data-prompt="${esc(s.prompt)}">${esc(s.label)}</button>`)
-    .join("");
-  $("suggest-pills").querySelectorAll("button").forEach((b) => {
-    b.addEventListener("click", () => submitAgentPrompt(b.dataset.prompt));
-  });
-  ensureAgentWelcome();
-  renderAgentChat();
-  if ($("agent-spin")) $("agent-spin").style.display = "none";
-  initHighlights();
-  initFestivals();
-  initWeather();
+  try {
+    if ($("intro")) $("intro").innerHTML = REGION_INTRO;
+    const spotEl = $("spot-count");
+    if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
+    const pillsEl = $("suggest-pills");
+    if (pillsEl) {
+      pillsEl.innerHTML = SUGGESTIONS.map(
+        (s) =>
+          `<button type="button" data-prompt="${pillPromptAttr(s.prompt)}">${esc(s.label)}</button>`
+      ).join("");
+      pillsEl.querySelectorAll("button").forEach((b) => {
+        b.addEventListener("click", () => {
+          submitAgentPrompt(decodeURIComponent(b.dataset.prompt || ""));
+        });
+      });
+    }
+    ensureAgentWelcome();
+    renderAgentChat();
+    if ($("agent-spin")) $("agent-spin").style.display = "none";
+    initHighlights();
+    initFestivals();
+    initWeather();
+  } catch (err) {
+    console.error("init failed:", err);
+    toast("화면 로딩 오류 — 새로고침(Ctrl+Shift+R) 해 주세요.");
+  }
 }
 
-init();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}

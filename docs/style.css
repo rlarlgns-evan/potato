@@ -162,12 +162,13 @@ a { color: inherit; }
 /* ---------- Chat shell (single unified box) ---------- */
 .chat-shell {
   display: flex; flex-direction: column;
-  height: min(520px, 62vh); min-height: 380px;
+  width: 100%;
+  height: min(560px, 68vh); min-height: 420px;
   background: #fff;
-  border: 1px solid rgba(102, 188, 176, 0.18);
-  border-radius: 20px;
-  box-shadow: 0 12px 40px rgba(0, 80, 72, 0.08);
-  margin-bottom: 1rem;
+  border: 1px solid rgba(102, 188, 176, 0.22);
+  border-radius: 22px;
+  box-shadow: 0 16px 48px rgba(0, 80, 72, 0.1);
+  margin: 0 0 1.25rem;
   overflow: hidden;
 }
 .chat-shell-header {
@@ -198,10 +199,11 @@ a { color: inherit; }
 .chat-starters.hidden { display: none; }
 .chat-input-bar { margin: 0; }
 .chat-input-inner {
-  display: flex; align-items: flex-end; gap: 0.45rem;
-  padding: 0.45rem 0.45rem 0.45rem 0.85rem;
+  display: flex; align-items: flex-end; gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 0.55rem 0.55rem 1rem;
   border: 1px solid var(--outline-variant);
-  border-radius: 18px;
+  border-radius: 20px;
   background: #f8faf9;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -212,13 +214,13 @@ a { color: inherit; }
 }
 .chat-input-inner textarea {
   flex: 1; border: none; outline: none; background: transparent;
-  resize: none; max-height: 120px; min-height: 24px;
-  font-family: inherit; font-size: 0.88rem; line-height: 1.45;
-  color: var(--on-surface); padding: 0.35rem 0;
+  resize: none; max-height: 140px; min-height: 28px; width: 100%;
+  font-family: inherit; font-size: 0.92rem; line-height: 1.45;
+  color: var(--on-surface); padding: 0.4rem 0;
 }
 .chat-input-inner textarea::placeholder { color: #94a3a0; }
 .chat-send-btn {
-  width: 36px; height: 36px; min-width: 36px; padding: 0;
+  width: 40px; height: 40px; min-width: 40px; padding: 0;
   border: none; border-radius: 50%; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(180deg, var(--primary) 0%, #005a52 100%);
