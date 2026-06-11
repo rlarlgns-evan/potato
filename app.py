@@ -17,6 +17,8 @@ from ui import (
     render_course_cards_list,
     render_planner_map_chrome,
     render_tailored_header,
+    render_trip_plan_panel,
+    render_agent_starters,
     render_voyage_app_sidebar,
     render_voyage_explore_page,
     render_voyage_top_nav,
@@ -71,27 +73,36 @@ def _apply_curation_result(result: dict, user_prompt: str) -> None:
         "map_tip": result.get("map_tip", ""),
         "total_duration": result.get("total_duration", ""),
         "message": result.get("message", ""),
+        "source": result.get("source", "local"),
+        "trip_intent": result.get("trip_intent") or {},
+        "transit_plan": result.get("transit_plan") or {},
+        "accommodation": result.get("accommodation") or {},
+        "day_plans": result.get("day_plans") or [],
     }
     st.session_state.focus_order = 1
     if result["curated_spots"]:
         st.session_state.screen = "results"
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=86400 * 7, show_spinner=False)
 def _cached_curation(prompt: str, provider: str) -> dict:
-    """같은 질문은 캐시로 반환 → 불필요한 AI(API) 호출 방지."""
+    """같은 질문은 7일 캐시 → AI(API) 호출 최소화."""
     return curate_trip(user_message=prompt, spots=ALL_SPOTS, chat_history=[])
 
 
 def _run_curation(user_prompt: str) -> None:
     provider = os.getenv("AI_PROVIDER", "openai").lower()
     st.session_state.messages = [{"role": "user", "content": user_prompt}]
-    with st.spinner("AI가 맞춤 동선을 설계하는 중…"):
+    with st.spinner("맞춤 동선 설계 중…"):
         result = _cached_curation(user_prompt, provider)
     st.session_state.messages.append(
         {"role": "assistant", "content": result["message"]}
     )
     _apply_curation_result(result, user_prompt)
+    src = result.get("source", "")
+    if src in ("local_skip", "local_api_fail", "local"):
+        from curation_sources import source_label
+        st.session_state._toast = f"{source_label(src)} · {result.get('itinerary_title', '코스')}"
     if not result.get("curated_spots"):
         st.session_state._toast = "조건에 맞는 코스를 찾지 못했어요. 다르게 표현해 보세요."
 
@@ -166,27 +177,26 @@ if st.session_state.get("_toast"):
 if st.session_state.screen == "home":
     render_voyage_explore_page(len(ALL_SPOTS))
 
-    with st.form("ai_trip_search", clear_on_submit=True):
-        in_col, btn_col = st.columns([3, 1], gap="small", vertical_alignment="center")
-        with in_col:
-            user_prompt = st.text_input(
-                "label",
-                placeholder="예: 가족과 함께 설악산과 동해 바다를 둘러보는 주말 드라이브…",
-                label_visibility="collapsed",
-            )
-        with btn_col:
-            submitted = st.form_submit_button(
-                "✦ Design AI Course", type="primary", use_container_width=True
-            )
-
-    st.markdown(
-        f'<p style="text-align:center;font-size:0.74rem;color:#3e4947;margin-top:0.6rem;">'
-        f"강원도 주요 관광지 {len(ALL_SPOTS)}곳을 필터 없이 AI가 실시간 탐색합니다."
-        f"</p>",
-        unsafe_allow_html=True,
+    welcome = (
+        "✦ 안녕하세요! 강원도 여행의 무엇이든 물어보세요.\n\n"
+        "출발지·교통·일정·동행·테마를 알려주시면 맞춤 동선과 지도를 만들어 드릴게요."
     )
+    if not st.session_state.messages:
+        with st.chat_message("assistant", avatar="✦"):
+            st.markdown(welcome)
+        render_agent_starters()
+    else:
+        for msg in st.session_state.messages:
+            with st.chat_message(
+                msg["role"],
+                avatar="✦" if msg["role"] == "assistant" else None,
+            ):
+                st.markdown(msg["content"])
 
-    if submitted and user_prompt.strip():
+    if user_prompt := st.chat_input(
+        "여행 조건을 알려주세요 — 출발지, 교통, 일정, 동행, 테마…",
+        key="agent_chat_input",
+    ):
         _run_curation(user_prompt.strip())
         st.rerun()
 
@@ -221,6 +231,7 @@ else:
 
     with main_col:
         render_tailored_header(meta, st.session_state.last_user_query, len(steps))
+        render_trip_plan_panel(meta)
 
         route_for_map = build_route_markers(curated, steps)
         list_col, map_col = st.columns([1, 1.08], gap="medium")

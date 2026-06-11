@@ -27,7 +27,6 @@
         </nav>
         <div class="nav-right">
           <button title="알림" data-nav="trips">🔔</button>
-          <button title="설정 · Gemini API 키" id="btn-settings">⚙</button>
           <span class="avatar-dot">AJ</span>
         </div>
       </div>
@@ -65,23 +64,23 @@
             </div>
           </div>
 
-          <div class="chat-box">
-            <div class="chat-head"><span class="chat-dot"></span> AI Concierge · 실시간 추천</div>
-            <div class="bubble-ai">✦ 안녕하세요! 강원도 여행의 무엇이든 물어보세요. 원하는 분위기·동행·테마를 알려주시면 맞춤 동선과 지도를 만들어 드릴게요.</div>
-            <div class="bubble-user hidden" id="last-query"></div>
-            <p class="suggest-label">이렇게 물어보세요</p>
-            <div class="pills" id="suggest-pills"></div>
+          <div class="agent-panel" id="agent-panel">
+            <div class="agent-head"><span class="chat-dot"></span> AI Concierge · 실시간 추천</div>
+            <div class="agent-messages" id="agent-messages"></div>
+            <div class="agent-starters" id="agent-starters">
+              <p class="suggest-label">이렇게 물어보세요</p>
+              <div class="pills" id="suggest-pills"></div>
+            </div>
+            <form class="agent-compose" id="agent-form">
+              <textarea id="agent-input" rows="1" placeholder="여행 조건을 알려주세요 — 출발지, 교통, 일정, 동행, 테마…" autocomplete="off"></textarea>
+              <button class="btn-primary agent-send" id="agent-send" type="submit" title="전송">
+                <span id="agent-send-label">↑</span>
+                <span class="spinner" id="agent-spin"></span>
+              </button>
+            </form>
           </div>
-
-          <form class="searchbar" id="search-form">
-            <input id="search-input" type="text" placeholder="예: 가족과 함께 설악산과 동해 바다를 둘러보는 주말 드라이브…" autocomplete="off" />
-            <button class="btn-primary" id="search-btn" type="submit">
-              <span id="search-btn-label">✦ AI 코스 설계</span>
-              <span class="spinner" id="search-spin"></span>
-            </button>
-          </form>
           <p class="footer-note">
-            강원도 주요 관광지 <span id="spot-count"></span>곳을 필터 없이 AI가 실시간 탐색합니다 ·
+            강원도 주요 관광지 <span id="spot-count"></span>곳 ·
             <a id="ai-mode-note"></a>
           </p>
         </section>
@@ -132,13 +131,14 @@
               <p class="q-line" id="plan-query"></p>
             </div>
             <div class="head-chips">
-              <span class="chip">✓ AI 최적화</span>
+              <span class="chip" id="chip-source">◆ 로컬 AI</span>
               <span class="chip" id="chip-duration">⏱ 당일 코스</span>
               <span class="chip" id="chip-stops"></span>
               <span class="chip chip-route" id="chip-route"></span>
             </div>
           </div>
           <div class="route-summary" id="route-summary"></div>
+          <div class="trip-plan hidden" id="trip-plan"></div>
           <div class="split">
             <div>
               <p class="panel-lbl">일정 타임라인</p>
@@ -160,23 +160,6 @@
         </section>
       </div>
     </main>
-  </div>
-
-  <!-- ============ Settings modal ============ -->
-  <div class="modal-bg" id="modal-bg">
-    <div class="modal">
-      <h3>⚙ AI 설정</h3>
-      <p>
-        기본은 <b>로컬 AI 큐레이션</b>(키 불필요)입니다. 본인의 Gemini API 키를 입력하면
-        더 풍부한 코스 설명을 받을 수 있어요. Gemini는 <b>분당/일일 요청 한도</b>가 있어
-        연속 검색 시 429가 날 수 있습니다 — 1~2분 간격을 두세요.
-      </p>
-      <input id="gemini-key" type="password" placeholder="Gemini API 키 (선택)" autocomplete="off" />
-      <div class="modal-row">
-        <button class="btn-secondary" style="margin-top:0" id="btn-key-clear">키 삭제</button>
-        <button class="btn-primary" id="btn-key-save">저장</button>
-      </div>
-    </div>
   </div>
 
   <div class="toast" id="toast"></div>

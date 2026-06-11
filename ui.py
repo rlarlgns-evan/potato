@@ -492,6 +492,11 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
 .vx-stat strong {{ display: block; font-size: 1rem; color: {TEXT}; }}
 .vx-stat span {{ font-size: 0.65rem; color: {TEXT_MUTED}; text-transform: uppercase; }}
 
+.vx-agent-shell {{
+  background: rgba(255,255,255,0.92); border-radius: 20px 20px 0 0;
+  padding: 1rem 1.1rem 0.65rem; border: 1px solid rgba(102,188,176,0.14);
+  border-bottom: none; margin-top: 1rem;
+}}
 .vx-chat-box {{
   background: rgba(255,255,255,0.8); border-radius: 20px; padding: 1rem 1.1rem;
   border: 1px solid rgba(102,188,176,0.12); margin: 1rem 0;
@@ -548,6 +553,16 @@ div[data-testid="stPills"] [data-baseweb="button-group"] > button[aria-pressed="
   font-size: 0.68rem; font-weight: 700; padding: 0.35rem 0.7rem; border-radius: 999px;
   background: rgba(102,188,176,0.12); color: {PRIMARY_DARK}; border: 1px solid rgba(102,188,176,0.2);
 }}
+.vx-trip-plan {{
+  margin: 0 0 1rem; padding: 0.85rem 1rem; border-radius: 16px;
+  background: rgba(136,214,253,0.08); border: 1px solid rgba(136,214,253,0.22);
+  font-size: 0.78rem; color: {TEXT_MUTED}; line-height: 1.55;
+}}
+.vx-trip-row {{ display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-bottom: 0.65rem; }}
+.vx-trip-row span b {{ color: {PRIMARY_DARK}; margin-right: 0.35rem; }}
+.vx-trip-transit ul, .vx-trip-days ul {{ margin: 0.35rem 0 0; padding-left: 1.1rem; }}
+.vx-trip-transit b, .vx-trip-lodge b, .vx-trip-days b {{ color: {PRIMARY_DARK}; display: block; margin-bottom: 0.25rem; }}
+.vx-trip-lodge p {{ margin: 0.25rem 0 0; }}
 
 .planner-courses {{
   display: flex; flex-direction: column; gap: 0.9rem;
@@ -1184,40 +1199,32 @@ def render_welcome_banner() -> None:
     )
 
 
-def render_home_chat_section(last_query: str = "") -> None:
-    ai_msg = (
-        "안녕하세요! 강원도 여행의 무엇이든 물어보세요. "
-        "원하는 분위기·동행·테마를 알려주시면 맞춤 동선과 지도를 만들어 드릴게요."
-    )
-    pills = [
-        ("강릉 카페 코스", "강릉 해안 드라이브와 분위기 좋은 카페가 있는 코스"),
-        ("일몰 명소", "강원도 동해안 일몰 명소를 도는 반나절 코스"),
-        ("가족 여행", "주차가 편하고 아이와 함께 가기 좋은 강원도 가족 코스"),
-        ("단풍 트레킹", "설악산 단풍을 즐기는 가벼운 트레킹 코스"),
-    ]
+def render_agent_starters() -> None:
+    """에이전트 추천 프롬프트 칩."""
+    from content_loader import load_suggestions
+
+    pills = load_suggestions()[:4]
     pill_html = "".join(
-        f'<a href="?ask={quote(prompt)}" target="_self">{html.escape(label)}</a>'
-        for label, prompt in pills
-    )
-    user_bubble = (
-        f'<div class="vx-bubble-user">{html.escape(last_query)}</div>'
-        if last_query
-        else ""
+        f'<a href="?ask={quote(s["prompt"])}" target="_self">{html.escape(s["label"])}</a>'
+        for s in pills
     )
     st.markdown(
         f"""
-<div class="vx-chat-box">
+<div class="vx-agent-shell">
   <div class="vx-chat-head">
     <span class="vx-chat-dot"></span> AI Concierge · 실시간 추천
   </div>
-  <div class="vx-bubble-ai">✦ {html.escape(ai_msg)}</div>
-  {user_bubble}
   <p class="vx-chat-suggest-label">이렇게 물어보세요</p>
   <div class="vx-quick-pills">{pill_html}</div>
 </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_home_chat_section(last_query: str = "") -> None:
+    """Deprecated — use render_agent_starters + st.chat_message in app.py."""
+    render_agent_starters()
 
 
 def _course_card_html(step: dict, spot: dict, active: bool) -> str:
@@ -1270,13 +1277,81 @@ def render_planner_map_chrome(query_chip: str, focus_label: str) -> None:
     )
 
 
+def render_trip_plan_panel(meta: dict) -> None:
+    """출발·교통·숙소·일정 개요 — AI가 추출한 trip plan."""
+    intent = meta.get("trip_intent") or {}
+    transit = meta.get("transit_plan") or {}
+    lodging = meta.get("accommodation") or {}
+    day_plans = meta.get("day_plans") or []
+
+    has_intent = any(intent.get(k) for k in ("origin", "transport", "duration", "companion", "themes"))
+    has_transit = any(transit.get(k) for k in ("outbound", "return", "local_transit"))
+    has_lodging = any(lodging.get(k) for k in ("area", "type", "note"))
+    if not (has_intent or has_transit or has_lodging or day_plans):
+        return
+
+    blocks: list[str] = ['<div class="vx-trip-plan">']
+
+    if has_intent:
+        rows = []
+        if intent.get("origin"):
+            rows.append(f"<span><b>출발</b>{html.escape(str(intent['origin']))}</span>")
+        if intent.get("transport"):
+            rows.append(f"<span><b>이동</b>{html.escape(str(intent['transport']))}</span>")
+        if intent.get("duration"):
+            rows.append(f"<span><b>일정</b>{html.escape(str(intent['duration']))}</span>")
+        if intent.get("companion"):
+            rows.append(f"<span><b>동행</b>{html.escape(str(intent['companion']))}</span>")
+        themes = intent.get("themes") or []
+        if themes:
+            rows.append(f"<span><b>테마</b>{html.escape(', '.join(themes))}</span>")
+        blocks.append(f'<div class="vx-trip-row">{"".join(rows)}</div>')
+
+    if has_transit:
+        parts = ["<div class='vx-trip-transit'><b>🚆 이동 경로</b><ul>"]
+        if transit.get("outbound"):
+            parts.append(f"<li><b>가는 길</b> {html.escape(str(transit['outbound']))}</li>")
+        if transit.get("local_transit"):
+            parts.append(f"<li><b>현지</b> {html.escape(str(transit['local_transit']))}</li>")
+        if transit.get("return"):
+            parts.append(f"<li><b>오는 길</b> {html.escape(str(transit['return']))}</li>")
+        parts.append("</ul></div>")
+        blocks.append("".join(parts))
+
+    if has_lodging:
+        area = html.escape(str(lodging.get("area", "")))
+        typ = html.escape(str(lodging.get("type", "")))
+        note = html.escape(str(lodging.get("note", "")))
+        blocks.append(
+            f'<div class="vx-trip-lodge"><b>🏨 숙소</b> '
+            f"<span>{area} {typ}</span>"
+            f"{f'<p>{note}</p>' if note else ''}</div>"
+        )
+
+    if day_plans:
+        items = []
+        for dp in day_plans:
+            day = dp.get("day", "")
+            title = html.escape(str(dp.get("title", "")))
+            focus = html.escape(str(dp.get("focus", "")))
+            sub = f" — {focus}" if focus else ""
+            items.append(f"<li><b>Day {day}</b> {title}{sub}</li>")
+        blocks.append(f"<div class='vx-trip-days'><b>📅 일정</b><ul>{''.join(items)}</ul></div>")
+
+    blocks.append("</div>")
+    st.markdown("".join(blocks), unsafe_allow_html=True)
+
+
 def render_tailored_header(meta: dict, query: str, step_count: int) -> None:
+    from curation_sources import source_label
+
     title = html.escape(meta.get("title") or "Tailored for You")
     summary = html.escape(
         meta.get("summary")
         or "Based on your preferences for nature, calm landscapes, and scenic drives in Gangwon province."
     )
     duration = html.escape(meta.get("total_duration") or "당일 코스")
+    src_chip = html.escape(source_label(meta.get("source")))
     q = html.escape((query[:48] + "…") if len(query) > 48 else query)
     query_line = (
         f'<p style="margin-top:0.35rem;font-size:0.78rem;color:{TEXT_MUTED};">🔍 {q}</p>'
@@ -1293,7 +1368,7 @@ def render_tailored_header(meta: dict, query: str, step_count: int) -> None:
       {query_line}
     </div>
     <div class="vx-head-chips">
-      <span class="vx-head-chip">✓ AI OPTIMIZED</span>
+      <span class="vx-head-chip">{src_chip}</span>
       <span class="vx-head-chip">⏱ {duration}</span>
       <span class="vx-head-chip">{step_count} stops</span>
     </div>
@@ -1345,7 +1420,6 @@ def render_voyage_explore_page(spot_count: int) -> None:
     with main_col:
         render_welcome_banner()
         render_gangwon_dashboard()
-        render_home_chat_section(st.session_state.get("last_user_query", ""))
     with side_col:
         render_voyage_profile_sidebar()
 

@@ -8,31 +8,15 @@ from typing import Any
 from urllib.error import URLError
 from urllib.request import urlopen
 
-# 인구순 (시·군 기준 대략적 순위, 2023~2024 통계 참고)
-GANGWON_CITIES: list[dict[str, Any]] = [
-    {"city": "원주", "lat": 37.3422, "lng": 127.9202, "pop_rank": 1},
-    {"city": "춘천", "lat": 37.8747, "lng": 127.7342, "pop_rank": 2},
-    {"city": "강릉", "lat": 37.7519, "lng": 129.2022, "pop_rank": 3},
-    {"city": "동해", "lat": 37.5247, "lng": 129.1144, "pop_rank": 4},
-    {"city": "속초", "lat": 38.2070, "lng": 128.5918, "pop_rank": 5},
-    {"city": "삼척", "lat": 37.4498, "lng": 129.1652, "pop_rank": 6},
-    {"city": "홍천", "lat": 37.6970, "lng": 127.8887, "pop_rank": 7},
-    {"city": "태백", "lat": 37.1641, "lng": 128.9856, "pop_rank": 8},
-    {"city": "정선", "lat": 37.3807, "lng": 128.6608, "pop_rank": 9},
-    {"city": "평창", "lat": 37.3705, "lng": 128.3900, "pop_rank": 10},
-]
+from content_loader import load_catalog, load_festivals, load_highlights, load_region_intro_md
 
+_catalog = load_catalog()
+GANGWON_CITIES: list[dict[str, Any]] = _catalog["cities"]
 WEATHER_ICONS: dict[str, dict[str, str]] = {
-    "sunny": {"icon": "☀", "label": "맑음", "thumb_bg": "linear-gradient(135deg,#FDE68A,#FBBF24)"},
-    "partly_cloudy": {"icon": "◐", "label": "구름 조금", "thumb_bg": "linear-gradient(135deg,#BAE6FD,#7DD3FC)"},
-    "cloudy": {"icon": "☁", "label": "흐림", "thumb_bg": "linear-gradient(135deg,#E2E8F0,#94A3B8)"},
-    "fog": {"icon": "≡", "label": "안개", "thumb_bg": "linear-gradient(135deg,#CBD5E1,#94A3B8)"},
-    "rain": {"icon": "☂", "label": "비", "thumb_bg": "linear-gradient(135deg,#93C5FD,#3B82F6)"},
-    "snow": {"icon": "❄", "label": "눈", "thumb_bg": "linear-gradient(135deg,#E0F2FE,#BAE6FD)"},
-    "thunder": {"icon": "⚡", "label": "뇌우", "thumb_bg": "linear-gradient(135deg,#C4B5FD,#7C3AED)"},
+    k: {"icon": v["icon"], "label": v["label"], "thumb_bg": v["thumb_bg"]}
+    for k, v in _catalog["weather_icons"].items()
 }
-
-FESTIVAL_ICONS = ["🎪", "🎭", "🎶", "🐟", "☕", "🎿", "🌸", "🍁"]
+FESTIVAL_ICONS = _catalog["festival_icons"]
 
 
 def wmo_to_condition(code: int) -> str:
@@ -146,7 +130,7 @@ def _placeholder_cities() -> list[dict[str, Any]]:
 
 def get_weather_cities() -> list[dict[str, Any]]:
     """인구순 정렬된 강원 도시 날씨."""
-    ordered = sorted(GANGWON_CITIES, key=lambda x: x["pop_rank"])
+    ordered = sorted(GANGWON_CITIES, key=lambda x: x.get("pop_rank", 99))
     results: list[dict[str, Any]] = []
     for c in ordered:
         try:
@@ -168,30 +152,12 @@ def get_weather() -> dict[str, str]:
 
 
 def get_festivals() -> list[dict[str, str]]:
-    return [
-        {"title": "평창 송어축제", "period": "1~2월", "place": "평창군", "desc": "얼음낚시·지역 먹거리"},
-        {"title": "화천 산천어축제", "period": "1월", "place": "화천군", "desc": "빙어·얼음낚시"},
-        {"title": "강릉 커피축제", "period": "10월", "place": "강릉시", "desc": "안목·경포 카페거리"},
-        {"title": "정선 아리랑제", "period": "10월", "place": "정선군", "desc": "전통공연·레일바이크"},
-        {"title": "춘천 막국수 닭갈비 축제", "period": "10월", "place": "춘천시", "desc": "로컬 먹거리"},
-        {"title": "속초 설악산 단풍제", "period": "10월", "place": "속초시", "desc": "단풍·트레킹"},
-        {"title": "삼척 비치 페스티벌", "period": "7~8월", "place": "삼척시", "desc": "해변·공연"},
-        {"title": "원주 댄싱카니발", "period": "9월", "place": "원주시", "desc": "거리공연·문화"},
-    ]
+    return load_festivals()
 
 
 def get_highlights() -> list[dict[str, Any]]:
-    return [
-        {"title": "설악산 단풍", "region": "속초·고성", "icon": "▲", "thumb_bg": "linear-gradient(135deg,#0D9488,#14B8A6)"},
-        {"title": "남이섬·소나무", "region": "춘천", "icon": "♣", "thumb_bg": "linear-gradient(135deg,#0891B2,#22D3EE)"},
-        {"title": "동해 해변 드라이브", "region": "동해·삼척", "icon": "≈", "thumb_bg": "linear-gradient(135deg,#0284C7,#38BDF8)"},
-        {"title": "평창 대관령 드라이브", "region": "평창·횡성", "icon": "◇", "thumb_bg": "linear-gradient(135deg,#6366F1,#A78BFA)"},
-        {"title": "강릉·양양 해변·카페", "region": "강릉·양양", "icon": "◎", "thumb_bg": "linear-gradient(135deg,#F59E0B,#FCD34D)"},
-    ]
+    return load_highlights()
 
 
 def get_region_intro() -> str:
-    return (
-        "강원도는 산·바다·계곡이 가까워 **당일·반나절 여행**에 잘 맞아요. "
-        "AI가 전역 관광지 중에서 취향에 맞는 동선을 골라 드립니다."
-    )
+    return load_region_intro_md()

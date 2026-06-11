@@ -3,7 +3,7 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ["docs/**", ".github/workflows/pages.yml"]
+    paths: ["docs/**", "data/**", "scripts/sync_content.py", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -24,14 +24,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inject Kakao JS key from secret
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify docs/data.js matches canonical JSON
+        run: python scripts/sync_content.py --check
+
+      - name: Inject API keys from secrets
         run: |
-          KEY="${KAKAO_JS_KEY#Value: }"
-          KEY="${KEY#value: }"
-          KEY="$(printf '%s' "$KEY" | sed 's/^[Vv][Aa][Ll][Uu][Ee]:[[:space:]]*//')"
-          printf 'window.KAKAO_JS_KEY = "%s";\n' "$KEY" > docs/config.js
+          KAKAO="${KAKAO_JS_KEY#Value: }"
+          KAKAO="${KAKAO#value: }"
+          KAKAO="$(printf '%s' "$KAKAO" | sed 's/^[Vv][Aa][Ll][Uu][Ee]:[[:space:]]*//')"
+          GEMINI="${GOOGLE_API_KEY#Value: }"
+          GEMINI="${GEMINI#value: }"
+          GEMINI="$(printf '%s' "$GEMINI" | sed 's/^[Vv][Aa][Ll][Uu][Ee]:[[:space:]]*//')"
+          {
+            printf 'window.KAKAO_JS_KEY = "%s";\n' "$KAKAO"
+            printf 'window.GEMINI_API_KEY = "%s";\n' "$GEMINI"
+          } > docs/config.js
         env:
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
 
       - uses: actions/configure-pages@v5
 

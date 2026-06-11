@@ -5,18 +5,28 @@ from typing import Any
 
 import config  # noqa: F401 — .env 로드
 
-MAX_SPOTS_IN_PROMPT = 28
-MAX_HISTORY_MSGS = 2
-MAX_HISTORY_CHARS = 350
+from trip_intent import build_trip_hints, detect_themes, needs_ai_curation
+
+MAX_SPOTS_IN_PROMPT = 12
+MAX_HISTORY_MSGS = 0
+MAX_HISTORY_CHARS = 200
+MAX_USER_CHARS = 600
 
 # English instructions → fewer tokens; user-facing JSON values stay Korean.
 CURATION_SCHEMA = (
-    "Output JSON only. Fields itinerary_title, summary, why, move_to_next, "
-    "total_duration, map_tip: Korean, brief. "
-    '{"itinerary_title":"","summary":"","recommended_spots":[],"route_order":[],'
-    '"route_steps":[{"order":1,"spot_name":"","stay_minutes":60,"why":"","move_to_next":""}],'
-    '"total_duration":"","map_tip":""}. '
-    "1-4 spots; spot_name must copy catalog names exactly; route_steps same order as route_order."
+    "JSON only.Korean brief.why≤80chars. "
+    "Extract trip_intent from user: origin,transport,duration,companion,themes. "
+    "If origin/transport/lodging/duration given: plan outbound transit, lodging area, return. "
+    '{"trip_intent":{"origin":"","transport":"","duration":"","companion":"","themes":[]},'
+    '"transit_plan":{"outbound":"","return":"","local_transit":""},'
+    '"accommodation":{"area":"","type":"","note":""},'
+    '"itinerary_title":"","summary":"","total_duration":"",'
+    '"day_plans":[{"day":1,"title":"","focus":""}],'
+    '"route_steps":[{"order":1,"day":1,"spot_name":"","stay_minutes":60,"why":"","move_to_next":""}],'
+    '"map_tip":""}. '
+    "1박2일=2-4 spots across days; spot_name exact from catalog; "
+    "move_to_next must include KTX/버스/환승 when public transit; "
+    "accommodation.area near evening spot cluster."
 )
 
 
@@ -27,11 +37,16 @@ def _compact_spot_catalog(spots: list[dict[str, Any]], user_message: str = "") -
     msg = user_message.strip()
     if msg:
         kws = [w for w in re.split(r"\s+", msg) if len(w) >= 2]
-        if kws:
+        themes = detect_themes(msg)
+        theme_kws = list(themes)
+        if "바다" in themes:
+            theme_kws.extend(("해변", "해수욕", "서핑", "바다"))
+        if kws or theme_kws:
             ranked: list[tuple[int, dict[str, Any]]] = []
             for s in spots:
-                blob = f"{s['name']} {s['region']} {s['theme']}"
+                blob = f"{s['name']} {s['region']} {s['theme']} {s.get('description', '')}"
                 score = sum(1 for kw in kws if kw in blob)
+                score += sum(2 for kw in theme_kws if kw in blob)
                 ranked.append((score, s))
             ranked.sort(key=lambda x: (-x[0], x[1]["name"]))
             matched = [s for sc, s in ranked if sc > 0][:MAX_SPOTS_IN_PROMPT]
@@ -45,10 +60,13 @@ def _build_system_prompt(
     user_message: str = "",
 ) -> str:
     catalog = _compact_spot_catalog(spots, user_message)
+    hints = build_trip_hints(user_message) if user_message.strip() else ""
     base = (
-        "Gangwon (Korea) trip planner. Pick spots from catalog; user text fields in Korean.\n"
+        "Gangwon trip planner.Pick from catalog.Korean output.\n"
         f"Catalog name|region|theme:\n{catalog or '(none)'}"
     )
+    if hints:
+        base = f"{base}\n{hints}"
     return f"{base}\n{CURATION_SCHEMA}" if for_curation else base
 
 
@@ -99,6 +117,7 @@ def _steps_for_spots(curated: list[dict[str, Any]], parsed: dict[str, Any]) -> l
         steps.append(
             {
                 "order": idx,
+                "day": step.get("day") or 1,
                 "spot_name": spot["name"],
                 "region": spot["region"],
                 "theme": spot["theme"],
@@ -119,11 +138,69 @@ def format_itinerary_message(parsed: dict[str, Any], curated: list[dict[str, Any
     steps = _steps_for_spots(curated, parsed)
     duration = parsed.get("total_duration", "")
     map_tip = parsed.get("map_tip", "")
+    trip_intent = parsed.get("trip_intent") or {}
+    transit = parsed.get("transit_plan") or {}
+    lodging = parsed.get("accommodation") or {}
+    day_plans = parsed.get("day_plans") or []
 
     lines = [f"## {title}", ""]
     if summary:
         lines.extend([summary, ""])
-    if duration:
+
+    if trip_intent:
+        origin = trip_intent.get("origin", "")
+        transport = trip_intent.get("transport", "")
+        dur = trip_intent.get("duration", "") or duration
+        companion = trip_intent.get("companion", "")
+        themes = trip_intent.get("themes") or []
+        if origin or transport or dur or companion or themes:
+            lines.append("### 🧭 여행 조건")
+            if origin:
+                lines.append(f"- **출발:** {origin}")
+            if transport:
+                lines.append(f"- **이동:** {transport}")
+            if dur:
+                lines.append(f"- **일정:** {dur}")
+            if companion:
+                lines.append(f"- **동행:** {companion}")
+            if themes:
+                lines.append(f"- **테마:** {', '.join(themes)}")
+            lines.append("")
+
+    if transit and any(transit.get(k) for k in ("outbound", "return", "local_transit")):
+        lines.append("### 🚆 이동 경로")
+        if transit.get("outbound"):
+            lines.append(f"- **가는 길:** {transit['outbound']}")
+        if transit.get("local_transit"):
+            lines.append(f"- **현지 이동:** {transit['local_transit']}")
+        if transit.get("return"):
+            lines.append(f"- **오는 길:** {transit['return']}")
+        lines.append("")
+
+    if lodging and any(lodging.get(k) for k in ("area", "type", "note")):
+        lines.append("### 🏨 숙소")
+        area = lodging.get("area", "")
+        typ = lodging.get("type", "")
+        note = lodging.get("note", "")
+        if area or typ:
+            lines.append(f"- **추천:** {area} {typ}".strip())
+        if note:
+            lines.append(f"- {note}")
+        lines.append("")
+
+    if day_plans:
+        lines.append("### 📅 일정 개요")
+        for dp in day_plans:
+            day = dp.get("day", "")
+            t = dp.get("title", "")
+            focus = dp.get("focus", "")
+            line = f"- **Day {day}** {t}".strip()
+            if focus:
+                line += f" — {focus}"
+            lines.append(line)
+        lines.append("")
+
+    if duration and not trip_intent.get("duration"):
         lines.append(f"⏱ **예상 일정:** {duration}")
         lines.append("")
     lines.append("### 📍 방문 동선 (아래 지도 번호와 동일)")
@@ -132,10 +209,15 @@ def format_itinerary_message(parsed: dict[str, Any], curated: list[dict[str, Any
     for step in steps:
         stay = step.get("stay_minutes")
         stay_txt = f" · 약 **{stay}분**" if stay else ""
-        lines.append(f"**{step['order']}. {step['spot_name']}** ({step['region']} · {step['theme']}){stay_txt}")
+        day_txt = f" · Day {step['day']}" if step.get("day") and step["day"] != 1 else ""
+        lines.append(
+            f"**{step['order']}. {step['spot_name']}** "
+            f"({step['region']} · {step['theme']}){day_txt}{stay_txt}"
+        )
         lines.append(f"- {step['why']}")
         if step.get("move_to_next"):
-            lines.append(f"- 🚗 **이동:** {step['move_to_next']}")
+            icon = "🚆" if re.search(r"KTX|버스|열차|지하철|대중교통|역|터미널", step["move_to_next"]) else "🚗"
+            lines.append(f"- {icon} **이동:** {step['move_to_next']}")
         lines.append("")
 
     if map_tip:
@@ -144,7 +226,42 @@ def format_itinerary_message(parsed: dict[str, Any], curated: list[dict[str, Any
     return "\n".join(lines)
 
 
-def _fallback_curation(user_message: str, spots: list[dict[str, Any]]) -> dict[str, Any]:
+def _local_match_quality(user_message: str, spots: list[dict[str, Any]]) -> tuple[int, int, int]:
+    """(top_score, strong_hit_count, top3_score_sum) — 높을수록 로컬만으로 충분."""
+    kws = [w for w in re.split(r"\s+", user_message.replace(",", " ")) if len(w) >= 2]
+    if not kws or not spots:
+        return 0, 0, 0
+    scores = sorted(
+        (
+            (
+                sum(1 for kw in kws if kw in f"{s['name']} {s['region']} {s['theme']} {s['description']}"),
+                s,
+            )
+            for s in spots
+        ),
+        key=lambda x: (-x[0], x[1]["name"]),
+    )
+    top = scores[0][0] if scores else 0
+    strong = sum(1 for sc, _ in scores if sc >= 2)
+    top3 = sum(sc for sc, _ in scores[:3])
+    return top, strong, top3
+
+
+def _should_call_ai(user_message: str, spots: list[dict[str, Any]]) -> bool:
+    """복합 조건(출발·교통·숙박·기간)은 반드시 AI. 단순 키워드만 로컬."""
+    if needs_ai_curation(user_message):
+        return True
+    top, strong, top3 = _local_match_quality(user_message, spots)
+    if top >= 3:
+        return False
+    if top >= 2 and strong >= 2:
+        return False
+    if top3 >= 5:
+        return False
+    return True
+
+
+def _fallback_curation(user_message: str, spots: list[dict[str, Any]], source: str = "local") -> dict[str, Any]:
     if not spots:
         return {
             "itinerary_title": "후보 없음",
@@ -195,6 +312,7 @@ def _fallback_curation(user_message: str, spots: list[dict[str, Any]]) -> dict[s
         "message": format_itinerary_message(parsed, curated),
         "curated_spots": curated,
         "route_steps": _steps_for_spots(curated, parsed),
+        "source": source,
     }
 
 
@@ -220,7 +338,7 @@ def _call_openai_curation(
         for m in chat_history[-MAX_HISTORY_MSGS:]:
             if m["role"] in ("user", "assistant"):
                 messages.append({"role": m["role"], "content": m["content"][:MAX_HISTORY_CHARS]})
-        messages.append({"role": "user", "content": user_message[:800]})
+        messages.append({"role": "user", "content": user_message[:MAX_USER_CHARS]})
         response = client.chat.completions.create(
             model=model_name,
             messages=messages,
@@ -248,17 +366,13 @@ def _call_google_curation(
         model_name = os.getenv("GOOGLE_MODEL", "gemini-2.5-flash-lite")
         sys_prompt = _build_system_prompt(spots, for_curation=True, user_message=user_message)
         model = genai.GenerativeModel(model_name, system_instruction=sys_prompt)
-        prompt_parts = [user_message[:800]]
-        hist = [m for m in chat_history[-MAX_HISTORY_MSGS:] if m["role"] in ("user", "assistant")]
-        if hist:
-            ctx = " | ".join(f"{m['role'][0]}:{m['content'][:MAX_HISTORY_CHARS]}" for m in hist)
-            prompt_parts.insert(0, f"Context:{ctx}")
+        prompt_parts = [user_message[:MAX_USER_CHARS]]
         response = model.generate_content(
             "\n".join(prompt_parts),
             generation_config=genai.GenerationConfig(
                 temperature=0.5,
                 response_mime_type="application/json",
-                max_output_tokens=2048,
+                max_output_tokens=1024,
             ),
         )
         return _parse_curation_json((response.text or "").strip())
@@ -268,6 +382,12 @@ def _call_google_curation(
 
 def _finalize_curation(parsed: dict[str, Any], spots: list[dict[str, Any]]) -> dict[str, Any]:
     route_names = parsed.get("route_order") or parsed.get("recommended_spots") or []
+    if not route_names:
+        route_names = [
+            s.get("spot_name")
+            for s in (parsed.get("route_steps") or [])
+            if s.get("spot_name")
+        ]
     rec_names = parsed.get("recommended_spots") or route_names
     curated = _spots_from_names(spots, list(route_names) if route_names else list(rec_names))
     if not curated and rec_names:
@@ -284,6 +404,11 @@ def _finalize_curation(parsed: dict[str, Any], spots: list[dict[str, Any]]) -> d
         "route_steps": steps,
         "map_tip": parsed.get("map_tip", "").strip(),
         "total_duration": parsed.get("total_duration", ""),
+        "trip_intent": parsed.get("trip_intent") or {},
+        "transit_plan": parsed.get("transit_plan") or {},
+        "accommodation": parsed.get("accommodation") or {},
+        "day_plans": parsed.get("day_plans") or [],
+        "source": "",
     }
 
 
@@ -295,18 +420,23 @@ def curate_trip(
     history = chat_history or []
     provider = os.getenv("AI_PROVIDER", "openai").lower()
 
+    if not _should_call_ai(user_message, spots):
+        return _fallback_curation(user_message, spots, source="local_skip")
+
     parsed: dict[str, Any] | None = None
+    ai_source = "gemini" if provider == "google" else "openai"
     if provider == "google":
         parsed = _call_google_curation(user_message, spots, history)
     else:
         parsed = _call_openai_curation(user_message, spots, history)
 
     if not parsed:
-        return _fallback_curation(user_message, spots)
+        return _fallback_curation(user_message, spots, source="local_api_fail")
 
     result = _finalize_curation(parsed, spots)
     if not result["curated_spots"]:
-        return _fallback_curation(user_message, spots)
+        return _fallback_curation(user_message, spots, source="local_api_fail")
+    result["source"] = ai_source
     return result
 
 

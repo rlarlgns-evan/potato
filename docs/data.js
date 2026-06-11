@@ -1,103 +1,738 @@
-// VoyageAI · 강원 — 정적 데이터 (Streamlit database.py / gangwon_content.py 이식)
+// VoyageAI · 강원 — canonical data lives in data/*.json
+// // === CANONICAL DATA (auto-generated from data/*.json) ===
+// Regenerate: python scripts/sync_content.py generate
 "use strict";
 
 const SPOTS = [
-  { name: "방태산 자연휴양림 숲길", region: "인제군", description: "울창한 숲길 산책·힐링", lat: 37.9188, lng: 128.3506, theme: "힐링" },
-  { name: "만항재 은하수 전망지", region: "정선군", description: "밤하늘 별·드라이브 명소", lat: 37.2049, lng: 128.9162, theme: "야경" },
-  { name: "삼척 덕풍계곡 비경길", region: "삼척시", description: "계곡 트레킹·물소리 산책", lat: 37.1126, lng: 129.0452, theme: "트레킹" },
-  { name: "영월 청령포 고요 산책", region: "영월군", description: "강변·역사 산책", lat: 37.1822, lng: 128.4616, theme: "역사" },
-  { name: "평창 백룡동굴 탐방", region: "평창군", description: "동굴 탐방 체험", lat: 37.3833, lng: 128.4055, theme: "체험" },
-  { name: "양구 파로호 둘레길", region: "양구군", description: "호수 둘레 자전거·산책", lat: 38.1118, lng: 127.9898, theme: "자전거" },
-  { name: "속초 설악산 국립공원", region: "속초시", description: "케이블카·단풍·트레킹", lat: 38.1702, lng: 128.4913, theme: "트레킹" },
-  { name: "강릉 경포대·해변", region: "강릉시", description: "호수·해변 산책", lat: 37.8058, lng: 128.8962, theme: "힐링" },
-  { name: "강릉 안목해변 커피거리", region: "강릉시", description: "카페·일몰 드라이브", lat: 37.77, lng: 128.934, theme: "힐링" },
-  { name: "춘천 남이섬", region: "춘천시", description: "섬 산책·자전거·드라마거리", lat: 37.7906, lng: 128.4661, theme: "체험" },
-  { name: "춘천 소양강 스카이워크", region: "춘천시", description: "강 전망·포토스팟", lat: 37.8762, lng: 127.7298, theme: "야경" },
-  { name: "원주 치악산 케이블카", region: "원주시", description: "산악 전망·단풍", lat: 37.38, lng: 128.054, theme: "트레킹" },
-  { name: "홍천 비내섭계곡", region: "홍천군", description: "계곡 피서·물놀이", lat: 37.696, lng: 127.685, theme: "힐링" },
-  { name: "태백산 천제단", region: "태백시", description: "고산 일출·눈꽃", lat: 37.0953, lng: 129.0302, theme: "트레킹" },
-  { name: "정선 레일바이크", region: "정선군", description: "레일바이크·산골 풍경", lat: 37.22, lng: 128.84, theme: "체험" },
-  { name: "정선 하이원 리조트 전망", region: "정선군", description: "산악 리조트·드라이브", lat: 37.183, lng: 128.818, theme: "힐링" },
-  { name: "동해 무릉계곡", region: "동해시", description: "계곡·폭포 산책", lat: 37.075, lng: 129.14, theme: "트레킹" },
-  { name: "동해 무릉 건강숲", region: "동해시", description: "숲길 트레킹", lat: 37.09, lng: 129.12, theme: "트레킹" },
-  { name: "삼척 케이블카·용화해수욕장", region: "삼척시", description: "해안 케이블카·해변", lat: 37.005, lng: 129.17, theme: "체험" },
-  { name: "고성 통일전망대", region: "고성군", description: "전망·역사", lat: 38.505, lng: 128.41, theme: "역사" },
-  { name: "양양 서피비치", region: "양양군", description: "서핑·해변", lat: 38.072, lng: 128.669, theme: "체험" },
-  { name: "인제 원대리 자작나무숲", region: "인제군", description: "숲길 포토·힐링", lat: 38.155, lng: 128.21, theme: "힐링" },
-  { name: "횡성 한우·둔내 온천", region: "횡성군", description: "먹거리·온천", lat: 37.49, lng: 127.99, theme: "체험" },
-  { name: "화천 산천어축제 거리", region: "화천군", description: "겨울 축제·얼음낚시", lat: 38.106, lng: 127.708, theme: "체험" },
+  {
+    "name": "방태산 자연휴양림 숲길",
+    "region": "인제군",
+    "description": "울창한 숲길 산책·힐링",
+    "lat": 37.9188,
+    "lng": 128.3506,
+    "theme": "힐링"
+  },
+  {
+    "name": "만항재 은하수 전망지",
+    "region": "정선군",
+    "description": "밤하늘 별·드라이브 명소",
+    "lat": 37.2049,
+    "lng": 128.9162,
+    "theme": "야경"
+  },
+  {
+    "name": "삼척 덕풍계곡 비경길",
+    "region": "삼척시",
+    "description": "계곡 트레킹·물소리 산책",
+    "lat": 37.1126,
+    "lng": 129.0452,
+    "theme": "트레킹"
+  },
+  {
+    "name": "영월 청령포 고요 산책",
+    "region": "영월군",
+    "description": "강변·역사 산책",
+    "lat": 37.1822,
+    "lng": 128.4616,
+    "theme": "역사"
+  },
+  {
+    "name": "평창 백룡동굴 탐방",
+    "region": "평창군",
+    "description": "동굴 탐방 체험",
+    "lat": 37.3833,
+    "lng": 128.4055,
+    "theme": "체험"
+  },
+  {
+    "name": "양구 파로호 둘레길",
+    "region": "양구군",
+    "description": "호수 둘레 자전거·산책",
+    "lat": 38.1118,
+    "lng": 127.9898,
+    "theme": "자전거"
+  },
+  {
+    "name": "속초 설악산 국립공원",
+    "region": "속초시",
+    "description": "케이블카·단풍·트레킹",
+    "lat": 38.1702,
+    "lng": 128.4913,
+    "theme": "트레킹"
+  },
+  {
+    "name": "강릉 경포대·해변",
+    "region": "강릉시",
+    "description": "호수·해변 산책",
+    "lat": 37.8058,
+    "lng": 128.8962,
+    "theme": "힐링"
+  },
+  {
+    "name": "강릉 안목해변 커피거리",
+    "region": "강릉시",
+    "description": "카페·일몰 드라이브",
+    "lat": 37.77,
+    "lng": 128.934,
+    "theme": "힐링"
+  },
+  {
+    "name": "춘천 남이섬",
+    "region": "춘천시",
+    "description": "섬 산책·자전거·드라마거리",
+    "lat": 37.7906,
+    "lng": 128.4661,
+    "theme": "체험"
+  },
+  {
+    "name": "춘천 소양강 스카이워크",
+    "region": "춘천시",
+    "description": "강 전망·포토스팟",
+    "lat": 37.8762,
+    "lng": 127.7298,
+    "theme": "야경"
+  },
+  {
+    "name": "원주 치악산 케이블카",
+    "region": "원주시",
+    "description": "산악 전망·단풍",
+    "lat": 37.38,
+    "lng": 128.054,
+    "theme": "트레킹"
+  },
+  {
+    "name": "홍천 비내섭계곡",
+    "region": "홍천군",
+    "description": "계곡 피서·물놀이",
+    "lat": 37.696,
+    "lng": 127.685,
+    "theme": "힐링"
+  },
+  {
+    "name": "태백산 천제단",
+    "region": "태백시",
+    "description": "고산 일출·눈꽃",
+    "lat": 37.0953,
+    "lng": 129.0302,
+    "theme": "트레킹"
+  },
+  {
+    "name": "정선 레일바이크",
+    "region": "정선군",
+    "description": "레일바이크·산골 풍경",
+    "lat": 37.22,
+    "lng": 128.84,
+    "theme": "체험"
+  },
+  {
+    "name": "정선 하이원 리조트 전망",
+    "region": "정선군",
+    "description": "산악 리조트·드라이브",
+    "lat": 37.183,
+    "lng": 128.818,
+    "theme": "힐링"
+  },
+  {
+    "name": "동해 무릉계곡",
+    "region": "동해시",
+    "description": "계곡·폭포 산책",
+    "lat": 37.075,
+    "lng": 129.14,
+    "theme": "트레킹"
+  },
+  {
+    "name": "동해 무릉 건강숲",
+    "region": "동해시",
+    "description": "숲길 트레킹",
+    "lat": 37.09,
+    "lng": 129.12,
+    "theme": "트레킹"
+  },
+  {
+    "name": "삼척 케이블카·용화해수욕장",
+    "region": "삼척시",
+    "description": "해안 케이블카·해변",
+    "lat": 37.005,
+    "lng": 129.17,
+    "theme": "체험"
+  },
+  {
+    "name": "고성 통일전망대",
+    "region": "고성군",
+    "description": "전망·역사",
+    "lat": 38.505,
+    "lng": 128.41,
+    "theme": "역사"
+  },
+  {
+    "name": "양양 서피비치",
+    "region": "양양군",
+    "description": "서핑·해변",
+    "lat": 38.072,
+    "lng": 128.669,
+    "theme": "체험"
+  },
+  {
+    "name": "인제 원대리 자작나무숲",
+    "region": "인제군",
+    "description": "숲길 포토·힐링",
+    "lat": 38.155,
+    "lng": 128.21,
+    "theme": "힐링"
+  },
+  {
+    "name": "횡성 한우·둔내 온천",
+    "region": "횡성군",
+    "description": "먹거리·온천",
+    "lat": 37.49,
+    "lng": 127.99,
+    "theme": "체험"
+  },
+  {
+    "name": "화천 산천어축제 거리",
+    "region": "화천군",
+    "description": "겨울 축제·얼음낚시",
+    "lat": 38.106,
+    "lng": 127.708,
+    "theme": "체험"
+  }
 ];
 
 const GANGWON_CITIES = [
-  { city: "원주", lat: 37.3422, lng: 127.9202 },
-  { city: "춘천", lat: 37.8747, lng: 127.7342 },
-  { city: "강릉", lat: 37.7519, lng: 129.2022 },
-  { city: "동해", lat: 37.5247, lng: 129.1144 },
-  { city: "속초", lat: 38.207, lng: 128.5918 },
-  { city: "삼척", lat: 37.4498, lng: 129.1652 },
-  { city: "홍천", lat: 37.697, lng: 127.8887 },
-  { city: "태백", lat: 37.1641, lng: 128.9856 },
-  { city: "정선", lat: 37.3807, lng: 128.6608 },
-  { city: "평창", lat: 37.3705, lng: 128.39 },
+  {
+    "city": "원주",
+    "lat": 37.3422,
+    "lng": 127.9202,
+    "pop_rank": 1
+  },
+  {
+    "city": "춘천",
+    "lat": 37.8747,
+    "lng": 127.7342,
+    "pop_rank": 2
+  },
+  {
+    "city": "강릉",
+    "lat": 37.7519,
+    "lng": 129.2022,
+    "pop_rank": 3
+  },
+  {
+    "city": "동해",
+    "lat": 37.5247,
+    "lng": 129.1144,
+    "pop_rank": 4
+  },
+  {
+    "city": "속초",
+    "lat": 38.207,
+    "lng": 128.5918,
+    "pop_rank": 5
+  },
+  {
+    "city": "삼척",
+    "lat": 37.4498,
+    "lng": 129.1652,
+    "pop_rank": 6
+  },
+  {
+    "city": "홍천",
+    "lat": 37.697,
+    "lng": 127.8887,
+    "pop_rank": 7
+  },
+  {
+    "city": "태백",
+    "lat": 37.1641,
+    "lng": 128.9856,
+    "pop_rank": 8
+  },
+  {
+    "city": "정선",
+    "lat": 37.3807,
+    "lng": 128.6608,
+    "pop_rank": 9
+  },
+  {
+    "city": "평창",
+    "lat": 37.3705,
+    "lng": 128.39,
+    "pop_rank": 10
+  }
 ];
 
 const FESTIVALS = [
-  { title: "평창 송어축제", period: "1~2월", place: "평창군", desc: "얼음낚시·지역 먹거리" },
-  { title: "화천 산천어축제", period: "1월", place: "화천군", desc: "빙어·얼음낚시" },
-  { title: "강릉 커피축제", period: "10월", place: "강릉시", desc: "안목·경포 카페거리" },
-  { title: "정선 아리랑제", period: "10월", place: "정선군", desc: "전통공연·레일바이크" },
-  { title: "춘천 막국수 닭갈비 축제", period: "10월", place: "춘천시", desc: "로컬 먹거리" },
-  { title: "속초 설악산 단풍제", period: "10월", place: "속초시", desc: "단풍·트레킹" },
-  { title: "삼척 비치 페스티벌", period: "7~8월", place: "삼척시", desc: "해변·공연" },
-  { title: "원주 댄싱카니발", period: "9월", place: "원주시", desc: "거리공연·문화" },
+  {
+    "title": "평창 송어축제",
+    "period": "1~2월",
+    "place": "평창군",
+    "desc": "얼음낚시·지역 먹거리"
+  },
+  {
+    "title": "화천 산천어축제",
+    "period": "1월",
+    "place": "화천군",
+    "desc": "빙어·얼음낚시"
+  },
+  {
+    "title": "강릉 커피축제",
+    "period": "10월",
+    "place": "강릉시",
+    "desc": "안목·경포 카페거리"
+  },
+  {
+    "title": "정선 아리랑제",
+    "period": "10월",
+    "place": "정선군",
+    "desc": "전통공연·레일바이크"
+  },
+  {
+    "title": "춘천 막국수 닭갈비 축제",
+    "period": "10월",
+    "place": "춘천시",
+    "desc": "로컬 먹거리"
+  },
+  {
+    "title": "속초 설악산 단풍제",
+    "period": "10월",
+    "place": "속초시",
+    "desc": "단풍·트레킹"
+  },
+  {
+    "title": "삼척 비치 페스티벌",
+    "period": "7~8월",
+    "place": "삼척시",
+    "desc": "해변·공연"
+  },
+  {
+    "title": "원주 댄싱카니발",
+    "period": "9월",
+    "place": "원주시",
+    "desc": "거리공연·문화"
+  }
 ];
 
 const HIGHLIGHTS = [
-  { title: "설악산 단풍", region: "속초·고성", icon: "▲", bg: "linear-gradient(135deg,#0D9488,#14B8A6)" },
-  { title: "남이섬·소나무", region: "춘천", icon: "♣", bg: "linear-gradient(135deg,#0891B2,#22D3EE)" },
-  { title: "동해 해변 드라이브", region: "동해·삼척", icon: "≈", bg: "linear-gradient(135deg,#0284C7,#38BDF8)" },
-  { title: "평창 대관령 드라이브", region: "평창·횡성", icon: "◇", bg: "linear-gradient(135deg,#6366F1,#A78BFA)" },
-  { title: "강릉·양양 해변·카페", region: "강릉·양양", icon: "◎", bg: "linear-gradient(135deg,#F59E0B,#FCD34D)" },
+  {
+    "title": "설악산 단풍",
+    "region": "속초·고성",
+    "icon": "▲",
+    "bg": "linear-gradient(135deg,#0D9488,#14B8A6)",
+    "thumb_bg": "linear-gradient(135deg,#0D9488,#14B8A6)"
+  },
+  {
+    "title": "남이섬·소나무",
+    "region": "춘천",
+    "icon": "♣",
+    "bg": "linear-gradient(135deg,#0891B2,#22D3EE)",
+    "thumb_bg": "linear-gradient(135deg,#0891B2,#22D3EE)"
+  },
+  {
+    "title": "동해 해변 드라이브",
+    "region": "동해·삼척",
+    "icon": "≈",
+    "bg": "linear-gradient(135deg,#0284C7,#38BDF8)",
+    "thumb_bg": "linear-gradient(135deg,#0284C7,#38BDF8)"
+  },
+  {
+    "title": "평창 대관령 드라이브",
+    "region": "평창·횡성",
+    "icon": "◇",
+    "bg": "linear-gradient(135deg,#6366F1,#A78BFA)",
+    "thumb_bg": "linear-gradient(135deg,#6366F1,#A78BFA)"
+  },
+  {
+    "title": "강릉·양양 해변·카페",
+    "region": "강릉·양양",
+    "icon": "◎",
+    "bg": "linear-gradient(135deg,#F59E0B,#FCD34D)",
+    "thumb_bg": "linear-gradient(135deg,#F59E0B,#FCD34D)"
+  }
 ];
 
-/** 테마별 기본 메타 (추후 한국관광공사 API contentId 매핑용 필드 포함) */
 const THEME_META = {
-  "트레킹": { stay_min: 90, fee: "무료~有 (시설별 상이)", hours: "09:00–17:00", parking: "입구 주차장", best_time: "오전", tip: "등산화·수분·여벌 양말을 챙기세요" },
-  "힐링": { stay_min: 75, fee: "무료", hours: "연중", parking: "인근 공영·민영 주차", best_time: "해질녘", tip: "느긋한 산책·사진 촬영에 좋아요" },
-  "체험": { stay_min: 90, fee: "체험료 별도", hours: "10:00–17:00", parking: "주차장 완비", best_time: "오후", tip: "사전 예약·마감 시간을 확인하세요" },
-  "야경": { stay_min: 60, fee: "무료~有", hours: "일몰~22:00", parking: "야간 주차 가능 구역", best_time: "일몰 1시간 전", tip: "방한·삼각대를 준비하면 좋아요" },
-  "역사": { stay_min: 60, fee: "무료~有", hours: "09:00–18:00", parking: "관광지 인근", best_time: "오전", tip: "해설·유적 이야기를 함께 즐겨보세요" },
-  "자전거": { stay_min: 80, fee: "대여료 별도", hours: "10:00–17:00", parking: "출발점 주차", best_time: "오전~오후", tip: "헬멧·장갑·물을 챙기세요" },
+  "트레킹": {
+    "stay_min": 90,
+    "fee": "무료~有 (시설별 상이)",
+    "hours": "09:00–17:00",
+    "parking": "입구 주차장",
+    "best_time": "오전",
+    "tip": "등산화·수분·여벌 양말을 챙기세요"
+  },
+  "힐링": {
+    "stay_min": 75,
+    "fee": "무료",
+    "hours": "연중",
+    "parking": "인근 공영·민영 주차",
+    "best_time": "해질녘",
+    "tip": "느긋한 산책·사진 촬영에 좋아요"
+  },
+  "체험": {
+    "stay_min": 90,
+    "fee": "체험료 별도",
+    "hours": "10:00–17:00",
+    "parking": "주차장 완비",
+    "best_time": "오후",
+    "tip": "사전 예약·마감 시간을 확인하세요"
+  },
+  "야경": {
+    "stay_min": 60,
+    "fee": "무료~有",
+    "hours": "일몰~22:00",
+    "parking": "야간 주차 가능 구역",
+    "best_time": "일몰 1시간 전",
+    "tip": "방한·삼각대를 준비하면 좋아요"
+  },
+  "역사": {
+    "stay_min": 60,
+    "fee": "무료~有",
+    "hours": "09:00–18:00",
+    "parking": "관광지 인근",
+    "best_time": "오전",
+    "tip": "해설·유적 이야기를 함께 즐겨보세요"
+  },
+  "자전거": {
+    "stay_min": 80,
+    "fee": "대여료 별도",
+    "hours": "10:00–17:00",
+    "parking": "출발점 주차",
+    "best_time": "오전~오후",
+    "tip": "헬멧·장갑·물을 챙기세요"
+  }
 };
 
-/** 명소별 세부 (API 연동 전 수동 시드 — contentId는 추후 KTO API 매핑) */
 const SPOT_OVERRIDES = {
-  "방태산 자연휴양림 숲길": { stay_min: 80, hours: "08:00–18:00", parking: "휴양림 주차장", tip: "숲길 2~3km 완만 · 가족 산책 적합" },
-  "만항재 은하수 전망지": { stay_min: 45, fee: "무료", hours: "야간 (일몰 후)", tip: "별·야경 촬영 · 겨울 방한 필수" },
-  "삼척 덕풍계곡 비경길": { stay_min: 90, parking: "덕풍계곡 주차장", tip: "계곡 트레킹 · 여름 피서 인기" },
-  "영월 청령포 고요 산책": { stay_min: 50, fee: "무료", tip: "동강·청령포 산책로 · 유네스코 지질공원 인근" },
-  "평창 백룡동굴 탐방": { stay_min: 70, fee: "성인 약 6,000원", hours: "09:00–17:30", tip: "동굴 내 온도 8~12°C · 겉옷 필요" },
-  "양구 파로호 둘레길": { stay_min: 90, fee: "무료", tip: "자전거·산책 겸용 · 호수 전망" },
-  "속초 설악산 국립공원": { stay_min: 120, fee: "케이블카 별도", hours: "08:00–18:00", parking: "설악산 입구 주차장", tip: "케이블카·권금성·대청봉 코스 선택" },
-  "강릉 경포대·해변": { stay_min: 70, fee: "경포대 무료", tip: "호수·해변 연계 산책 · 자전거 대여 가능" },
-  "강릉 안목해변 커피거리": { stay_min: 60, fee: "무료", best_time: "일몰", tip: "카페·일몰 드라이브 · 주말 혼잡" },
-  "춘천 남이섬": { stay_min: 120, fee: "왕복선·입장료 별도", hours: "09:00–18:00", parking: "남이섬 선착장", tip: "유람선·자전거·메타세쿼이아길" },
-  "춘천 소양강 스카이워크": { stay_min: 40, fee: "약 2,000원", hours: "09:00–18:00", tip: "유리 전망대 · 소양강·춘천 시내 조망" },
-  "원주 치악산 케이블카": { stay_min: 90, fee: "케이블카 별도", hours: "09:00–17:00", tip: "단풍 시즌(10월) 인기 · 전망대" },
-  "홍천 비내섭계곡": { stay_min: 80, fee: "무료", tip: "여름 물놀이 · 계곡 피서" },
-  "태백산 천제단": { stay_min: 100, fee: "입장료 별도", hours: "04:00–(일출)", tip: "일출·눈꽃 · 고산 기온 낮음" },
-  "정선 레일바이크": { stay_min: 60, fee: "레일바이크 별도", hours: "09:30–17:00", tip: "아리랑마을 연계 · 사전 예약 권장" },
-  "정선 하이원 리조트 전망": { stay_min: 50, fee: "무료(전망)", tip: "산악 드라이브 · 스키 시즌 연계" },
-  "동해 무릉계곡": { stay_min: 80, parking: "무릉계곡 주차장", tip: "폭포·계곡 산책 · 여름 인기" },
-  "동해 무릉 건강숲": { stay_min: 70, tip: "숲길 트레킹 · 무릉계곡과 연계 가능" },
-  "삼척 케이블카·용화해수욕장": { stay_min: 90, fee: "케이블카 별도", tip: "해안 케이블카·해변 · 동해안 드라이브" },
-  "고성 통일전망대": { stay_min: 45, fee: "무료~有", tip: "DMZ·전망 · 신분증 지참" },
-  "양양 서피비치": { stay_min: 90, fee: "무료", tip: "서핑·해변 · 장비 대여 가능" },
-  "인제 원대리 자작나무숲": { stay_min: 60, fee: "무료", tip: "포토스팟 · 가을·겨울 인기" },
-  "횡성 한우·둔내 온천": { stay_min: 120, fee: "온천·식사 별도", tip: "한우·온천 힐링 · 저녁 식사 연계" },
-  "화천 산천어축제 거리": { stay_min: 90, fee: "체험별 상이", hours: "1월 시즌", tip: "겨울 축제 · 얼음낚시·먹거리" },
+  "방태산 자연휴양림 숲길": {
+    "stay_min": 80,
+    "hours": "08:00–18:00",
+    "parking": "휴양림 주차장",
+    "tip": "숲길 2~3km 완만 · 가족 산책 적합"
+  },
+  "만항재 은하수 전망지": {
+    "stay_min": 45,
+    "fee": "무료",
+    "hours": "야간 (일몰 후)",
+    "tip": "별·야경 촬영 · 겨울 방한 필수"
+  },
+  "삼척 덕풍계곡 비경길": {
+    "stay_min": 90,
+    "parking": "덕풍계곡 주차장",
+    "tip": "계곡 트레킹 · 여름 피서 인기"
+  },
+  "영월 청령포 고요 산책": {
+    "stay_min": 50,
+    "fee": "무료",
+    "tip": "동강·청령포 산책로 · 유네스코 지질공원 인근"
+  },
+  "평창 백룡동굴 탐방": {
+    "stay_min": 70,
+    "fee": "성인 약 6,000원",
+    "hours": "09:00–17:30",
+    "tip": "동굴 내 온도 8~12°C · 겉옷 필요"
+  },
+  "양구 파로호 둘레길": {
+    "stay_min": 90,
+    "fee": "무료",
+    "tip": "자전거·산책 겸용 · 호수 전망"
+  },
+  "속초 설악산 국립공원": {
+    "stay_min": 120,
+    "fee": "케이블카 별도",
+    "hours": "08:00–18:00",
+    "parking": "설악산 입구 주차장",
+    "tip": "케이블카·권금성·대청봉 코스 선택"
+  },
+  "강릉 경포대·해변": {
+    "stay_min": 70,
+    "fee": "경포대 무료",
+    "tip": "호수·해변 연계 산책 · 자전거 대여 가능"
+  },
+  "강릉 안목해변 커피거리": {
+    "stay_min": 60,
+    "fee": "무료",
+    "best_time": "일몰",
+    "tip": "카페·일몰 드라이브 · 주말 혼잡"
+  },
+  "춘천 남이섬": {
+    "stay_min": 120,
+    "fee": "왕복선·입장료 별도",
+    "hours": "09:00–18:00",
+    "parking": "남이섬 선착장",
+    "tip": "유람선·자전거·메타세쿼이아길"
+  },
+  "춘천 소양강 스카이워크": {
+    "stay_min": 40,
+    "fee": "약 2,000원",
+    "hours": "09:00–18:00",
+    "tip": "유리 전망대 · 소양강·춘천 시내 조망"
+  },
+  "원주 치악산 케이블카": {
+    "stay_min": 90,
+    "fee": "케이블카 별도",
+    "hours": "09:00–17:00",
+    "tip": "단풍 시즌(10월) 인기 · 전망대"
+  },
+  "홍천 비내섭계곡": {
+    "stay_min": 80,
+    "fee": "무료",
+    "tip": "여름 물놀이 · 계곡 피서"
+  },
+  "태백산 천제단": {
+    "stay_min": 100,
+    "fee": "입장료 별도",
+    "hours": "04:00–(일출)",
+    "tip": "일출·눈꽃 · 고산 기온 낮음"
+  },
+  "정선 레일바이크": {
+    "stay_min": 60,
+    "fee": "레일바이크 별도",
+    "hours": "09:30–17:00",
+    "tip": "아리랑마을 연계 · 사전 예약 권장"
+  },
+  "정선 하이원 리조트 전망": {
+    "stay_min": 50,
+    "fee": "무료(전망)",
+    "tip": "산악 드라이브 · 스키 시즌 연계"
+  },
+  "동해 무릉계곡": {
+    "stay_min": 80,
+    "parking": "무릉계곡 주차장",
+    "tip": "폭포·계곡 산책 · 여름 인기"
+  },
+  "동해 무릉 건강숲": {
+    "stay_min": 70,
+    "tip": "숲길 트레킹 · 무릉계곡과 연계 가능"
+  },
+  "삼척 케이블카·용화해수욕장": {
+    "stay_min": 90,
+    "fee": "케이블카 별도",
+    "tip": "해안 케이블카·해변 · 동해안 드라이브"
+  },
+  "고성 통일전망대": {
+    "stay_min": 45,
+    "fee": "무료~有",
+    "tip": "DMZ·전망 · 신분증 지참"
+  },
+  "양양 서피비치": {
+    "stay_min": 90,
+    "fee": "무료",
+    "tip": "서핑·해변 · 장비 대여 가능"
+  },
+  "인제 원대리 자작나무숲": {
+    "stay_min": 60,
+    "fee": "무료",
+    "tip": "포토스팟 · 가을·겨울 인기"
+  },
+  "횡성 한우·둔내 온천": {
+    "stay_min": 120,
+    "fee": "온천·식사 별도",
+    "tip": "한우·온천 힐링 · 저녁 식사 연계"
+  },
+  "화천 산천어축제 거리": {
+    "stay_min": 90,
+    "fee": "체험별 상이",
+    "hours": "1월 시즌",
+    "tip": "겨울 축제 · 얼음낚시·먹거리"
+  }
 };
 
+const FESTIVAL_ICONS = [
+  "🎪",
+  "🎭",
+  "🎶",
+  "🐟",
+  "☕",
+  "🎿",
+  "🌸",
+  "🍁"
+];
+
+const WEATHER_ICONS = {
+  "sunny": {
+    "icon": "☀",
+    "label": "맑음",
+    "bg": "linear-gradient(135deg,#FDE68A,#FBBF24)",
+    "thumb_bg": "linear-gradient(135deg,#FDE68A,#FBBF24)"
+  },
+  "partly_cloudy": {
+    "icon": "◐",
+    "label": "구름 조금",
+    "bg": "linear-gradient(135deg,#BAE6FD,#7DD3FC)",
+    "thumb_bg": "linear-gradient(135deg,#BAE6FD,#7DD3FC)"
+  },
+  "cloudy": {
+    "icon": "☁",
+    "label": "흐림",
+    "bg": "linear-gradient(135deg,#E2E8F0,#94A3B8)",
+    "thumb_bg": "linear-gradient(135deg,#E2E8F0,#94A3B8)"
+  },
+  "fog": {
+    "icon": "≡",
+    "label": "안개",
+    "bg": "linear-gradient(135deg,#CBD5E1,#94A3B8)",
+    "thumb_bg": "linear-gradient(135deg,#CBD5E1,#94A3B8)"
+  },
+  "rain": {
+    "icon": "☂",
+    "label": "비",
+    "bg": "linear-gradient(135deg,#93C5FD,#3B82F6)",
+    "thumb_bg": "linear-gradient(135deg,#93C5FD,#3B82F6)"
+  },
+  "snow": {
+    "icon": "❄",
+    "label": "눈",
+    "bg": "linear-gradient(135deg,#E0F2FE,#BAE6FD)",
+    "thumb_bg": "linear-gradient(135deg,#E0F2FE,#BAE6FD)"
+  },
+  "thunder": {
+    "icon": "⚡",
+    "label": "뇌우",
+    "bg": "linear-gradient(135deg,#C4B5FD,#7C3AED)",
+    "thumb_bg": "linear-gradient(135deg,#C4B5FD,#7C3AED)"
+  }
+};
+
+const THEME_BADGE = {
+  "트레킹": {
+    "label": "NATURE",
+    "cls": "badge-nature"
+  },
+  "힐링": {
+    "label": "CALM",
+    "cls": "badge-calm"
+  },
+  "체험": {
+    "label": "EXPERIENCE",
+    "cls": "badge-experience"
+  },
+  "야경": {
+    "label": "NIGHT",
+    "cls": "badge-night"
+  },
+  "역사": {
+    "label": "CULTURE",
+    "cls": "badge-culture"
+  },
+  "자전거": {
+    "label": "DRIVE",
+    "cls": "badge-drive"
+  }
+};
+
+const THEME_IMAGE = {
+  "트레킹": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=640&h=340&fit=crop&q=80",
+  "힐링": "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=640&h=340&fit=crop&q=80",
+  "체험": "https://images.unsplash.com/photo-1551632811-561732d1e306?w=640&h=340&fit=crop&q=80",
+  "야경": "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=640&h=340&fit=crop&q=80",
+  "역사": "https://images.unsplash.com/photo-1548115184-bc6544d06a58?w=640&h=340&fit=crop&q=80",
+  "자전거": "https://images.unsplash.com/photo-1471506480208-91b3a4cc78be?w=640&h=340&fit=crop&q=80"
+};
+
+const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=640&h=340&fit=crop&q=80";
+
+const REGION_INTRO = "강원도는 산·바다·계곡이 가까워 <b>당일·반나절 여행</b>에 잘 맞아요. AI가 전역 관광지 중에서 취향에 맞는 동선을 골라 드립니다.";
+
+const SUGGESTIONS = [
+  {
+    "label": "1박2일 바다·대중교통",
+    "prompt": "의정부에서 대중교통으로 여자친구와 1박 2일 바다 여행"
+  },
+  {
+    "label": "강릉 카페 코스",
+    "prompt": "강릉 해안 드라이브와 분위기 좋은 카페가 있는 코스"
+  },
+  {
+    "label": "일몰 명소",
+    "prompt": "강원도 동해안 일몰 명소를 도는 반나절 코스"
+  },
+  {
+    "label": "가족 여행",
+    "prompt": "주차가 편하고 아이와 함께 가기 좋은 강원도 가족 코스"
+  },
+  {
+    "label": "단풍 트레킹",
+    "prompt": "설악산 단풍을 즐기는 가벼운 트레킹 코스"
+  }
+];
+
+const GEMINI_MODEL = "gemini-2.5-flash-lite";
+
+const TRANSIT_ORIGINS = {
+  "의정부시": {
+    "hub": "의정부역·동대문/청량리 환승",
+    "routes": [
+      {
+        "dest": "강릉·동해 해안",
+        "mode": "KTX",
+        "via": "의정부→청량리→강릉역",
+        "note": "약 2h30 · 강릉·동해·삼척 바다권"
+      },
+      {
+        "dest": "속초·양양",
+        "mode": "고속버스",
+        "via": "동서울종합터미널→속초/양양",
+        "note": "약 2h30 · 설악·서피비치"
+      },
+      {
+        "dest": "춘천·남이섬",
+        "mode": "ITX/지하철",
+        "via": "의정부→청량리→춘천",
+        "note": "약 1h30 · 당일권"
+      }
+    ]
+  },
+  "서울": {
+    "hub": "청량리·동서울·서울역",
+    "routes": [
+      {
+        "dest": "강릉·동해",
+        "mode": "KTX",
+        "via": "청량리/서울역→강릉역",
+        "note": "약 2h"
+      },
+      {
+        "dest": "속초·양양",
+        "mode": "고속버스",
+        "via": "동서울종합터미널",
+        "note": "약 2h"
+      },
+      {
+        "dest": "춘천",
+        "mode": "ITX",
+        "via": "청량리→춘천",
+        "note": "약 1h"
+      }
+    ]
+  },
+  "수원시": {
+    "hub": "수원역·영등포 환승",
+    "routes": [
+      {
+        "dest": "강릉",
+        "mode": "KTX",
+        "via": "수원→영등포→청량리→강릉",
+        "note": "약 3h"
+      },
+      {
+        "dest": "동해·삼척",
+        "mode": "KTX+버스",
+        "via": "강릉역→동해/삼척 시내 버스",
+        "note": "강릉 하차 후 환승"
+      }
+    ]
+  },
+  "경기도": {
+    "hub": "수도권 역·터미널 환승",
+    "routes": [
+      {
+        "dest": "동해안(강릉·동해·삼척)",
+        "mode": "KTX",
+        "via": "가까운 KTX역→강릉",
+        "note": "출발지에 따라 청량리·수원·동탄역 선택"
+      }
+    ]
+  }
+};
 function enrichSpot(raw) {
   const theme = THEME_META[raw.theme] || {};
   const extra = SPOT_OVERRIDES[raw.name] || {};
@@ -116,50 +751,6 @@ function enrichSpot(raw) {
 
 const ENRICHED_SPOTS = SPOTS.map(enrichSpot);
 
-// gemini-2.5-flash-lite: 할당량 여유 · thinking 없음 (429 완화)
-const GEMINI_MODEL = "gemini-2.5-flash-lite";
-
-const FESTIVAL_ICONS = ["🎪", "🎭", "🎶", "🐟", "☕", "🎿", "🌸", "🍁"];
-
-const WEATHER_ICONS = {
-  sunny: { icon: "☀", label: "맑음", bg: "linear-gradient(135deg,#FDE68A,#FBBF24)" },
-  partly_cloudy: { icon: "◐", label: "구름 조금", bg: "linear-gradient(135deg,#BAE6FD,#7DD3FC)" },
-  cloudy: { icon: "☁", label: "흐림", bg: "linear-gradient(135deg,#E2E8F0,#94A3B8)" },
-  fog: { icon: "≡", label: "안개", bg: "linear-gradient(135deg,#CBD5E1,#94A3B8)" },
-  rain: { icon: "☂", label: "비", bg: "linear-gradient(135deg,#93C5FD,#3B82F6)" },
-  snow: { icon: "❄", label: "눈", bg: "linear-gradient(135deg,#E0F2FE,#BAE6FD)" },
-  thunder: { icon: "⚡", label: "뇌우", bg: "linear-gradient(135deg,#C4B5FD,#7C3AED)" },
-};
-
-const THEME_BADGE = {
-  "트레킹": { label: "NATURE", cls: "badge-nature" },
-  "힐링": { label: "CALM", cls: "badge-calm" },
-  "체험": { label: "EXPERIENCE", cls: "badge-experience" },
-  "야경": { label: "NIGHT", cls: "badge-night" },
-  "역사": { label: "CULTURE", cls: "badge-culture" },
-  "자전거": { label: "DRIVE", cls: "badge-drive" },
-};
-
-const THEME_IMAGE = {
-  "트레킹": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=640&h=340&fit=crop&q=80",
-  "힐링": "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=640&h=340&fit=crop&q=80",
-  "체험": "https://images.unsplash.com/photo-1551632811-561732d1e306?w=640&h=340&fit=crop&q=80",
-  "야경": "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=640&h=340&fit=crop&q=80",
-  "역사": "https://images.unsplash.com/photo-1548115184-bc6544d06a58?w=640&h=340&fit=crop&q=80",
-  "자전거": "https://images.unsplash.com/photo-1471506480208-91b3a4cc78be?w=640&h=340&fit=crop&q=80",
-};
-const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=640&h=340&fit=crop&q=80";
-
-const REGION_INTRO =
-  "강원도는 산·바다·계곡이 가까워 <b>당일·반나절 여행</b>에 잘 맞아요. AI가 전역 관광지 중에서 취향에 맞는 동선을 골라 드립니다.";
-
-const SUGGESTIONS = [
-  { label: "강릉 카페 코스", prompt: "강릉 해안 드라이브와 분위기 좋은 카페가 있는 코스" },
-  { label: "일몰 명소", prompt: "강원도 동해안 일몰 명소를 도는 반나절 코스" },
-  { label: "가족 여행", prompt: "주차가 편하고 아이와 함께 가기 좋은 강원도 가족 코스" },
-  { label: "단풍 트레킹", prompt: "설악산 단풍을 즐기는 가벼운 트레킹 코스" },
-];
-
 // Kakao JavaScript 키는 저장소에 두지 않습니다.
-// - 로컬: docs/config.example.js를 config.js로 복사해 키 입력 (gitignore됨)
-// - 배포: GitHub Actions가 Secret(KAKAO_JS_KEY)으로 config.js를 생성해 주입
+// - 로컬: docs/config.example.js를 config.js로 복사
+// - 배포: GitHub Actions Secret(KAKAO_JS_KEY)
