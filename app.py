@@ -99,10 +99,12 @@ def _run_curation(user_prompt: str) -> None:
     )
     _apply_curation_result(result, user_prompt)
     src = result.get("source", "")
-    if src in ("local_skip", "local_api_fail", "local"):
+    if src == "ai_required_fail":
+        st.session_state._toast = result.get("message", "AI 일정을 만들지 못했어요.")
+    elif src in ("local_skip", "local_api_fail", "local"):
         from curation_sources import source_label
         st.session_state._toast = f"{source_label(src)} · {result.get('itinerary_title', '코스')}"
-    if not result.get("curated_spots"):
+    elif not result.get("curated_spots"):
         st.session_state._toast = "조건에 맞는 코스를 찾지 못했어요. 다르게 표현해 보세요."
 
 

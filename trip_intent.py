@@ -94,3 +94,80 @@ def build_trip_hints(message: str) -> str:
     if ref:
         lines.append(ref)
     return "\n".join(lines)
+
+
+def resolve_origin_entry(origin_text: str) -> tuple[str, dict[str, Any]] | None:
+    text = (origin_text or "").strip()
+    if not text:
+        return None
+    catalog = load_catalog()
+    origins: dict[str, Any] = catalog.get("transit_origins") or {}
+    if text in origins:
+        return text, origins[text]
+    for name in sorted(origins.keys(), key=len, reverse=True):
+        short = name.replace("시", "").replace("군", "").replace("구", "")
+        if name in text or (len(short) >= 2 and short in text):
+            return name, origins[name]
+    return None
+
+
+def pick_origin_coords(data: dict[str, Any], transport: str = "") -> tuple[float, float] | None:
+    transport_text = (transport or "").lower()
+    if data.get("hub_lat") is not None and re.search(
+        r"ktx|기차|itx|srt|열차|지하철|버스|대중교통", transport_text
+    ):
+        return float(data["hub_lat"]), float(data["hub_lng"])
+    if data.get("lat") is not None and data.get("lng") is not None:
+        return float(data["lat"]), float(data["lng"])
+    return None
+
+
+def build_origin_route_step(
+    label: str,
+    data: dict[str, Any],
+    transport: str = "",
+    outbound: str = "",
+) -> dict[str, Any] | None:
+    coords = pick_origin_coords(data, transport)
+    if not coords:
+        return None
+    lat, lng = coords
+    hub = data.get("hub") or ""
+    return {
+        "order": 1,
+        "kind": "origin",
+        "day": 0,
+        "spot_name": f"출발 · {label}",
+        "region": label,
+        "theme": "출발",
+        "lat": lat,
+        "lng": lng,
+        "stay_minutes": 0,
+        "why": f"출발 · {hub}" if hub else f"출발 · {label}",
+        "move_to_next": (outbound or "").strip(),
+    }
+
+
+def attach_origin_step(
+    steps: list[dict[str, Any]],
+    trip_intent: dict[str, Any] | None,
+    transit_plan: dict[str, Any] | None,
+    user_message: str = "",
+) -> list[dict[str, Any]]:
+    intent = trip_intent or {}
+    transit = transit_plan or {}
+    origin_text = intent.get("origin") or detect_origin(user_message)
+    hit = resolve_origin_entry(str(origin_text or ""))
+    if not hit:
+        return steps
+    label, data = hit
+    origin = build_origin_route_step(
+        label,
+        data,
+        str(intent.get("transport") or ""),
+        str(transit.get("outbound") or ""),
+    )
+    if not origin:
+        return steps
+    renumbered = [{**step, "order": idx + 2} for idx, step in enumerate(steps)]
+    return [origin, *renumbered]

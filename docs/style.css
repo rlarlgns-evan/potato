@@ -470,6 +470,18 @@ a { color: inherit; }
   background: var(--on-primary-container); width: 34px; height: 34px;
   box-shadow: 0 0 0 5px rgba(102, 188, 176, 0.4), 0 3px 10px rgba(0, 0, 0, 0.3);
 }
+.order-pin.origin {
+  background: #334155;
+}
+.order-pin.origin.focus {
+  background: #0f172a;
+  box-shadow: 0 0 0 5px rgba(100, 116, 139, 0.35), 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+.course-card.origin-card {
+  border-color: rgba(51, 65, 85, 0.25);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.98));
+}
+.course-leg.transit-leg { color: #475569; }
 .leaflet-container { font-family: "Inter", sans-serif; background: #eef3f2; }
 .leaflet-popup-content-wrapper { border-radius: 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14); }
 .map-note {

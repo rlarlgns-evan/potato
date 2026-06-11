@@ -25,8 +25,8 @@ function popupHtml(spot, showNumbers) {
     + '</div>';
 }
 
-function pinDiv(label, focused) {
-  return '<div class="order-pin' + (focused ? ' focus' : '') + '">' + (label || '') + '</div>';
+function pinDiv(label, focused, isOrigin) {
+  return '<div class="order-pin' + (isOrigin ? ' origin' : '') + (focused ? ' focus' : '') + '">' + (label || '') + '</div>';
 }
 
 function isFocused(spot, focusOrder) {
@@ -50,17 +50,19 @@ function initKakao(cfg) {
   const path = [];
   let focusSpot = null;
   let openIw = null;
+  const origin = cfg.markers.find(function (m) { return m.kind === 'origin'; });
+  const destMarkers = cfg.markers.filter(function (m) { return m.kind !== 'origin'; });
 
   cfg.markers.forEach(function (spot) {
     const pos = new kakao.maps.LatLng(spot.lat, spot.lng);
     bounds.extend(pos);
-    path.push(pos);
+    if (spot.kind !== 'origin') path.push(pos);
     const focused = isFocused(spot, cfg.focus_order);
     if (focused) focusSpot = spot;
 
     const label = cfg.show_numbers && spot.order ? spot.order : '';
     const el = document.createElement('div');
-    el.innerHTML = pinDiv(label, focused);
+    el.innerHTML = pinDiv(label, focused, spot.kind === 'origin');
     const overlay = new kakao.maps.CustomOverlay({
       position: pos, content: el, yAnchor: 0.5, xAnchor: 0.5,
       zIndex: focused ? 10 : 1
@@ -80,11 +82,22 @@ function initKakao(cfg) {
     if (focused) { iw.open(map); openIw = iw; }
   });
 
-  if (cfg.show_route && path.length > 1) {
-    new kakao.maps.Polyline({
-      path: path, strokeWeight: 4, strokeColor: '#006a61',
-      strokeOpacity: 0.85, strokeStyle: 'shortdash'
-    }).setMap(map);
+  if (cfg.show_route) {
+    if (origin && destMarkers.length) {
+      new kakao.maps.Polyline({
+        path: [
+          new kakao.maps.LatLng(origin.lat, origin.lng),
+          new kakao.maps.LatLng(destMarkers[0].lat, destMarkers[0].lng)
+        ],
+        strokeWeight: 3, strokeColor: '#64748b', strokeOpacity: 0.55, strokeStyle: 'shortdot'
+      }).setMap(map);
+    }
+    if (path.length > 1) {
+      new kakao.maps.Polyline({
+        path: path, strokeWeight: 4, strokeColor: '#006a61',
+        strokeOpacity: 0.85, strokeStyle: 'shortdash'
+      }).setMap(map);
+    }
   }
 
   if (focusSpot) {
@@ -118,6 +131,8 @@ function initLeaflet(cfg) {
 
   const latlngs = [];
   let focusSpot = null;
+  const origin = cfg.markers.find(function (m) { return m.kind === 'origin'; });
+  const destMarkers = cfg.markers.filter(function (m) { return m.kind !== 'origin'; });
   cfg.markers.forEach(function (spot) {
     const ll = [spot.lat, spot.lng];
     latlngs.push(ll);
@@ -125,7 +140,7 @@ function initLeaflet(cfg) {
     if (focused) focusSpot = spot;
     const label = cfg.show_numbers && spot.order ? spot.order : '';
     const icon = L.divIcon({
-      html: pinDiv(label, focused), className: '',
+      html: pinDiv(label, focused, spot.kind === 'origin'), className: '',
       iconSize: focused ? [34, 34] : [28, 28],
       iconAnchor: focused ? [17, 17] : [14, 14]
     });
@@ -134,8 +149,17 @@ function initLeaflet(cfg) {
     if (focused) { map.setView(ll, 12); m.openPopup(); }
   });
 
-  if (cfg.show_route && latlngs.length > 1) {
-    L.polyline(latlngs, { color: '#006a61', weight: 4, opacity: 0.85, dashArray: '1 8', lineCap: 'round' }).addTo(map);
+  if (cfg.show_route) {
+    if (origin && destMarkers.length) {
+      L.polyline(
+        [[origin.lat, origin.lng], [destMarkers[0].lat, destMarkers[0].lng]],
+        { color: '#64748b', weight: 3, opacity: 0.55, dashArray: '2 10', lineCap: 'round' }
+      ).addTo(map);
+    }
+    const destPath = destMarkers.map(function (m) { return [m.lat, m.lng]; });
+    if (destPath.length > 1) {
+      L.polyline(destPath, { color: '#006a61', weight: 4, opacity: 0.85, dashArray: '1 8', lineCap: 'round' }).addTo(map);
+    }
   }
   if (!focusSpot && latlngs.length > 1) map.fitBounds(latlngs, { padding: [44, 44] });
   else if (!focusSpot && latlngs.length === 1) map.setView(latlngs[0], 11);

@@ -12,6 +12,7 @@ const SOURCE_LABELS = {
   local_skip: "◆ 로컬 매칭 (API 절약)",
   local: "◆ 로컬 AI",
   local_api_fail: "◆ 로컬 (API 실패)",
+  ai_required_fail: "✕ AI 필요 (실패)",
 };
 function sourceLabel(src) {
   return SOURCE_LABELS[src] || "◆ 로컬 AI";
@@ -313,35 +314,57 @@ function fmtMin(m) {
 
 function computeLegs(steps) {
   const legs = [];
-  for (let i = 0; i < steps.length - 1; i++) {
-    const from = steps[i].spot;
-    const to = steps[i + 1].spot;
+  const routeSteps = destinationSteps(steps);
+  for (let i = 0; i < routeSteps.length - 1; i++) {
+    const from = routeSteps[i].spot;
+    const to = routeSteps[i + 1].spot;
     const km = haversineKm(from, to);
     const driveMin = estDriveMin(km);
     const autoMove = `${to.name}까지 ${fmtKm(km)} · 차량 약 ${fmtMin(driveMin)}`;
-    if (!steps[i].move_to_next) steps[i].move_to_next = autoMove;
+    if (!routeSteps[i].move_to_next) routeSteps[i].move_to_next = autoMove;
     legs.push({
-      from: steps[i],
-      to: steps[i + 1],
+      from: routeSteps[i],
+      to: routeSteps[i + 1],
       km,
       driveMin,
-      note: steps[i].move_to_next,
+      note: routeSteps[i].move_to_next,
+    });
+  }
+  const origin = steps.find((s) => s.kind === "origin");
+  if (origin && routeSteps.length) {
+    const outbound = origin.move_to_next || state.meta?.transitPlan?.outbound || "";
+    if (outbound && !origin.move_to_next) origin.move_to_next = outbound;
+    legs.unshift({
+      from: origin,
+      to: routeSteps[0],
+      km: haversineKm(origin.spot, routeSteps[0].spot),
+      driveMin: 0,
+      note: origin.move_to_next || "대중교통 · 강원 지역 이동",
+      transit: true,
     });
   }
   return legs;
 }
 
 function routeSummary(steps, legs) {
-  const driveKm = legs.reduce((a, l) => a + l.km, 0);
-  const driveMin = legs.reduce((a, l) => a + l.driveMin, 0);
-  const stayMin = steps.reduce((a, s) => a + (s.stay ?? s.spot.stay_min ?? 60), 0);
-  return { stops: steps.length, driveKm, driveMin, stayMin, totalMin: driveMin + stayMin };
+  const routeSteps = destinationSteps(steps);
+  const driveLegs = legs.filter((l) => !l.transit);
+  const driveKm = driveLegs.reduce((a, l) => a + l.km, 0);
+  const driveMin = driveLegs.reduce((a, l) => a + l.driveMin, 0);
+  const stayMin = routeSteps.reduce((a, s) => a + (s.stay ?? s.spot.stay_min ?? 60), 0);
+  return {
+    stops: routeSteps.length,
+    driveKm,
+    driveMin,
+    stayMin,
+    totalMin: driveMin + stayMin,
+  };
 }
 
 const SPOT_BY_NAME = Object.fromEntries(ENRICHED_SPOTS.map((s) => [s.name, s]));
 const MAX_SPOTS_IN_PROMPT = 12;
 const GEMINI_MIN_GAP_MS = 8000;
-const CACHE_STORAGE_KEY = "voyage_curation_v1";
+const CACHE_STORAGE_KEY = "voyage_curation_v2";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 let lastGeminiAt = 0;
 
@@ -459,6 +482,75 @@ function buildTripHints(prompt) {
   return lines.join("\n");
 }
 
+function resolveOriginEntry(originText) {
+  const raw = String(originText || "").trim();
+  if (!raw) return null;
+  const origins = typeof TRANSIT_ORIGINS !== "undefined" ? TRANSIT_ORIGINS : {};
+  if (origins[raw]) return { label: raw, data: origins[raw] };
+  for (const name of Object.keys(origins).sort((a, b) => b.length - a.length)) {
+    const short = name.replace(/[시군구]/g, "");
+    if (raw.includes(name) || (short.length >= 2 && raw.includes(short))) {
+      return { label: name, data: origins[name] };
+    }
+  }
+  return null;
+}
+
+function pickOriginCoords(data, transport) {
+  const t = String(transport || "");
+  if (data.hub_lat != null && /KTX|기차|ITX|SRT|열차|지하철|버스|대중교통/i.test(t)) {
+    return { lat: data.hub_lat, lng: data.hub_lng };
+  }
+  if (data.lat != null && data.lng != null) return { lat: data.lat, lng: data.lng };
+  return null;
+}
+
+function buildOriginStep(label, data, transport, outbound) {
+  const coords = pickOriginCoords(data, transport);
+  if (!coords) return null;
+  const hub = data.hub || "";
+  return {
+    order: 1,
+    kind: "origin",
+    day: 0,
+    stay: 0,
+    why: hub ? `출발 · ${hub}` : `출발 · ${label}`,
+    move_to_next: outbound || "",
+    spot: {
+      name: `출발 · ${label}`,
+      region: label,
+      lat: coords.lat,
+      lng: coords.lng,
+      theme: "출발",
+      description: hub || "여행 출발 지점",
+      stay_min: 0,
+      fee: "-",
+      hours: "-",
+      parking: "-",
+      best_time: "-",
+      tip: outbound || "강원 여행 출발 지점",
+    },
+  };
+}
+
+function attachOriginStep(steps, meta, prompt) {
+  const originText = meta.tripIntent?.origin || detectOrigin(prompt || state.query || "");
+  const hit = resolveOriginEntry(originText);
+  if (!hit) return steps;
+  const origin = buildOriginStep(
+    hit.label,
+    hit.data,
+    meta.tripIntent?.transport,
+    meta.transitPlan?.outbound
+  );
+  if (!origin) return steps;
+  return [origin, ...steps.map((s, i) => ({ ...s, order: i + 2 }))];
+}
+
+function destinationSteps(steps) {
+  return steps.filter((s) => s.kind !== "origin");
+}
+
 function shouldCallGemini(prompt) {
   if (needsComplexAi(prompt)) return true;
   const { topScore, strongHits, top3Sum } = scoreLocalMatch(prompt);
@@ -530,14 +622,18 @@ function geminiFailToast(e) {
     toast("AI 서버 혼잡 — 잠시 후 다시 시도해 주세요.");
   else if (e.status === 400 || e.status === 403)
     toast("AI 서비스 일시 오류 — 잠시 후 다시 시도해 주세요.");
-  else if (/empty response|JSON|no spots matched/i.test(e.message || ""))
+  else if (/no spots matched/i.test(e.message || ""))
+    toast("AI가 등록된 장소명과 맞지 않아요 — 다시 시도해 주세요.");
+  else if (/empty response/i.test(e.message || ""))
+    toast("AI 응답이 비었어요 — 잠시 후 다시 시도해 주세요.");
+  else if (/invalid JSON|JSON/i.test(e.message || ""))
     toast("AI 응답 파싱 실패 — 다시 시도하거나 다른 질문을 입력하세요.");
   else
     toast("AI 호출 실패 — 잠시 후 다시 시도해 주세요.");
 }
 
 async function callGemini(body, key, retries = 1) {
-  const model = typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "gemini-2.5-flash-lite";
+  const model = typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "gemini-3.5-flash";
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
     encodeURIComponent(key);
@@ -563,16 +659,46 @@ async function callGemini(body, key, retries = 1) {
   }
 }
 
-function parseGeminiCuration(raw, prompt) {
+function extractGeminiText(candidate) {
+  const parts = candidate?.content?.parts;
+  if (!parts?.length) return "";
+  const visible = parts.filter((p) => p.text && !p.thought).map((p) => p.text);
+  if (visible.length) return visible.join("");
+  return parts.map((p) => p.text || "").join("");
+}
+
+function parseJsonFromGemini(raw) {
   let text = String(raw ?? "").trim();
   if (!text) throw new Error("empty response from Gemini");
-  text = text.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
-  const parsed = JSON.parse(text);
+  text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
+  try {
+    return JSON.parse(text);
+  } catch (first) {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("invalid JSON from Gemini");
+    try {
+      return JSON.parse(match[0]);
+    } catch (second) {
+      throw new Error("invalid JSON from Gemini: " + second.message);
+    }
+  }
+}
+
+function resolveSpotByName(name) {
+  const raw = String(name ?? "").trim();
+  if (!raw) return null;
+  if (SPOT_BY_NAME[raw]) return SPOT_BY_NAME[raw];
+  const hit = ENRICHED_SPOTS.find(
+    (s) => s.name.includes(raw) || raw.includes(s.name)
+  );
+  return hit || null;
+}
+
+function parseGeminiCuration(raw, prompt) {
+  const parsed = parseJsonFromGemini(raw);
   const steps = (parsed.route_steps || [])
     .map((st, i) => {
-      const spot =
-        SPOT_BY_NAME[st.spot_name] ||
-        ENRICHED_SPOTS.find((s) => s.name.includes(st.spot_name) || st.spot_name?.includes(s.name));
+      const spot = resolveSpotByName(st.spot_name);
       if (!spot) return null;
       return {
         order: i + 1,
@@ -647,18 +773,64 @@ async function geminiCuration(prompt, key) {
     contents: [{ role: "user", parts: [{ text: prompt.slice(0, 600) }] }],
     generationConfig: {
       temperature: 0.4,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 4096,
       responseMimeType: "application/json",
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingLevel: "MINIMAL" },
     },
   };
   const d = await callGemini(body, key);
   const c = d.candidates?.[0];
   const finish = c?.finishReason || "";
-  const text = c?.content?.parts?.map((p) => p.text || "").join("") ?? "";
-  if (!text && finish === "MAX_TOKENS")
-    throw new Error("empty response from Gemini (token limit)");
+  const text = extractGeminiText(c);
+  if (!text) {
+    if (finish === "MAX_TOKENS")
+      throw new Error("empty response from Gemini (token limit)");
+    throw new Error("empty response from Gemini");
+  }
+  if (finish === "MAX_TOKENS")
+    console.warn("Gemini finishReason=MAX_TOKENS — JSON may be truncated");
   return parseGeminiCuration(text, prompt);
+}
+
+function buildComplexFailReply(e) {
+  const lines = [
+    "**AI 일정을 만들지 못했어요**",
+    "출발·교통·숙박·기간 조건이 포함된 질문은 AI가 필요합니다.",
+  ];
+  if (e?.status === 429) {
+    lines.push("요청이 많거나 사용량 한도에 도달했을 수 있어요. 1~2분 후 다시 시도해 주세요.");
+  } else {
+    lines.push("잠시 후 다시 시도하거나, 조건을 나눠서 질문해 보세요.");
+  }
+  return lines.join("\n");
+}
+
+function pushAgentFailure(text) {
+  state.chat.push({ role: "assistant", text });
+  renderAgentChat();
+}
+
+function applyCurationResult(prompt, result) {
+  state.chat.push({ role: "assistant", text: buildAgentReply(result) });
+  renderAgentChat();
+  state.query = prompt;
+  state.meta = {
+    title: result.title,
+    summary: result.summary,
+    duration: result.duration,
+    source: result.source || "local",
+    tripIntent: result.tripIntent || {},
+    transitPlan: result.transitPlan || {},
+    accommodation: result.accommodation || {},
+    dayPlans: result.dayPlans || [],
+  };
+  state.steps = attachOriginStep(result.steps, state.meta, prompt);
+  state.focusOrder = 1;
+  resetMapState();
+  setTimeout(() => {
+    show("planner");
+    renderPlanner();
+  }, 450);
 }
 
 async function runCuration(prompt) {
@@ -667,46 +839,51 @@ async function runCuration(prompt) {
   renderAgentChat();
   setAgentBusy(true);
   try {
-    let result;
     const cacheKey = normalizePromptKey(prompt);
+    const complex = needsComplexAi(prompt);
     const key = getGeminiKey();
+
     if (curationCache.has(cacheKey)) {
-      result = curationCache.get(cacheKey);
-    } else if (key) {
-      try {
-        result = await geminiCuration(prompt, key);
-        saveCurationCache(prompt, result);
-      } catch (e) {
-        console.warn("Gemini 실패 → 로컬 큐레이션:", e);
-        geminiFailToast(e);
-        result = localCuration(prompt, "local_api_fail");
-        saveCurationCache(prompt, result);
-      }
-    } else {
-      result = localCuration(prompt, "local");
-      saveCurationCache(prompt, result);
+      applyCurationResult(prompt, curationCache.get(cacheKey));
+      return;
     }
-    state.chatTyping = false;
-    state.chat.push({ role: "assistant", text: buildAgentReply(result) });
-    renderAgentChat();
-    state.query = prompt;
-    state.meta = {
-      title: result.title,
-      summary: result.summary,
-      duration: result.duration,
-      source: result.source || "local",
-      tripIntent: result.tripIntent || {},
-      transitPlan: result.transitPlan || {},
-      accommodation: result.accommodation || {},
-      dayPlans: result.dayPlans || [],
-    };
-    state.steps = result.steps;
-    state.focusOrder = 1;
-    resetMapState();
-    setTimeout(() => {
-      show("planner");
-      renderPlanner();
-    }, 450);
+
+    if (!shouldCallGemini(prompt)) {
+      const result = localCuration(prompt, "local_skip");
+      saveCurationCache(prompt, result);
+      applyCurationResult(prompt, result);
+      return;
+    }
+
+    if (!key) {
+      if (complex) {
+        pushAgentFailure(
+          "**AI 일정을 만들 수 없어요**\n" +
+            "출발·교통·숙박·기간 조건은 AI 키가 필요합니다. 잠시 후 다시 시도해 주세요."
+        );
+        return;
+      }
+      const result = localCuration(prompt, "local");
+      saveCurationCache(prompt, result);
+      applyCurationResult(prompt, result);
+      return;
+    }
+
+    try {
+      const result = await geminiCuration(prompt, key);
+      saveCurationCache(prompt, result);
+      applyCurationResult(prompt, result);
+    } catch (e) {
+      console.warn("Gemini 실패:", e);
+      geminiFailToast(e);
+      if (complex) {
+        pushAgentFailure(buildComplexFailReply(e));
+        return;
+      }
+      const result = localCuration(prompt, "local_api_fail");
+      saveCurationCache(prompt, result);
+      applyCurationResult(prompt, result);
+    }
   } finally {
     state.chatTyping = false;
     setAgentBusy(false);
@@ -716,6 +893,23 @@ async function runCuration(prompt) {
 
 /* ==================== Planner render ==================== */
 function courseCardHtml(step, active, src) {
+  if (step.kind === "origin") {
+    const s = step.spot;
+    return `
+<a class="course-card origin-card${active ? " on" : ""}" data-order="${step.order}">
+  <div class="course-body" style="padding:1rem 1.1rem">
+    <div class="course-top">
+      <h3>${esc(s.name)}</h3>
+      <span class="course-price">출발</span>
+    </div>
+    <p class="course-loc">📍 ${esc(s.region)} · ${esc(s.description)}</p>
+    <div class="course-ai">
+      <div class="ai-lbl">DEPARTURE</div>
+      <p>${esc(step.move_to_next || step.why || "강원 여행 출발 지점")}</p>
+    </div>
+  </div>
+</a>`;
+  }
   const t = THEME_BADGE[step.spot.theme] || { label: "SPOT", cls: "badge-nature" };
   const img = THEME_IMAGE[step.spot.theme] || DEFAULT_IMAGE;
   const s = step.spot;
@@ -747,10 +941,14 @@ function courseCardHtml(step, active, src) {
 
 function legHtml(leg) {
   const note = leg.note || leg.from.move_to_next;
-  const transit = /KTX|버스|열차|지하철|대중교통|역|터미널|환승/.test(note || "");
+  const transit = leg.transit || /KTX|버스|열차|지하철|대중교통|역|터미널|환승/.test(note || "");
   const icon = transit ? "🚆" : "🚗";
-  const text = note || `${leg.from.spot.name} → ${leg.to.spot.name} · ${fmtKm(leg.km)} · 약 ${fmtMin(leg.driveMin)}`;
-  return `<div class="course-leg">${icon} ${esc(text)}</div>`;
+  const text =
+    note ||
+    (transit
+      ? `${leg.from.spot.name} → ${leg.to.spot.name} · 대중교통`
+      : `${leg.from.spot.name} → ${leg.to.spot.name} · ${fmtKm(leg.km)} · 약 ${fmtMin(leg.driveMin)}`);
+  return `<div class="course-leg${transit ? " transit-leg" : ""}">${icon} ${esc(text)}</div>`;
 }
 
 function renderRouteSummary() {
@@ -773,6 +971,24 @@ function renderSpotDetail() {
   const el = $("spot-detail");
   if (!step) { el.innerHTML = ""; return; }
   const s = step.spot;
+  if (step.kind === "origin") {
+    el.innerHTML = `
+    <div class="spot-detail-head">
+      <span class="spot-step">STEP ${String(step.order).padStart(2, "0")}</span>
+      <span class="spot-theme">출발</span>
+    </div>
+    <h3>${esc(s.name)}</h3>
+    <p class="spot-region">📍 ${esc(s.region)} · ${esc(s.description)}</p>
+    <div class="spot-grid">
+      <div class="spot-fact"><b>좌표</b>${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}</div>
+    </div>
+    ${step.move_to_next ? `<p class="spot-move">→ ${esc(step.move_to_next)}</p>` : ""}
+    <div class="spot-tip"><b>DEPARTURE</b> ${esc(step.why)}</div>
+    <div class="spot-actions">
+      <a class="primary" href="${spotMapUrl(s)}" target="_blank" rel="noopener">🧭 출발지 열기</a>
+    </div>`;
+    return;
+  }
   const move = step.move_to_next
     ? `<p class="spot-move">→ ${esc(step.move_to_next)}</p>`
     : `<p class="spot-move">🏁 마지막 정거장 · ${esc(s.region)} 일대</p>`;
@@ -877,7 +1093,8 @@ function renderPlanner() {
   $("plan-query").textContent = query ? `🔍 ${query}` : "";
   $("chip-duration").textContent = `⏱ ${meta.duration || meta.tripIntent?.duration || "당일 코스"}`;
   $("chip-source").textContent = sourceLabel(meta.source);
-  $("chip-stops").textContent = `${steps.length}곳`;
+  $("chip-stops").textContent =
+    `${destinationSteps(steps).length}곳` + (steps.some((s) => s.kind === "origin") ? " + 출발" : "");
   renderTripPlan(meta);
   renderRouteSummary();
   renderCourses();
@@ -905,23 +1122,80 @@ function kakaoRouteUrl(steps) {
 }
 
 /* ==================== Map: Kakao primary, Leaflet fallback ==================== */
-function pinDiv(label, focused) {
-  return `<div class="order-pin${focused ? " focus" : ""}">${label || ""}</div>`;
+function pinDiv(label, focused, isOrigin) {
+  return `<div class="order-pin${isOrigin ? " origin" : ""}${focused ? " focus" : ""}">${label || ""}</div>`;
 }
 
 function popupHtml(step) {
   const s = step.spot;
+  const meta =
+    step.kind === "origin"
+      ? `${esc(s.region)} · 출발지`
+      : `${esc(s.region)} · ${esc(s.theme)} · 약 ${step.stay}분`;
   return `<div style="min-width:200px;line-height:1.55;font-size:13px;font-family:Pretendard,sans-serif;padding:2px;">
     <strong style="color:#171d1c;">${step.order}. ${esc(s.name)}</strong><br/>
-    <span style="color:#3e4947;">${esc(s.region)} · ${esc(s.theme)} · 약 ${step.stay}분</span><br/>
-    <span style="color:#3e4947;">🕐 ${esc(s.hours)} · 💰 ${esc(s.fee)}</span><br/>
+    <span style="color:#3e4947;">${meta}</span><br/>
+    ${step.kind === "origin" ? "" : `<span style="color:#3e4947;">🕐 ${esc(s.hours)} · 💰 ${esc(s.fee)}</span><br/>`}
     <span style="color:#3e4947;">${esc(step.why)}</span></div>`;
 }
 
 function centerOf(steps) {
+  if (!steps.length) return [37.8228, 128.1555];
   const lat = steps.reduce((a, s) => a + s.spot.lat, 0) / steps.length;
   const lng = steps.reduce((a, s) => a + s.spot.lng, 0) / steps.length;
   return [lat, lng];
+}
+
+function drawMapRoutes(mapEngine, map, steps) {
+  const origin = steps.find((s) => s.kind === "origin");
+  const destSteps = destinationSteps(steps);
+  if (mapEngine === "kakao") {
+    if (origin && destSteps.length) {
+      const transitPath = [
+        new kakao.maps.LatLng(origin.spot.lat, origin.spot.lng),
+        new kakao.maps.LatLng(destSteps[0].spot.lat, destSteps[0].spot.lng),
+      ];
+      new kakao.maps.Polyline({
+        path: transitPath,
+        strokeWeight: 3,
+        strokeColor: "#64748b",
+        strokeOpacity: 0.55,
+        strokeStyle: "shortdot",
+      }).setMap(map);
+    }
+    if (destSteps.length > 1) {
+      const path = destSteps.map((st) => new kakao.maps.LatLng(st.spot.lat, st.spot.lng));
+      new kakao.maps.Polyline({
+        path,
+        strokeWeight: 4,
+        strokeColor: "#006a61",
+        strokeOpacity: 0.85,
+        strokeStyle: "shortdash",
+      }).setMap(map);
+    }
+    return;
+  }
+  if (mapEngine === "leaflet") {
+    if (origin && destSteps.length) {
+      L.polyline(
+        [
+          [origin.spot.lat, origin.spot.lng],
+          [destSteps[0].spot.lat, destSteps[0].spot.lng],
+        ],
+        { color: "#64748b", weight: 3, opacity: 0.55, dashArray: "2 10", lineCap: "round" }
+      ).addTo(map);
+    }
+    if (destSteps.length > 1) {
+      const path = destSteps.map((st) => [st.spot.lat, st.spot.lng]);
+      L.polyline(path, {
+        color: "#006a61",
+        weight: 4,
+        opacity: 0.85,
+        dashArray: "1 8",
+        lineCap: "round",
+      }).addTo(map);
+    }
+  }
 }
 
 function normalizeKakaoKey(raw) {
@@ -1024,19 +1298,17 @@ function renderKakao() {
   map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.LEFT);
 
   const bounds = new kakao.maps.LatLngBounds();
-  const path = [];
   let openIw = null;
   let focusStep = null;
 
   state.steps.forEach((step) => {
     const pos = new kakao.maps.LatLng(step.spot.lat, step.spot.lng);
     bounds.extend(pos);
-    path.push(pos);
     const focused = step.order === state.focusOrder;
     if (focused) focusStep = step;
 
     const dom = document.createElement("div");
-    dom.innerHTML = pinDiv(step.order, focused);
+    dom.innerHTML = pinDiv(step.order, focused, step.kind === "origin");
     new kakao.maps.CustomOverlay({ position: pos, content: dom, yAnchor: 0.5, xAnchor: 0.5, zIndex: focused ? 10 : 1 }).setMap(map);
 
     const iw = new kakao.maps.InfoWindow({
@@ -1052,15 +1324,12 @@ function renderKakao() {
     if (focused) { iw.open(map); openIw = iw; }
   });
 
-  if (path.length > 1) {
-    new kakao.maps.Polyline({
-      path, strokeWeight: 4, strokeColor: "#006a61", strokeOpacity: 0.85, strokeStyle: "shortdash",
-    }).setMap(map);
-  }
+  drawMapRoutes("kakao", map, state.steps);
+
   if (focusStep) {
     map.setCenter(new kakao.maps.LatLng(focusStep.spot.lat, focusStep.spot.lng));
     map.setLevel(6);
-  } else if (path.length > 1) {
+  } else if (state.steps.length > 1) {
     map.setBounds(bounds);
   }
   relayoutKakaoMap(map);
@@ -1084,14 +1353,13 @@ function renderLeaflet() {
     latlngs.push(ll);
     const focused = step.order === state.focusOrder;
     const icon = L.divIcon({
-      html: pinDiv(step.order, focused), className: "",
+      html: pinDiv(step.order, focused, step.kind === "origin"), className: "",
       iconSize: focused ? [34, 34] : [28, 28], iconAnchor: focused ? [17, 17] : [14, 14],
     });
     const m = L.marker(ll, { icon }).addTo(map).bindPopup(popupHtml(step));
     if (focused) { focusLl = ll; m.openPopup(); }
   });
-  if (latlngs.length > 1)
-    L.polyline(latlngs, { color: "#006a61", weight: 4, opacity: 0.85, dashArray: "1 8", lineCap: "round" }).addTo(map);
+  drawMapRoutes("leaflet", map, state.steps);
   if (focusLl) map.setView(focusLl, 12);
   else if (latlngs.length > 1) map.fitBounds(latlngs, { padding: [44, 44] });
   setTimeout(() => map.invalidateSize(), 150);

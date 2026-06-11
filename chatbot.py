@@ -5,7 +5,7 @@ from typing import Any
 
 import config  # noqa: F401 — .env 로드
 
-from trip_intent import build_trip_hints, detect_themes, needs_ai_curation
+from trip_intent import attach_origin_step, build_trip_hints, detect_themes, needs_ai_curation
 
 MAX_SPOTS_IN_PROMPT = 12
 MAX_HISTORY_MSGS = 0
@@ -261,6 +261,28 @@ def _should_call_ai(user_message: str, spots: list[dict[str, Any]]) -> bool:
     return True
 
 
+def _ai_required_failure(user_message: str, reason: str = "") -> dict[str, Any]:
+    detail = reason or "잠시 후 다시 시도하거나, 조건을 나눠서 질문해 보세요."
+    message = (
+        "출발·교통·숙박·기간 조건이 포함된 질문은 AI가 필요합니다. "
+        f"{detail}"
+    )
+    return {
+        "itinerary_title": "AI 일정 필요",
+        "summary": "",
+        "message": message,
+        "curated_spots": [],
+        "route_steps": [],
+        "map_tip": "",
+        "total_duration": "",
+        "trip_intent": {},
+        "transit_plan": {},
+        "accommodation": {},
+        "day_plans": [],
+        "source": "ai_required_fail",
+    }
+
+
 def _fallback_curation(user_message: str, spots: list[dict[str, Any]], source: str = "local") -> dict[str, Any]:
     if not spots:
         return {
@@ -307,11 +329,18 @@ def _fallback_curation(user_message: str, spots: list[dict[str, Any]], source: s
         "map_tip": "지도에서 1→2→3 번호 순으로 주황 동선을 따라가 보세요.",
     }
     curated = _spots_from_names(spots, names)
+    route_steps = _steps_for_spots(curated, parsed)
+    route_steps = attach_origin_step(
+        route_steps,
+        parsed.get("trip_intent"),
+        parsed.get("transit_plan"),
+        user_message,
+    )
     return {
         **parsed,
         "message": format_itinerary_message(parsed, curated),
         "curated_spots": curated,
-        "route_steps": _steps_for_spots(curated, parsed),
+        "route_steps": route_steps,
         "source": source,
     }
 
@@ -363,7 +392,7 @@ def _call_google_curation(
         import google.generativeai as genai
 
         genai.configure(api_key=api_key)
-        model_name = os.getenv("GOOGLE_MODEL", "gemini-2.5-flash-lite")
+        model_name = os.getenv("GOOGLE_MODEL", "gemini-3.5-flash")
         sys_prompt = _build_system_prompt(spots, for_curation=True, user_message=user_message)
         model = genai.GenerativeModel(model_name, system_instruction=sys_prompt)
         prompt_parts = [user_message[:MAX_USER_CHARS]]
@@ -372,7 +401,7 @@ def _call_google_curation(
             generation_config=genai.GenerationConfig(
                 temperature=0.5,
                 response_mime_type="application/json",
-                max_output_tokens=1024,
+                max_output_tokens=4096,
             ),
         )
         return _parse_curation_json((response.text or "").strip())
@@ -423,6 +452,16 @@ def curate_trip(
     if not _should_call_ai(user_message, spots):
         return _fallback_curation(user_message, spots, source="local_skip")
 
+    complex = needs_ai_curation(user_message)
+    if provider == "google" and not os.getenv("GOOGLE_API_KEY"):
+        if complex:
+            return _ai_required_failure(user_message, "AI 키가 설정되지 않았습니다.")
+        return _fallback_curation(user_message, spots, source="local")
+    if provider != "google" and not os.getenv("OPENAI_API_KEY"):
+        if complex:
+            return _ai_required_failure(user_message, "AI 키가 설정되지 않았습니다.")
+        return _fallback_curation(user_message, spots, source="local")
+
     parsed: dict[str, Any] | None = None
     ai_source = "gemini" if provider == "google" else "openai"
     if provider == "google":
@@ -431,11 +470,21 @@ def curate_trip(
         parsed = _call_openai_curation(user_message, spots, history)
 
     if not parsed:
+        if complex:
+            return _ai_required_failure(user_message)
         return _fallback_curation(user_message, spots, source="local_api_fail")
 
     result = _finalize_curation(parsed, spots)
     if not result["curated_spots"]:
+        if complex:
+            return _ai_required_failure(user_message, "AI 응답에서 장소를 찾지 못했습니다.")
         return _fallback_curation(user_message, spots, source="local_api_fail")
+    result["route_steps"] = attach_origin_step(
+        result["route_steps"],
+        result.get("trip_intent"),
+        result.get("transit_plan"),
+        user_message,
+    )
     result["source"] = ai_source
     return result
 

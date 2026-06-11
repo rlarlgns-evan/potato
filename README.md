@@ -19,7 +19,7 @@ streamlit run app.py
 ```env
 AI_PROVIDER=google
 GOOGLE_API_KEY=
-GOOGLE_MODEL=gemini-2.5-flash
+GOOGLE_MODEL=gemini-3.5-flash
 KAKAO_MAP_APP_KEY=   # 카카오 JavaScript 키 (REST API 키 아님)
 ```
 

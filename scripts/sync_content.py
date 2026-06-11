@@ -76,6 +76,8 @@ function enrichSpot(raw) {
   const extra = SPOT_OVERRIDES[raw.name] || {};
   return {
     ...raw,
+    lat: extra.map_lat ?? raw.lat,
+    lng: extra.map_lng ?? raw.lng,
     stay_min: extra.stay_min ?? theme.stay_min ?? 60,
     fee: extra.fee ?? theme.fee ?? "현장 확인",
     hours: extra.hours ?? theme.hours ?? "연중",

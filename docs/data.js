@@ -436,6 +436,8 @@ const SPOT_OVERRIDES = {
     "tip": "자전거·산책 겸용 · 호수 전망"
   },
   "속초 설악산 국립공원": {
+    "map_lat": 38.1689,
+    "map_lng": 128.4853,
     "stay_min": 120,
     "fee": "케이블카 별도",
     "hours": "08:00–18:00",
@@ -443,17 +445,23 @@ const SPOT_OVERRIDES = {
     "tip": "케이블카·권금성·대청봉 코스 선택"
   },
   "강릉 경포대·해변": {
+    "map_lat": 37.7947,
+    "map_lng": 128.9147,
     "stay_min": 70,
     "fee": "경포대 무료",
     "tip": "호수·해변 연계 산책 · 자전거 대여 가능"
   },
   "강릉 안목해변 커피거리": {
+    "map_lat": 37.7723,
+    "map_lng": 128.9461,
     "stay_min": 60,
     "fee": "무료",
     "best_time": "일몰",
     "tip": "카페·일몰 드라이브 · 주말 혼잡"
   },
   "춘천 남이섬": {
+    "map_lat": 37.791,
+    "map_lng": 128.4766,
     "stay_min": 120,
     "fee": "왕복선·입장료 별도",
     "hours": "09:00–18:00",
@@ -461,12 +469,16 @@ const SPOT_OVERRIDES = {
     "tip": "유람선·자전거·메타세쿼이아길"
   },
   "춘천 소양강 스카이워크": {
+    "map_lat": 37.8811,
+    "map_lng": 127.7298,
     "stay_min": 40,
     "fee": "약 2,000원",
     "hours": "09:00–18:00",
     "tip": "유리 전망대 · 소양강·춘천 시내 조망"
   },
   "원주 치악산 케이블카": {
+    "map_lat": 37.3716,
+    "map_lng": 128.0028,
     "stay_min": 90,
     "fee": "케이블카 별도",
     "hours": "09:00–17:00",
@@ -504,16 +516,22 @@ const SPOT_OVERRIDES = {
     "tip": "숲길 트레킹 · 무릉계곡과 연계 가능"
   },
   "삼척 케이블카·용화해수욕장": {
+    "map_lat": 37.0255,
+    "map_lng": 129.1986,
     "stay_min": 90,
     "fee": "케이블카 별도",
     "tip": "해안 케이블카·해변 · 동해안 드라이브"
   },
   "고성 통일전망대": {
+    "map_lat": 38.5819,
+    "map_lng": 128.3897,
     "stay_min": 45,
     "fee": "무료~有",
     "tip": "DMZ·전망 · 신분증 지참"
   },
   "양양 서피비치": {
+    "map_lat": 38.0756,
+    "map_lng": 128.6859,
     "stay_min": 90,
     "fee": "무료",
     "tip": "서핑·해변 · 장비 대여 가능"
@@ -655,10 +673,14 @@ const SUGGESTIONS = [
   }
 ];
 
-const GEMINI_MODEL = "gemini-2.5-flash-lite";
+const GEMINI_MODEL = "gemini-3.5-flash";
 
 const TRANSIT_ORIGINS = {
   "의정부시": {
+    "lat": 37.7381,
+    "lng": 127.0477,
+    "hub_lat": 37.7381,
+    "hub_lng": 127.0477,
     "hub": "의정부역·동대문/청량리 환승",
     "routes": [
       {
@@ -682,6 +704,10 @@ const TRANSIT_ORIGINS = {
     ]
   },
   "서울": {
+    "lat": 37.5665,
+    "lng": 126.978,
+    "hub_lat": 37.5326,
+    "hub_lng": 127.0247,
     "hub": "청량리·동서울·서울역",
     "routes": [
       {
@@ -705,6 +731,10 @@ const TRANSIT_ORIGINS = {
     ]
   },
   "수원시": {
+    "lat": 37.2636,
+    "lng": 127.0286,
+    "hub_lat": 37.2636,
+    "hub_lng": 127.0286,
     "hub": "수원역·영등포 환승",
     "routes": [
       {
@@ -722,6 +752,10 @@ const TRANSIT_ORIGINS = {
     ]
   },
   "경기도": {
+    "lat": 37.4138,
+    "lng": 127.5183,
+    "hub_lat": 37.5326,
+    "hub_lng": 127.0247,
     "hub": "수도권 역·터미널 환승",
     "routes": [
       {
@@ -738,6 +772,8 @@ function enrichSpot(raw) {
   const extra = SPOT_OVERRIDES[raw.name] || {};
   return {
     ...raw,
+    lat: extra.map_lat ?? raw.lat,
+    lng: extra.map_lng ?? raw.lng,
     stay_min: extra.stay_min ?? theme.stay_min ?? 60,
     fee: extra.fee ?? theme.fee ?? "현장 확인",
     hours: extra.hours ?? theme.hours ?? "연중",

@@ -6,6 +6,7 @@ SOURCE_LABELS: dict[str, str] = {
     "local_skip": "◆ 로컬 매칭 (API 절약)",
     "local": "◆ 로컬 AI",
     "local_api_fail": "◆ 로컬 (API 실패)",
+    "ai_required_fail": "✕ AI 필요 (실패)",
 }
 
 

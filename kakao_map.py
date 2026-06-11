@@ -43,6 +43,23 @@ def build_route_markers(
     by_name = {s["name"]: s for s in curated}
     markers: list[dict[str, Any]] = []
     for step in steps:
+        if step.get("kind") == "origin":
+            markers.append(
+                {
+                    "name": step.get("spot_name") or "출발",
+                    "lat": float(step["lat"]),
+                    "lng": float(step["lng"]),
+                    "region": step.get("region", ""),
+                    "theme": step.get("theme", "출발"),
+                    "description": (step.get("why") or "")[:220],
+                    "why": (step.get("why") or "")[:280],
+                    "stay_minutes": 0,
+                    "move_to_next": (step.get("move_to_next") or "")[:120],
+                    "order": int(step.get("order", len(markers) + 1)),
+                    "kind": "origin",
+                }
+            )
+            continue
         spot = by_name.get(step.get("spot_name", ""))
         if not spot:
             continue
@@ -158,6 +175,11 @@ def _build_map_html(
     .order-pin.focus {{
       background: #004a43; width: 34px; height: 34px;
       box-shadow: 0 0 0 5px rgba(102,188,176,0.4), 0 3px 10px rgba(0,0,0,0.3);
+    }}
+    .order-pin.origin {{ background: #334155; }}
+    .order-pin.origin.focus {{
+      background: #0f172a;
+      box-shadow: 0 0 0 5px rgba(100,116,139,0.35), 0 3px 10px rgba(0,0,0,0.3);
     }}
   </style>
 </head>
