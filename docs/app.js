@@ -620,8 +620,10 @@ function geminiFailToast(e) {
   }
   if (e.status === 503 || /high demand|UNAVAILABLE/i.test(d))
     toast("AI 서버 혼잡 — 잠시 후 다시 시도해 주세요.");
-  else if (e.status === 400 || e.status === 403)
-    toast("AI 서비스 일시 오류 — 잠시 후 다시 시도해 주세요.");
+  else if (e.status === 403)
+    toast("API 키 제한(리퍼러) — Google AI Studio에서 github.io 도메인을 허용했는지 확인하세요.");
+  else if (e.status === 400)
+    toast("AI 요청 형식 오류 — 잠시 후 다시 시도해 주세요.");
   else if (/no spots matched/i.test(e.message || ""))
     toast("AI가 등록된 장소명과 맞지 않아요 — 다시 시도해 주세요.");
   else if (/empty response/i.test(e.message || ""))
@@ -633,30 +635,57 @@ function geminiFailToast(e) {
 }
 
 async function callGemini(body, key, retries = 1) {
-  const model = typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "gemini-3.5-flash";
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
-    encodeURIComponent(key);
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (r.ok) return r.json();
-    let detail = "";
-    try {
-      detail = (await r.json())?.error?.message || "";
-    } catch (_) { /* ignore */ }
-    if (r.status === 503 && attempt < retries) {
-      await new Promise((res) => setTimeout(res, 1200 * (attempt + 1)));
-      continue;
+  const primary = typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "gemini-2.5-flash";
+  const models = [...new Set([primary, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite"])];
+  let lastErr = null;
+  for (const model of models) {
+    const generationConfig = {
+      temperature: 0.4,
+      maxOutputTokens: 4096,
+      responseMimeType: "application/json",
+    };
+    if (/gemini-3[\.\-]/i.test(model)) {
+      generationConfig.thinkingConfig = { thinkingLevel: "MINIMAL" };
     }
-    const e = new Error("Gemini HTTP " + r.status + (detail ? ": " + detail : ""));
-    e.status = r.status;
-    e.detail = detail;
-    throw e;
+    const reqBody = { ...body, generationConfig };
+    const url =
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
+      encodeURIComponent(key);
+    try {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(reqBody),
+        });
+        if (r.ok) {
+          if (model !== primary) console.info("Gemini fallback model:", model);
+          return r.json();
+        }
+        let detail = "";
+        try {
+          detail = (await r.json())?.error?.message || "";
+        } catch (_) { /* ignore */ }
+        if (r.status === 503 && attempt < retries) {
+          await new Promise((res) => setTimeout(res, 1200 * (attempt + 1)));
+          continue;
+        }
+        const e = new Error("Gemini HTTP " + r.status + (detail ? ": " + detail : ""));
+        e.status = r.status;
+        e.detail = detail;
+        e.model = model;
+        throw e;
+      }
+    } catch (e) {
+      lastErr = e;
+      const retryModel =
+        e.status === 404 ||
+        /not found|not supported|invalid.*model/i.test(String(e.detail || e.message || ""));
+      if (retryModel && model !== models[models.length - 1]) continue;
+      throw e;
+    }
   }
+  throw lastErr || new Error("Gemini call failed");
 }
 
 function extractGeminiText(candidate) {
@@ -771,12 +800,6 @@ async function geminiCuration(prompt, key) {
   const body = {
     system_instruction: { parts: [{ text: sys }] },
     contents: [{ role: "user", parts: [{ text: prompt.slice(0, 600) }] }],
-    generationConfig: {
-      temperature: 0.4,
-      maxOutputTokens: 4096,
-      responseMimeType: "application/json",
-      thinkingConfig: { thinkingLevel: "MINIMAL" },
-    },
   };
   const d = await callGemini(body, key);
   const c = d.candidates?.[0];
@@ -799,6 +822,16 @@ function buildComplexFailReply(e) {
   ];
   if (e?.status === 429) {
     lines.push("요청이 많거나 사용량 한도에 도달했을 수 있어요. 1~2분 후 다시 시도해 주세요.");
+  } else if (e?.status === 403) {
+    lines.push(
+      "API 키 HTTP 리퍼러 제한일 수 있어요. Google AI Studio → API 키 → " +
+        "`https://rlarlgns-evan.github.io/*` 를 허용 목록에 추가해 주세요."
+    );
+  } else if (e?.status === 404) {
+    lines.push("AI 모델을 찾지 못했어요. 잠시 후 다시 시도해 주세요.");
+  } else if (e?.detail || e?.message) {
+    console.warn("Gemini 상세:", e.detail || e.message);
+    lines.push("잠시 후 다시 시도하거나, 조건을 나눠서 질문해 보세요.");
   } else {
     lines.push("잠시 후 다시 시도하거나, 조건을 나눠서 질문해 보세요.");
   }
