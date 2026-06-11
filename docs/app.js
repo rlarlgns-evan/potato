@@ -673,7 +673,7 @@ async function callGemini(body, key, retries = 1) {
           continue;
         }
         if (r.status === 503 && attempt < maxAttempts - 1) {
-          await new Promise((res) => setTimeout(res, 1200 * (attempt + 1)));
+          await new Promise((res) => setTimeout(res, 2000 * (attempt + 1)));
           continue;
         }
         const e = new Error("Gemini HTTP " + r.status + (detail ? ": " + detail : ""));
@@ -686,7 +686,10 @@ async function callGemini(body, key, retries = 1) {
       lastErr = e;
       const tryNextModel =
         e.status === 404 ||
-        /not found|not supported|invalid.*model/i.test(String(e.detail || e.message || ""));
+        e.status === 503 ||
+        /not found|not supported|invalid.*model|unavailable|high demand/i.test(
+          String(e.detail || e.message || "")
+        );
       if (tryNextModel && model !== models[models.length - 1]) continue;
       throw e;
     }
@@ -828,6 +831,8 @@ function buildComplexFailReply(e) {
   ];
   if (e?.status === 429) {
     lines.push("요청이 많거나 사용량 한도에 도달했을 수 있어요. 1~2분 후 다시 시도해 주세요.");
+  } else if (e?.status === 503) {
+    lines.push("Gemini 서버가 일시적으로 혼잡합니다. 1~2분 후 다시 시도해 주세요.");
   } else if (e?.status === 403) {
     lines.push(
       "API 키 HTTP 리퍼러 제한일 수 있어요. Google AI Studio → API 키 → " +
