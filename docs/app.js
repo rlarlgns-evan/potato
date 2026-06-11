@@ -296,9 +296,43 @@ function haversineKm(a, b) {
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
+function parseDurationMin(text) {
+  if (!text) return 0;
+  const t = String(text).toLowerCase().replace(/\s+/g, " ");
+  let m = t.match(/(\d+)\s*시간\s*(\d+)\s*분/);
+  if (m) return Number(m[1]) * 60 + Number(m[2]);
+  m = t.match(/(\d+)\s*h\s*(\d+)/);
+  if (m) return Number(m[1]) * 60 + Number(m[2]);
+  m = t.match(/(\d+)\s*시간/);
+  if (m) return Number(m[1]) * 60;
+  m = t.match(/(\d+)\s*h\b/);
+  if (m) return Number(m[1]) * 60;
+  m = t.match(/(\d+)\s*분/);
+  if (m) return Number(m[1]);
+  return 0;
+}
+
 function estDriveMin(km) {
-  const speed = km > 80 ? 55 : km > 40 ? 48 : 42;
-  return Math.max(8, Math.round((km / speed) * 60));
+  if (km <= 0) return 0;
+  if (km < 2) return 15;
+  if (km < 10) return Math.round(12 + km * 2.8);
+  const speed = km > 80 ? 58 : km > 40 ? 50 : 45;
+  return Math.round((km / speed) * 60);
+}
+
+function estTransitMin(km, note) {
+  const parsed = parseDurationMin(note);
+  if (parsed > 0) return parsed;
+  if (km >= 150) return 150;
+  if (km >= 100) return 120;
+  if (km >= 60) return 90;
+  return estDriveMin(km);
+}
+
+function legDriveMin(km, note, isTransit) {
+  const parsed = parseDurationMin(note);
+  if (parsed > 0) return parsed;
+  return isTransit ? estTransitMin(km, note) : estDriveMin(km);
 }
 
 function fmtKm(km) {
@@ -319,9 +353,11 @@ function computeLegs(steps) {
     const from = routeSteps[i].spot;
     const to = routeSteps[i + 1].spot;
     const km = haversineKm(from, to);
-    const driveMin = estDriveMin(km);
-    const autoMove = `${to.name}까지 ${fmtKm(km)} · 차량 약 ${fmtMin(driveMin)}`;
-    if (!routeSteps[i].move_to_next) routeSteps[i].move_to_next = autoMove;
+    const note = routeSteps[i].move_to_next || "";
+    const driveMin = legDriveMin(km, note, false);
+    if (!note) {
+      routeSteps[i].move_to_next = `${to.name}까지 ${fmtKm(km)} · 차량 약 ${fmtMin(driveMin)}`;
+    }
     legs.push({
       from: routeSteps[i],
       to: routeSteps[i + 1],
@@ -332,14 +368,21 @@ function computeLegs(steps) {
   }
   const origin = steps.find((s) => s.kind === "origin");
   if (origin && routeSteps.length) {
-    const outbound = origin.move_to_next || state.meta?.transitPlan?.outbound || "";
-    if (outbound && !origin.move_to_next) origin.move_to_next = outbound;
+    const outbound =
+      origin.move_to_next ||
+      state.meta?.transitPlan?.outbound ||
+      "";
+    const km = haversineKm(origin.spot, routeSteps[0].spot);
+    const driveMin = legDriveMin(km, outbound, true);
+    if (!origin.move_to_next) {
+      origin.move_to_next = outbound || `대중교통 · ${fmtKm(km)} · 약 ${fmtMin(driveMin)}`;
+    }
     legs.unshift({
       from: origin,
       to: routeSteps[0],
-      km: haversineKm(origin.spot, routeSteps[0].spot),
-      driveMin: 0,
-      note: origin.move_to_next || "대중교통 · 강원 지역 이동",
+      km,
+      driveMin,
+      note: origin.move_to_next,
       transit: true,
     });
   }
@@ -348,14 +391,15 @@ function computeLegs(steps) {
 
 function routeSummary(steps, legs) {
   const routeSteps = destinationSteps(steps);
-  const driveLegs = legs.filter((l) => !l.transit);
-  const driveKm = driveLegs.reduce((a, l) => a + l.km, 0);
-  const driveMin = driveLegs.reduce((a, l) => a + l.driveMin, 0);
+  const driveKm = legs.reduce((a, l) => a + l.km, 0);
+  const driveMin = legs.reduce((a, l) => a + (l.driveMin || 0), 0);
+  const transitMin = legs.filter((l) => l.transit).reduce((a, l) => a + (l.driveMin || 0), 0);
   const stayMin = routeSteps.reduce((a, s) => a + (s.stay ?? s.spot.stay_min ?? 60), 0);
   return {
     stops: routeSteps.length,
     driveKm,
     driveMin,
+    transitMin,
     stayMin,
     totalMin: driveMin + stayMin,
   };
@@ -533,15 +577,23 @@ function buildOriginStep(label, data, transport, outbound) {
   };
 }
 
+function pickOutboundHint(data) {
+  const route = (data.routes || [])[0];
+  if (!route) return "";
+  const parts = [route.mode, route.via, route.note].filter(Boolean);
+  return parts.join(" · ");
+}
+
 function attachOriginStep(steps, meta, prompt) {
   const originText = meta.tripIntent?.origin || detectOrigin(prompt || state.query || "");
   const hit = resolveOriginEntry(originText);
   if (!hit) return steps;
+  const outbound = meta.transitPlan?.outbound || pickOutboundHint(hit.data);
   const origin = buildOriginStep(
     hit.label,
     hit.data,
     meta.tripIntent?.transport,
-    meta.transitPlan?.outbound
+    outbound
   );
   if (!origin) return steps;
   return [origin, ...steps.map((s, i) => ({ ...s, order: i + 2 }))];
@@ -810,7 +862,7 @@ async function geminiCuration(prompt, key) {
     system_instruction: { parts: [{ text: sys }] },
     contents: [{ role: "user", parts: [{ text: prompt.slice(0, 600) }] }],
   };
-  const d = await callGemini(body, key);
+  const d = await callGemini(body, key, 2);
   const c = d.candidates?.[0];
   const finish = c?.finishReason || "";
   const text = extractGeminiText(c);
@@ -985,13 +1037,14 @@ function courseCardHtml(step, active, src) {
 
 function legHtml(leg) {
   const note = leg.note || leg.from.move_to_next;
-  const transit = leg.transit || /KTX|버스|열차|지하철|대중교통|역|터미널|환승/.test(note || "");
+  const transit = leg.transit || /KTX|버스|열차|지하철|대중교통|역|터미널|환승/i.test(note || "");
   const icon = transit ? "🚆" : "🚗";
+  const mins = leg.driveMin || parseDurationMin(note) || estDriveMin(leg.km);
   const text =
     note ||
     (transit
-      ? `${leg.from.spot.name} → ${leg.to.spot.name} · 대중교통`
-      : `${leg.from.spot.name} → ${leg.to.spot.name} · ${fmtKm(leg.km)} · 약 ${fmtMin(leg.driveMin)}`);
+      ? `${leg.from.spot.name} → ${leg.to.spot.name} · 대중교통 약 ${fmtMin(mins)}`
+      : `${leg.from.spot.name} → ${leg.to.spot.name} · ${fmtKm(leg.km)} · 약 ${fmtMin(mins)}`);
   return `<div class="course-leg${transit ? " transit-leg" : ""}">${icon} ${esc(text)}</div>`;
 }
 
@@ -1003,7 +1056,10 @@ function renderRouteSummary() {
     <div class="route-stat"><strong>${fmtKm(sum.driveKm)}</strong><span>총 이동</span></div>
     <div class="route-stat"><strong>${fmtMin(sum.driveMin)}</strong><span>이동 시간</span></div>
     <div class="route-stat"><strong>${fmtMin(sum.totalMin)}</strong><span>예상 소요</span></div>`;
-  $("chip-route").textContent = `🚗 ${fmtKm(sum.driveKm)} · ${fmtMin(sum.totalMin)}`;
+  const routeLabel = sum.transitMin > 0
+    ? `🚆 ${fmtMin(sum.transitMin)} + 🚗 ${fmtMin(sum.driveMin - sum.transitMin)}`
+    : `🚗 ${fmtKm(sum.driveKm)}`;
+  $("chip-route").textContent = `${routeLabel} · ${fmtMin(sum.totalMin)}`;
 }
 
 function spotMapUrl(spot) {
