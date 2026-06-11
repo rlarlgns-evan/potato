@@ -751,6 +751,6 @@ function enrichSpot(raw) {
 
 const ENRICHED_SPOTS = SPOTS.map(enrichSpot);
 
-// Kakao JavaScript 키는 저장소에 두지 않습니다.
-// - 로컬: docs/config.example.js를 config.js로 복사
-// - 배포: GitHub Actions Secret(KAKAO_JS_KEY)
+// Kakao·Gemini 키는 저장소에 두지 않습니다.
+// - 로컬: docs/config.example.js → config.js
+// - 배포: GitHub Actions Secret (KAKAO_JS_KEY, GOOGLE_API_KEY)
