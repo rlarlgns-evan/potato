@@ -392,7 +392,7 @@ def _call_google_curation(
         import google.generativeai as genai
 
         genai.configure(api_key=api_key)
-        model_name = os.getenv("GOOGLE_MODEL", "gemini-2.5-flash")
+        model_name = os.getenv("GOOGLE_MODEL", "gemini-3.5-flash")
         sys_prompt = _build_system_prompt(spots, for_curation=True, user_message=user_message)
         model = genai.GenerativeModel(model_name, system_instruction=sys_prompt)
         prompt_parts = [user_message[:MAX_USER_CHARS]]

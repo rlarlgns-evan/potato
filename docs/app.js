@@ -635,8 +635,8 @@ function geminiFailToast(e) {
 }
 
 async function callGemini(body, key, retries = 1) {
-  const primary = typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "gemini-2.5-flash";
-  const models = [...new Set([primary, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite"])];
+  const primary = typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "gemini-3.5-flash";
+  const models = [...new Set([primary, "gemini-3.5-flash", "gemini-3-flash-preview", "gemini-2.5-flash"])];
   let lastErr = null;
   for (const model of models) {
     const generationConfig = {
@@ -651,22 +651,28 @@ async function callGemini(body, key, retries = 1) {
     const url =
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
       encodeURIComponent(key);
+    const isPrimary = model === primary;
+    const maxAttempts = isPrimary ? Math.max(retries + 2, 3) : retries + 1;
     try {
-      for (let attempt = 0; attempt <= retries; attempt++) {
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
         const r = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(reqBody),
         });
         if (r.ok) {
-          if (model !== primary) console.info("Gemini fallback model:", model);
+          if (model !== primary) console.warn("Gemini: primary unavailable, used fallback:", model);
           return r.json();
         }
         let detail = "";
         try {
           detail = (await r.json())?.error?.message || "";
         } catch (_) { /* ignore */ }
-        if (r.status === 503 && attempt < retries) {
+        if (r.status === 404 && attempt < maxAttempts - 1) {
+          await new Promise((res) => setTimeout(res, 800 * (attempt + 1)));
+          continue;
+        }
+        if (r.status === 503 && attempt < maxAttempts - 1) {
           await new Promise((res) => setTimeout(res, 1200 * (attempt + 1)));
           continue;
         }
@@ -678,10 +684,10 @@ async function callGemini(body, key, retries = 1) {
       }
     } catch (e) {
       lastErr = e;
-      const retryModel =
+      const tryNextModel =
         e.status === 404 ||
         /not found|not supported|invalid.*model/i.test(String(e.detail || e.message || ""));
-      if (retryModel && model !== models[models.length - 1]) continue;
+      if (tryNextModel && model !== models[models.length - 1]) continue;
       throw e;
     }
   }
