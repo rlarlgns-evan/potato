@@ -1375,6 +1375,26 @@ body.mode-planner .planner-grid {
   flex-direction: column;
   gap: 0.75rem;
 }
+.planner-empty {
+  text-align: center;
+  padding: 2rem 1rem 1.5rem;
+  color: var(--on-surface-variant);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px dashed var(--outline-variant);
+  border-radius: 16px;
+}
+.planner-empty-hint {
+  margin: 0.5rem 0 1.25rem;
+  font-size: 0.8rem;
+}
+.planner-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
 .trips-empty {
   text-align: center;
   padding: 2.5rem 1rem;

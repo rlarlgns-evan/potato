@@ -156,8 +156,8 @@ function updateSidebar(view) {
 }
 
 function show(view) {
-  if (view === "planner" && !state.steps.length) {
-    toast("일정은 AI 코스를 먼저 만들면 열려요.");
+  if (view === "planner" && !state.steps.length && !isLoggedIn()) {
+    toast("일정은 AI 코스를 먼저 만들거나, 로그인 후 저장함에서 열 수 있어요.");
     view = "explore";
   }
   if (view === "trips" && !isLoggedIn()) {
@@ -183,6 +183,8 @@ function show(view) {
     setTimeout(() => landingMap?.invalidateSize(), 80);
   } else if (view === "planner") {
     pauseLandingMap();
+    if (state.steps.length) renderPlanner();
+    else renderPlannerEmpty();
   } else if (view === "community") {
     pauseLandingMap();
     renderCommunity();
@@ -1266,6 +1268,8 @@ function renderTripPlan(meta) {
 }
 
 function renderPlanner() {
+  $("btn-save-trip")?.classList.remove("hidden");
+  mapNote("");
   const { meta, steps, query } = state;
   $("plan-title").textContent = meta.title || "맞춤 여행 코스";
   $("plan-summary").textContent = meta.summary || "";
@@ -1281,6 +1285,32 @@ function renderPlanner() {
   updateMapChrome();
   renderSpotDetail();
   renderMap();
+}
+
+function renderPlannerEmpty() {
+  $("plan-title").textContent = "내 여행 일정";
+  $("plan-summary").textContent = "저장한 코스를 열거나, AI로 새 일정을 만들어 보세요.";
+  $("plan-query").textContent = "";
+  $("chip-duration").textContent = "⏱ —";
+  $("chip-source").textContent = "◆ —";
+  $("chip-stops").textContent = "0곳";
+  $("chip-route").textContent = "";
+  $("route-summary").innerHTML = "";
+  $("trip-plan")?.classList.add("hidden");
+  $("courses").innerHTML =
+    `<div class="planner-empty">` +
+    `<p>아직 표시할 일정이 없어요.</p>` +
+    `<p class="planner-empty-hint">저장함에 담아 둔 코스를 열거나, AI 여행에서 새 코스를 만들어 보세요.</p>` +
+    `<div class="planner-empty-actions">` +
+    `<button type="button" class="btn-primary" data-nav="trips">♡ 저장함 보기</button>` +
+    `<button type="button" class="btn-secondary" data-nav="explore">✦ AI 여행 시작</button>` +
+    `</div></div>`;
+  $("btn-save-trip")?.classList.add("hidden");
+  $("spot-detail").innerHTML = "";
+  $("map-q").textContent = "🔍 강원 여행";
+  $("map-f").textContent = "📍 일정 없음";
+  $("kakao-link").href = "#";
+  mapNote("코스를 만들거나 저장함에서 열면 지도가 표시됩니다.");
 }
 
 function updateMapChrome() {
