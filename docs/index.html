@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=18" />
+  <link rel="stylesheet" href="style.css?v=19" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
@@ -114,6 +114,7 @@
               <p class="panel-lbl">일정 타임라인</p>
               <p class="panel-hint">카드를 탭하면 지도·상세 정보가 갱신됩니다</p>
               <div class="courses" id="courses"></div>
+              <button class="btn-secondary" type="button" id="btn-save-trip">♡ 저장함에 저장</button>
               <button class="btn-secondary" data-nav="explore">✦ 새 여행 설계하기</button>
             </div>
             <div class="map-stick">
@@ -170,6 +171,30 @@
         </section>
       </div>
     </main>
+
+    <!-- ============ Saved trips (login required) ============ -->
+    <main id="view-trips" class="hidden">
+      <div class="planner-grid">
+        <aside class="side">
+          <div class="sb-logo">VoyageAI</div>
+          <a class="sb-item" data-nav="explore">✦ 새 여행</a>
+          <a class="sb-item" data-nav="planner">▤ 일정</a>
+          <a class="sb-item" data-nav="community">◇ 커뮤니티</a>
+          <a class="sb-item" data-nav="trips">♡ 저장</a>
+          <a class="sb-foot" id="btn-logout-trips">↪ 처음으로</a>
+        </aside>
+        <section class="planner-main trips-main">
+          <div class="trips-head">
+            <div>
+              <h1>저장함</h1>
+              <p>로그인한 계정에 맞춤 코스를 저장해 두었다가 다시 열 수 있어요.</p>
+            </div>
+            <span class="chip" id="trips-count-chip">0개 저장</span>
+          </div>
+          <div class="trips-list" id="trips-list" aria-live="polite"></div>
+        </section>
+      </div>
+    </main>
   </div>
 
   <div class="modal-bg" id="login-modal" aria-hidden="true">
@@ -187,7 +212,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="config.js"></script>
-  <script src="data.js?v=18"></script>
-  <script src="app.js?v=18"></script>
+  <script src="data.js?v=19"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>

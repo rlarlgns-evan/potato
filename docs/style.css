@@ -1258,3 +1258,113 @@ body.mode-planner .planner-grid {
     width: 100%;
   }
 }
+
+/* ---------- Saved trips ---------- */
+.trips-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.trips-head h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -0.03em;
+}
+.trips-head p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--on-surface-variant);
+  line-height: 1.55;
+  max-width: 520px;
+}
+.trips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.trips-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--on-surface-variant);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+.trips-empty-hint {
+  margin: 0.5rem 0 1.25rem;
+  font-size: 0.8rem;
+}
+.trips-card {
+  background: #fff;
+  border: 1px solid var(--outline-variant);
+  border-radius: 18px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 2px 12px rgba(0, 106, 97, 0.05);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.trips-card:hover {
+  border-color: rgba(102, 188, 176, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 106, 97, 0.08);
+}
+.trips-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+.trips-when {
+  font-size: 0.72rem;
+  color: var(--on-surface-variant);
+}
+.trips-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.trips-summary {
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--on-surface-variant);
+}
+.trips-route {
+  margin: 0 0 0.75rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--primary);
+  line-height: 1.45;
+}
+.trips-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.trips-open {
+  font-size: 0.78rem;
+  padding: 0.5rem 1rem;
+}
+.trips-delete {
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--error);
+  background: none;
+  border: 1px solid rgba(186, 26, 26, 0.25);
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.trips-delete:hover {
+  background: rgba(186, 26, 26, 0.08);
+}
+#btn-save-trip {
+  margin-top: 0.5rem;
+  margin-right: 0.45rem;
+}

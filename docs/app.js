@@ -36,6 +36,7 @@ const state = {
   chat: [],
   chatTyping: false,
   communityFilter: "all",
+  pendingView: null,
 };
 
 function formatAgentText(text) {
@@ -159,15 +160,19 @@ function show(view) {
     toast("일정은 AI 코스를 먼저 만들면 열려요.");
     view = "explore";
   }
-  if (view === "trips") {
-    toast("🚧 저장함은 곧 제공될 기능이에요.");
+  if (view === "trips" && !isLoggedIn()) {
+    toast("저장함은 로그인 후 이용할 수 있어요.");
+    state.pendingView = "trips";
+    openLoginModal();
     return;
   }
+  state.pendingView = null;
   state.view = view;
   syncBodyMode(view);
   $("view-explore")?.classList.toggle("hidden", view !== "explore");
   $("view-planner")?.classList.toggle("hidden", view !== "planner");
   $("view-community")?.classList.toggle("hidden", view !== "community");
+  $("view-trips")?.classList.toggle("hidden", view !== "trips");
   updateSidebar(view);
 
   if (view === "explore") {
@@ -181,6 +186,9 @@ function show(view) {
   } else if (view === "community") {
     pauseLandingMap();
     renderCommunity();
+  } else if (view === "trips") {
+    pauseLandingMap();
+    renderTrips();
   }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -218,6 +226,20 @@ document.addEventListener("click", (e) => {
   if (deleteBtn) {
     e.preventDefault();
     deleteCommunityPost(deleteBtn.dataset.deletePost);
+    return;
+  }
+
+  const openTripBtn = e.target.closest("[data-open-trip]");
+  if (openTripBtn) {
+    e.preventDefault();
+    openSavedTrip(openTripBtn.dataset.openTrip);
+    return;
+  }
+
+  const deleteTripBtn = e.target.closest("[data-delete-trip]");
+  if (deleteTripBtn) {
+    e.preventDefault();
+    deleteSavedTrip(deleteTripBtn.dataset.deleteTrip);
   }
 });
 
@@ -1961,6 +1983,158 @@ function initCommunity() {
   updateCommunityCharCount();
 }
 
+/* ==================== Saved trips (login required) ==================== */
+const TRIPS_LS = "voyageai_saved_trips";
+
+function tripsStoreKey() {
+  const auth = loadAuth();
+  return auth.loggedIn && auth.name ? auth.name : "";
+}
+
+function loadAllTripsStore() {
+  try {
+    const raw = localStorage.getItem(TRIPS_LS);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveAllTripsStore(store) {
+  localStorage.setItem(TRIPS_LS, JSON.stringify(store));
+}
+
+function loadSavedTripsForUser() {
+  const key = tripsStoreKey();
+  if (!key) return [];
+  return loadAllTripsStore()[key] || [];
+}
+
+function persistSavedTrips(trips) {
+  const key = tripsStoreKey();
+  if (!key) return;
+  const store = loadAllTripsStore();
+  store[key] = trips.slice(0, 30);
+  saveAllTripsStore(store);
+}
+
+function formatSavedWhen(iso) {
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "저장됨";
+    return d.toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "저장됨";
+  }
+}
+
+function saveCurrentTrip() {
+  if (!isLoggedIn()) {
+    toast("저장하려면 로그인해 주세요.");
+    state.pendingView = null;
+    openLoginModal();
+    return;
+  }
+  if (!state.steps.length) {
+    toast("저장할 코스가 없어요.");
+    return;
+  }
+  const stops = destinationSteps(state.steps);
+  const trip = {
+    id: `trip-${Date.now()}`,
+    savedAt: new Date().toISOString(),
+    query: state.query,
+    meta: JSON.parse(JSON.stringify(state.meta)),
+    steps: JSON.parse(JSON.stringify(state.steps)),
+    focusOrder: state.focusOrder,
+    stopNames: stops.map((s) => s.spot.name).join(" → "),
+  };
+  const trips = loadSavedTripsForUser();
+  trips.unshift(trip);
+  persistSavedTrips(trips);
+  toast("저장함에 담았어요.");
+}
+
+function deleteSavedTrip(id) {
+  if (!isLoggedIn()) return;
+  if (!confirm("저장한 코스를 삭제할까요?")) return;
+  persistSavedTrips(loadSavedTripsForUser().filter((t) => t.id !== id));
+  toast("저장함에서 삭제했어요.");
+  renderTrips();
+}
+
+function openSavedTrip(id) {
+  if (!isLoggedIn()) return;
+  const trip = loadSavedTripsForUser().find((t) => t.id === id);
+  if (!trip) {
+    toast("저장한 코스를 찾지 못했어요.");
+    return;
+  }
+  state.query = trip.query || "";
+  state.meta = trip.meta || {};
+  state.steps = trip.steps || [];
+  state.focusOrder = trip.focusOrder || 1;
+  resetMapState();
+  show("planner");
+  renderPlanner();
+}
+
+function renderTrips() {
+  const list = $("trips-list");
+  const chip = $("trips-count-chip");
+  if (!list) return;
+  const auth = loadAuth();
+  const trips = loadSavedTripsForUser();
+  if (chip) chip.textContent = `${trips.length}개 저장`;
+
+  if (!auth.loggedIn) {
+    list.innerHTML = `<p class="trips-empty">로그인하면 저장함을 사용할 수 있어요.</p>`;
+    return;
+  }
+
+  if (!trips.length) {
+    list.innerHTML =
+      `<div class="trips-empty">` +
+      `<p>아직 저장한 코스가 없어요.</p>` +
+      `<p class="trips-empty-hint">AI로 코스를 만든 뒤 <strong>♡ 저장함에 저장</strong>을 눌러 보세요.</p>` +
+      `<button type="button" class="btn-primary" data-nav="explore">✦ AI 여행 시작</button>` +
+      `</div>`;
+    return;
+  }
+
+  list.innerHTML = trips
+    .map((t) => {
+      const title = t.meta?.title || "맞춤 여행 코스";
+      const summary = t.meta?.summary || t.query || "";
+      const duration = t.meta?.duration || t.meta?.tripIntent?.duration || "당일";
+      const stops = t.stopNames || (t.steps || []).map((s) => s.spot?.name).filter(Boolean).join(" → ");
+      return (
+        `<article class="trips-card">` +
+        `<div class="trips-card-body">` +
+        `<div class="trips-card-meta">` +
+        `<span class="chip">${esc(duration)}</span>` +
+        `<span class="trips-when">${esc(formatSavedWhen(t.savedAt))}</span>` +
+        `</div>` +
+        `<h3>${esc(title)}</h3>` +
+        `<p class="trips-summary">${esc(summary)}</p>` +
+        (stops ? `<p class="trips-route">${esc(stops)}</p>` : "") +
+        `<div class="trips-actions">` +
+        `<button type="button" class="btn-primary trips-open" data-open-trip="${esc(t.id)}">일정 열기</button>` +
+        `<button type="button" class="trips-delete" data-delete-trip="${esc(t.id)}">삭제</button>` +
+        `</div></div></article>`
+      );
+    })
+    .join("");
+}
+
+function initTrips() {
+  $("btn-save-trip")?.addEventListener("click", saveCurrentTrip);
+  $("btn-logout-trips")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    resetSession();
+  });
+}
+
 /* ==================== Auth (login modal) ==================== */
 const AUTH_LS = "voyageai_auth_session";
 
@@ -2040,6 +2214,9 @@ function submitLogin() {
   closeLoginModal();
   renderAuthUI();
   toast(`${nick}님, 로그인했어요.`);
+  const pending = state.pendingView;
+  state.pendingView = null;
+  if (pending) show(pending);
 }
 
 function logoutAuth() {
@@ -2087,6 +2264,7 @@ function init() {
     if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
     initSuggestions();
     initCommunity();
+    initTrips();
     initAuth();
     updateSidebar("explore");
     ensureAgentWelcome();
