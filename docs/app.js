@@ -2111,6 +2111,13 @@ async function saveCurrentTripAsync() {
     });
     if (error) {
       console.warn("Supabase saved_trips insert:", error);
+      if (error.code === "42P01" || String(error.message || "").includes("saved_trips")) {
+        toast("저장 테이블이 없어요. Supabase SQL Editor에서 supabase_schema.sql을 실행해 주세요.");
+      } else if (error.code === "42501" || String(error.message || "").includes("row-level security")) {
+        toast("저장 권한 오류예요. 다시 로그인하거나 Supabase RLS 정책을 확인해 주세요.");
+      } else {
+        toast(`저장에 실패했어요. (${error.message || error.code || "unknown"})`);
+      }
       throw error;
     }
     toast("저장함에 담았어요.");

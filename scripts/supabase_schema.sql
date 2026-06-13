@@ -1,7 +1,7 @@
--- VoyageAI · Supabase schema (SQL Editor에 붙여넣기)
--- Authentication → Providers → Google / Kakao 활성화 후 실행
--- insert 시 user_id는 auth.uid()와 일치해야 RLS 통과 (앱에서 user_id 전달)
+-- VoyageAI · Supabase schema (SQL Editor에 한 번 실행)
+-- 프로젝트: ocmykswlbeaaicyrmskl
 -- Redirect: https://rlarlgns-evan.github.io/potato/
+-- Auth: Google / Kakao 활성화 후 실행
 
 create table if not exists public.saved_trips (
   id uuid primary key default gen_random_uuid(),
@@ -19,14 +19,23 @@ create index if not exists saved_trips_user_saved_at
 
 alter table public.saved_trips enable row level security;
 
+drop policy if exists "saved_trips_select_own" on public.saved_trips;
+drop policy if exists "saved_trips_insert_own" on public.saved_trips;
+drop policy if exists "saved_trips_delete_own" on public.saved_trips;
+
 create policy "saved_trips_select_own"
   on public.saved_trips for select
+  to authenticated
   using (auth.uid() = user_id);
 
 create policy "saved_trips_insert_own"
   on public.saved_trips for insert
+  to authenticated
   with check (auth.uid() = user_id);
 
 create policy "saved_trips_delete_own"
   on public.saved_trips for delete
+  to authenticated
   using (auth.uid() = user_id);
+
+-- 확인: Table Editor → saved_trips 테이블이 보이면 OK
