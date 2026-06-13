@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=29" />
+  <link rel="stylesheet" href="style.css?v=30" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
@@ -31,18 +31,23 @@
     <header class="app-categories" id="app-categories">
       <a class="app-logo" data-nav="explore">VoyageAI</a>
       <div class="app-nav-right">
-        <nav class="app-tabs" role="navigation" aria-label="카테고리">
-          <a class="app-tab" data-nav="explore">✦ AI 여행</a>
-          <a class="app-tab" data-nav="planner">▤ 일정</a>
-          <a class="app-tab" data-nav="community">◇ 커뮤니티</a>
-          <a class="app-tab" data-nav="trips">♡ 저장</a>
-        </nav>
-        <div class="app-auth" id="app-auth">
-          <button type="button" class="auth-login-btn" id="auth-login-btn">로그인</button>
-          <div class="auth-user hidden" id="auth-user">
+        <div class="profile-menu" id="profile-menu">
+          <button type="button" class="profile-trigger" id="profile-trigger" aria-expanded="false" aria-controls="profile-dropdown" aria-label="프로필 메뉴">
             <span class="auth-avatar" id="auth-avatar" aria-hidden="true">Y</span>
-            <span class="auth-label" id="auth-label"></span>
-            <button type="button" class="auth-logout-btn" id="auth-logout-btn" title="로그아웃">↪</button>
+            <span class="auth-label" id="auth-label">메뉴</span>
+            <span class="profile-chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="profile-dropdown hidden" id="profile-dropdown" role="menu">
+            <nav class="profile-nav" aria-label="카테고리">
+              <a class="profile-nav-item" data-nav="explore" role="menuitem">✦ AI 여행</a>
+              <a class="profile-nav-item" data-nav="planner" role="menuitem">▤ 일정</a>
+              <a class="profile-nav-item" data-nav="community" role="menuitem">◇ 커뮤니티</a>
+              <a class="profile-nav-item" data-nav="trips" role="menuitem">♡ 저장</a>
+            </nav>
+            <div class="profile-dropdown-actions">
+              <button type="button" class="profile-action" id="auth-login-btn">로그인</button>
+              <button type="button" class="profile-action profile-action-logout hidden" id="auth-logout-btn">로그아웃</button>
+            </div>
           </div>
         </div>
       </div>
@@ -230,7 +235,7 @@
 
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="data.js?v=29"></script>
-  <script src="app.js?v=29"></script>
+  <script src="data.js?v=30"></script>
+  <script src="app.js?v=30"></script>
 </body>
 </html>

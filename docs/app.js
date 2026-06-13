@@ -150,9 +150,27 @@ function updateSidebar(view) {
   document.querySelectorAll(".side .sb-item[data-nav]").forEach((el) => {
     el.classList.toggle("on", el.dataset.nav === view);
   });
-  document.querySelectorAll(".app-tab[data-nav]").forEach((el) => {
+  document.querySelectorAll(".profile-nav-item[data-nav]").forEach((el) => {
     el.classList.toggle("on", el.dataset.nav === view);
   });
+}
+
+function closeProfileMenu() {
+  $("profile-dropdown")?.classList.add("hidden");
+  $("profile-trigger")?.setAttribute("aria-expanded", "false");
+}
+
+function toggleProfileMenu() {
+  const dd = $("profile-dropdown");
+  const trigger = $("profile-trigger");
+  if (!dd || !trigger) return;
+  const willOpen = dd.classList.contains("hidden");
+  if (willOpen) {
+    dd.classList.remove("hidden");
+    trigger.setAttribute("aria-expanded", "true");
+  } else {
+    closeProfileMenu();
+  }
 }
 
 function show(view) {
@@ -168,6 +186,7 @@ function show(view) {
   }
   state.pendingView = null;
   state.view = view;
+  closeProfileMenu();
   syncBodyMode(view);
   $("view-explore")?.classList.toggle("hidden", view !== "explore");
   $("view-planner")?.classList.toggle("hidden", view !== "planner");
@@ -196,6 +215,8 @@ function show(view) {
 }
 
 document.addEventListener("click", (e) => {
+  if (!e.target.closest("#profile-menu")) closeProfileMenu();
+
   const nav = e.target.closest("[data-nav]");
   if (nav) { e.preventDefault(); show(nav.dataset.nav); }
 
@@ -2261,19 +2282,21 @@ function clearStaleOAuthAuth() {
 function renderAuthUI() {
   const auth = loadAuth();
   const loginBtn = $("auth-login-btn");
-  const userBox = $("auth-user");
+  const logoutBtn = $("auth-logout-btn");
   const label = $("auth-label");
   const avatar = $("auth-avatar");
-  if (!loginBtn || !userBox) return;
+  if (!loginBtn || !logoutBtn) return;
 
   if (auth.loggedIn && auth.name) {
     loginBtn.classList.add("hidden");
-    userBox.classList.remove("hidden");
+    logoutBtn.classList.remove("hidden");
     if (label) label.textContent = auth.name;
     if (avatar) avatar.textContent = authInitial(auth.name);
   } else {
     loginBtn.classList.remove("hidden");
-    userBox.classList.add("hidden");
+    logoutBtn.classList.add("hidden");
+    if (label) label.textContent = "메뉴";
+    if (avatar) avatar.textContent = "Y";
   }
   if (state.view === "community") renderCommunity();
 }
@@ -2395,8 +2418,18 @@ async function logoutAuth() {
 }
 
 function initAuth() {
-  $("auth-login-btn")?.addEventListener("click", openLoginModal);
-  $("auth-logout-btn")?.addEventListener("click", () => {
+  $("profile-trigger")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleProfileMenu();
+  });
+  $("auth-login-btn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeProfileMenu();
+    openLoginModal();
+  });
+  $("auth-logout-btn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeProfileMenu();
     logoutAuth().catch((err) => console.warn("logout:", err));
   });
   $("login-google")?.addEventListener("click", () => {
