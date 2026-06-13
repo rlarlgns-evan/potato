@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=31" />
+  <link rel="stylesheet" href="style.css?v=32" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
@@ -31,6 +31,7 @@
     <header class="app-categories" id="app-categories">
       <a class="app-logo" data-nav="explore">VoyageAI</a>
       <div class="app-nav-right">
+        <a class="app-quick-nav" id="nav-explore" data-nav="explore">✦ AI 여행</a>
         <div class="profile-menu" id="profile-menu">
           <button type="button" class="profile-trigger" id="profile-trigger" aria-expanded="false" aria-controls="profile-dropdown" aria-label="프로필 메뉴">
             <span class="auth-avatar" id="auth-avatar" aria-hidden="true">Y</span>
@@ -38,8 +39,7 @@
             <span class="profile-chevron" aria-hidden="true">▾</span>
           </button>
           <div class="profile-dropdown hidden" id="profile-dropdown" role="menu">
-            <nav class="profile-nav" aria-label="카테고리">
-              <a class="profile-nav-item" data-nav="explore" role="menuitem">✦ AI 여행</a>
+            <nav class="profile-nav" aria-label="내 메뉴">
               <a class="profile-nav-item" data-nav="planner" role="menuitem">▤ 일정</a>
               <a class="profile-nav-item" data-nav="community" role="menuitem">◇ 커뮤니티</a>
               <a class="profile-nav-item" data-nav="trips" role="menuitem">♡ 저장</a>
@@ -237,7 +237,7 @@
 
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="data.js?v=30"></script>
-  <script src="app.js?v=30"></script>
+  <script src="data.js?v=32"></script>
+  <script src="app.js?v=32"></script>
 </body>
 </html>

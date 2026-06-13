@@ -150,7 +150,7 @@ function updateSidebar(view) {
   document.querySelectorAll(".side .sb-item[data-nav]").forEach((el) => {
     el.classList.toggle("on", el.dataset.nav === view);
   });
-  document.querySelectorAll(".profile-nav-item[data-nav]").forEach((el) => {
+  document.querySelectorAll(".app-quick-nav[data-nav], .profile-nav-item[data-nav]").forEach((el) => {
     el.classList.toggle("on", el.dataset.nav === view);
   });
 }
@@ -2479,25 +2479,9 @@ function initSuggestions() {
   });
 }
 
-/* ==================== Mobile UI scale ==================== */
-const MOBILE_SCALE_MAX = 768;
-const MOBILE_DESIGN_WIDTH = 390;
-
-function syncMobileUiScale() {
-  const root = document.documentElement;
-  const w = root.clientWidth;
-  if (w > MOBILE_SCALE_MAX) {
-    root.style.removeProperty("--ui-scale");
-    return;
-  }
-  const scale = Math.min(1, Math.max(0.84, w / MOBILE_DESIGN_WIDTH));
-  root.style.setProperty("--ui-scale", scale.toFixed(3));
-}
-
 /* ==================== Init ==================== */
 function init() {
   try {
-    syncMobileUiScale();
     syncBodyMode("explore");
     const spotEl = $("spot-count");
     if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
@@ -2511,7 +2495,6 @@ function init() {
     if ($("agent-spin")) $("agent-spin").style.display = "none";
     initLandingMap();
     window.addEventListener("resize", () => {
-      syncMobileUiScale();
       landingMap?.invalidateSize();
       state.map?.invalidateSize();
     }, { passive: true });
