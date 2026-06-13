@@ -149,6 +149,9 @@ function updateSidebar(view) {
   document.querySelectorAll(".side .sb-item[data-nav]").forEach((el) => {
     el.classList.toggle("on", el.dataset.nav === view);
   });
+  document.querySelectorAll(".app-tab[data-nav]").forEach((el) => {
+    el.classList.toggle("on", el.dataset.nav === view);
+  });
 }
 
 function show(view) {
@@ -1945,6 +1948,7 @@ function init() {
     if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
     initSuggestions();
     initCommunity();
+    updateSidebar("explore");
     ensureAgentWelcome();
     renderAgentChat();
     if ($("agent-spin")) $("agent-spin").style.display = "none";

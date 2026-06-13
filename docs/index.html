@@ -23,11 +23,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=14" />
+  <link rel="stylesheet" href="style.css?v=15" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
   <div class="wrap">
+    <header class="app-categories" id="app-categories">
+      <a class="app-logo" data-nav="explore">VoyageAI</a>
+      <nav class="app-tabs" role="navigation" aria-label="카테고리">
+        <a class="app-tab" data-nav="explore">✦ AI 여행</a>
+        <a class="app-tab" data-nav="planner">▤ 일정</a>
+        <a class="app-tab" data-nav="community">◇ 커뮤니티</a>
+        <a class="app-tab" data-nav="trips">♡ 저장</a>
+      </nav>
+    </header>
+
     <!-- ============ Landing: AI chat + Gangwon map ============ -->
     <main id="view-explore" class="landing-view">
       <div id="landing-map" aria-hidden="true"></div>
@@ -41,7 +51,6 @@
               <strong>AI Concierge</strong>
               <span>실시간 여행 추천 · 강원 <span id="spot-count">24</span>곳</span>
             </div>
-            <button type="button" class="chat-community-link" data-nav="community" title="커뮤니티">◇</button>
           </div>
           <div class="chat-body" id="agent-messages" role="log" aria-live="polite"></div>
           <div class="chat-footer">
@@ -156,7 +165,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="config.js"></script>
-  <script src="data.js?v=14"></script>
-  <script src="app.js?v=14"></script>
+  <script src="data.js?v=15"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
