@@ -1,6 +1,7 @@
 /* VoyageAI · Ethereal Intelligence (Stitch) — GitHub Pages static */
 :root {
   --primary: #006a61;
+  --primary-dark: #004a43;
   --on-primary: #ffffff;
   --primary-container: #66bcb0;
   --on-primary-container: #004a43;
@@ -8,20 +9,24 @@
   --on-secondary-container: #005d7c;
   --tertiary-fixed: #e6deff;
   --on-tertiary-container: #422e95;
-  --surface: #f5faf9;
+  --surface: #f4f8f7;
   --surface-lowest: #ffffff;
-  --surface-low: #f0f5f4;
-  --on-surface: #171d1c;
-  --on-surface-variant: #3e4947;
-  --outline-variant: #bdc9c6;
+  --surface-low: #eef4f3;
+  --on-surface: #141a19;
+  --on-surface-variant: #4a5654;
+  --outline-variant: #c5d2cf;
   --error: #ba1a1a;
-  --shadow: 0 8px 30px rgba(0, 106, 97, 0.08);
-  --radius: 24px;
+  --shadow: 0 10px 40px rgba(0, 80, 72, 0.07);
+  --shadow-lg: 0 20px 60px rgba(0, 60, 54, 0.12);
+  --glass: rgba(255, 255, 255, 0.82);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --radius: 20px;
+  --radius-sm: 14px;
   --chat-width: min(100%, 480px);
   --chat-height: min(600px, calc(100svh - var(--app-nav-h) - 2.5rem));
-  --page-max: 1240px;
+  --page-max: 1120px;
   --page-pad: clamp(0.75rem, 2.5vw, 1.5rem);
-  --app-nav-h: 54px;
+  --app-nav-h: 56px;
 }
 
 * { box-sizing: border-box; }
@@ -397,6 +402,7 @@ a { color: inherit; }
 .btn-save-trip {
   align-self: stretch;
   text-align: center;
+  margin-top: 0;
 }
 @media (min-width: 560px) {
   .btn-save-trip { align-self: flex-end; }
@@ -1650,4 +1656,198 @@ body.mode-planner .planner-grid {
 }
 .trips-delete:hover {
   background: rgba(186, 26, 26, 0.08);
+}
+
+/* ===== UI polish v34 ===== */
+.planner-grid {
+  grid-template-columns: 1fr;
+  max-width: var(--page-max);
+  margin: 0 auto;
+}
+.planner-grid > .side {
+  display: none;
+}
+
+.app-categories {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(20px) saturate(1.2);
+  border-bottom: 1px solid rgba(102, 188, 176, 0.12);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 8px 32px rgba(0, 60, 54, 0.05);
+}
+.app-logo {
+  font-size: 1rem;
+  letter-spacing: -0.04em;
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.app-quick-nav {
+  background: rgba(102, 188, 176, 0.1);
+  border: 1px solid rgba(0, 106, 97, 0.12);
+}
+.app-quick-nav.on {
+  background: linear-gradient(135deg, var(--primary), #00857a);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(0, 106, 97, 0.25);
+}
+.profile-dropdown {
+  border-radius: 18px;
+  padding: 0.5rem;
+  animation: menuIn 0.2s var(--ease);
+}
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.profile-nav-item.on {
+  background: linear-gradient(135deg, rgba(102, 188, 176, 0.28), rgba(136, 214, 253, 0.18));
+  color: var(--primary-dark);
+}
+
+.chat-landing {
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 22px;
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(102, 188, 176, 0.08);
+}
+.landing-scrim {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 42%, rgba(255, 255, 255, 0.82) 0%, rgba(244, 248, 247, 0.35) 55%, transparent 80%);
+}
+.bubble-ai {
+  background: linear-gradient(180deg, #f8fbfa, #f1f6f5);
+  border-color: rgba(197, 210, 207, 0.7);
+  box-shadow: 0 2px 8px rgba(0, 60, 54, 0.04);
+}
+.bubble-user {
+  background: linear-gradient(135deg, #00796e, var(--primary-dark));
+  box-shadow: 0 4px 16px rgba(0, 106, 97, 0.28);
+}
+.pills button {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(197, 210, 207, 0.8);
+  transition: all 0.2s var(--ease);
+}
+.pills button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 106, 97, 0.15);
+}
+
+.btn-primary {
+  transition: transform 0.15s var(--ease), filter 0.15s, box-shadow 0.15s;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 106, 97, 0.32);
+}
+.btn-primary:active { transform: translateY(0); }
+.btn-secondary {
+  background: #fff;
+  transition: transform 0.15s var(--ease), border-color 0.15s, box-shadow 0.15s;
+}
+.btn-secondary:hover {
+  transform: translateY(-1px);
+}
+.btn-save-trip {
+  margin-top: 0;
+  box-shadow: 0 6px 20px rgba(0, 106, 97, 0.22);
+}
+
+.planner-main,
+.community-main,
+.trips-main {
+  background: var(--glass);
+  backdrop-filter: blur(16px) saturate(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: var(--shadow);
+}
+.tailored-head h1,
+.community-head h1,
+.trips-head h1 {
+  font-size: clamp(1.25rem, 3vw, 1.6rem);
+  letter-spacing: -0.04em;
+}
+.chip {
+  backdrop-filter: blur(4px);
+}
+.route-stat {
+  background: rgba(255, 255, 255, 0.85);
+  transition: transform 0.15s var(--ease), box-shadow 0.15s;
+}
+.route-stat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 106, 97, 0.08);
+}
+.course-card {
+  border-radius: 18px;
+  border-width: 1px;
+}
+.course-card.on {
+  border-width: 2px;
+}
+.panel-lbl {
+  color: var(--primary);
+  letter-spacing: 0.1em;
+}
+
+.modal {
+  border-radius: 24px;
+  padding: 1.65rem 1.5rem 1.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: var(--shadow-lg);
+}
+.modal h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--primary-dark);
+}
+.modal-bg {
+  backdrop-filter: blur(8px);
+}
+.toast {
+  background: rgba(20, 26, 25, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.community-compose {
+  background: rgba(255, 255, 255, 0.65);
+  border-color: rgba(197, 210, 207, 0.65);
+}
+.community-compose-locked {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(238, 244, 243, 0.95));
+}
+.community-card,
+.trips-card {
+  border-radius: 18px;
+  border-color: rgba(197, 210, 207, 0.65);
+}
+.community-card:hover,
+.trips-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 106, 97, 0.1);
+}
+.community-card {
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), border-color 0.2s;
+}
+.trips-card {
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), border-color 0.2s;
+}
+.community-empty,
+.trips-empty,
+.planner-empty {
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px dashed rgba(102, 188, 176, 0.25);
+}
+
+body.mode-planner {
+  background: linear-gradient(180deg, #eef6f4 0%, var(--surface) 28%, #f8fbfa 100%);
+}
+body.mode-planner .wrap {
+  padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
 }
