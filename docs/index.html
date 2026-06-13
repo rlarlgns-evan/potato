@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=19" />
+  <link rel="stylesheet" href="style.css?v=20" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
@@ -200,11 +200,18 @@
   <div class="modal-bg" id="login-modal" aria-hidden="true">
     <div class="modal" role="dialog" aria-labelledby="login-modal-title">
       <h3 id="login-modal-title">로그인</h3>
-      <p>닉네임으로 시작해요. 커뮤니티 글·저장 기능에 사용됩니다.</p>
-      <input type="text" id="login-nick" maxlength="12" placeholder="닉네임 (2~12자)" autocomplete="username" />
+      <p id="login-modal-desc">Google 계정으로 로그인하면 저장함이 기기 간에 동기화됩니다.</p>
+      <div id="login-supabase-block" class="login-supabase hidden">
+        <button type="button" class="btn-google" id="login-google">
+          <span class="btn-google-icon" aria-hidden="true">G</span>
+          Google로 로그인
+        </button>
+        <p class="login-divider"><span>또는 체험용</span></p>
+      </div>
+      <input type="text" id="login-nick" maxlength="12" placeholder="닉네임 (2~12자, 체험)" autocomplete="username" />
       <div class="modal-row">
         <button type="button" class="btn-secondary" id="login-cancel">취소</button>
-        <button type="button" class="btn-primary" id="login-submit">로그인</button>
+        <button type="button" class="btn-primary" id="login-submit">닉네임으로 시작</button>
       </div>
     </div>
   </div>
@@ -212,7 +219,8 @@
   <div class="toast" id="toast"></div>
 
   <script src="config.js"></script>
-  <script src="data.js?v=19"></script>
-  <script src="app.js?v=19"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="data.js?v=20"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>

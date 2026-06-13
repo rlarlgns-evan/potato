@@ -188,7 +188,7 @@ function show(view) {
     renderCommunity();
   } else if (view === "trips") {
     pauseLandingMap();
-    renderTrips();
+    renderTrips().catch((err) => console.warn("renderTrips:", err));
   }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -1985,10 +1985,12 @@ function initCommunity() {
 
 /* ==================== Saved trips (login required) ==================== */
 const TRIPS_LS = "voyageai_saved_trips";
+const PENDING_VIEW_LS = "voyageai_pending_view";
 
 function tripsStoreKey() {
   const auth = loadAuth();
-  return auth.loggedIn && auth.name ? auth.name : "";
+  if (!auth.loggedIn) return "";
+  return auth.userId || auth.name || "";
 }
 
 function loadAllTripsStore() {
@@ -2004,18 +2006,52 @@ function saveAllTripsStore(store) {
   localStorage.setItem(TRIPS_LS, JSON.stringify(store));
 }
 
-function loadSavedTripsForUser() {
+function loadSavedTripsLocal() {
   const key = tripsStoreKey();
   if (!key) return [];
   return loadAllTripsStore()[key] || [];
 }
 
-function persistSavedTrips(trips) {
+function persistSavedTripsLocal(trips) {
   const key = tripsStoreKey();
   if (!key) return;
   const store = loadAllTripsStore();
   store[key] = trips.slice(0, 30);
   saveAllTripsStore(store);
+}
+
+function canUseSupabaseCloud() {
+  return Boolean(sb && loadAuth().loggedIn && loadAuth().provider === "google" && loadAuth().userId);
+}
+
+function rowToTrip(row) {
+  return {
+    id: row.id,
+    savedAt: row.saved_at,
+    query: row.query || "",
+    meta: row.meta || {},
+    steps: row.steps || [],
+    focusOrder: row.focus_order ?? 1,
+    stopNames: row.stop_names || "",
+  };
+}
+
+async function loadSavedTripsForUser() {
+  if (canUseSupabaseCloud()) {
+    const { data, error } = await sb
+      .from("saved_trips")
+      .select("id, query, meta, steps, focus_order, stop_names, saved_at")
+      .order("saved_at", { ascending: false })
+      .limit(30);
+    if (!error && data) return data.map(rowToTrip);
+    console.warn("Supabase saved_trips load:", error);
+  }
+  return loadSavedTripsLocal();
+}
+
+async function persistSavedTrips(trips) {
+  if (canUseSupabaseCloud()) return;
+  persistSavedTripsLocal(trips);
 }
 
 function formatSavedWhen(iso) {
@@ -2039,33 +2075,68 @@ function saveCurrentTrip() {
     toast("저장할 코스가 없어요.");
     return;
   }
+  saveCurrentTripAsync().catch((err) => {
+    console.warn("saveCurrentTrip:", err);
+    toast("저장에 실패했어요.");
+  });
+}
+
+async function saveCurrentTripAsync() {
   const stops = destinationSteps(state.steps);
-  const trip = {
-    id: `trip-${Date.now()}`,
-    savedAt: new Date().toISOString(),
+  const payload = {
     query: state.query,
     meta: JSON.parse(JSON.stringify(state.meta)),
     steps: JSON.parse(JSON.stringify(state.steps)),
-    focusOrder: state.focusOrder,
-    stopNames: stops.map((s) => s.spot.name).join(" → "),
+    focus_order: state.focusOrder,
+    stop_names: stops.map((s) => s.spot.name).join(" → "),
   };
-  const trips = loadSavedTripsForUser();
+
+  if (canUseSupabaseCloud()) {
+    const { error } = await sb.from("saved_trips").insert(payload);
+    if (error) throw error;
+    toast("저장함에 담았어요. (클라우드)");
+    return;
+  }
+
+  const trip = {
+    id: `trip-${Date.now()}`,
+    savedAt: new Date().toISOString(),
+    focusOrder: state.focusOrder,
+    stopNames: payload.stop_names,
+    ...payload,
+    meta: payload.meta,
+    steps: payload.steps,
+  };
+  const trips = loadSavedTripsLocal();
   trips.unshift(trip);
-  persistSavedTrips(trips);
+  persistSavedTripsLocal(trips);
   toast("저장함에 담았어요.");
 }
 
 function deleteSavedTrip(id) {
   if (!isLoggedIn()) return;
   if (!confirm("저장한 코스를 삭제할까요?")) return;
-  persistSavedTrips(loadSavedTripsForUser().filter((t) => t.id !== id));
-  toast("저장함에서 삭제했어요.");
-  renderTrips();
+  deleteSavedTripAsync(id).catch((err) => {
+    console.warn("deleteSavedTrip:", err);
+    toast("삭제에 실패했어요.");
+  });
 }
 
-function openSavedTrip(id) {
+async function deleteSavedTripAsync(id) {
+  if (canUseSupabaseCloud()) {
+    const { error } = await sb.from("saved_trips").delete().eq("id", id);
+    if (error) throw error;
+  } else {
+    persistSavedTripsLocal(loadSavedTripsLocal().filter((t) => t.id !== id));
+  }
+  toast("저장함에서 삭제했어요.");
+  await renderTrips();
+}
+
+async function openSavedTrip(id) {
   if (!isLoggedIn()) return;
-  const trip = loadSavedTripsForUser().find((t) => t.id === id);
+  const trips = await loadSavedTripsForUser();
+  const trip = trips.find((t) => t.id === id);
   if (!trip) {
     toast("저장한 코스를 찾지 못했어요.");
     return;
@@ -2079,12 +2150,12 @@ function openSavedTrip(id) {
   renderPlanner();
 }
 
-function renderTrips() {
+async function renderTrips() {
   const list = $("trips-list");
   const chip = $("trips-count-chip");
   if (!list) return;
   const auth = loadAuth();
-  const trips = loadSavedTripsForUser();
+  const trips = await loadSavedTripsForUser();
   if (chip) chip.textContent = `${trips.length}개 저장`;
 
   if (!auth.loggedIn) {
@@ -2135,15 +2206,31 @@ function initTrips() {
   });
 }
 
-/* ==================== Auth (login modal) ==================== */
+/* ==================== Auth (Supabase Google + local nick) ==================== */
 const AUTH_LS = "voyageai_auth_session";
+let sb = null;
+
+function hasSupabase() {
+  const url = String(window.SUPABASE_URL || "");
+  const key = String(window.SUPABASE_ANON_KEY || "");
+  return Boolean(
+    url && key && url.includes("supabase.co") && !url.includes("YOUR_PROJECT")
+  );
+}
+
+function appRedirectUrl() {
+  const u = new URL(window.location.href);
+  u.hash = "";
+  u.search = "";
+  return u.toString();
+}
 
 function loadAuth() {
   try {
     const raw = localStorage.getItem(AUTH_LS);
     if (raw) return JSON.parse(raw);
   } catch { /* ignore */ }
-  return { loggedIn: false, name: "" };
+  return { loggedIn: false, name: "", userId: "", provider: "" };
 }
 
 function saveAuth(auth) {
@@ -2157,6 +2244,28 @@ function isLoggedIn() {
 function authInitial(name) {
   const ch = String(name || "Y").trim()[0];
   return ch ? ch.toUpperCase() : "Y";
+}
+
+function applySupabaseUser(user) {
+  const name = String(
+    user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      user.email?.split("@")[0] ||
+      "여행러"
+  )
+    .trim()
+    .slice(0, 12);
+  saveAuth({ loggedIn: true, name, userId: user.id, provider: "google" });
+  localStorage.setItem(COMMUNITY_LS.nick, name);
+  const nickEl = $("community-nick");
+  if (nickEl) nickEl.value = name;
+}
+
+function clearStaleGoogleAuth() {
+  const auth = loadAuth();
+  if (auth.provider === "google") {
+    saveAuth({ loggedIn: false, name: "", userId: "", provider: "" });
+  }
 }
 
 function renderAuthUI() {
@@ -2178,15 +2287,30 @@ function renderAuthUI() {
   }
 }
 
+function syncLoginModalMode() {
+  const block = $("login-supabase-block");
+  const desc = $("login-modal-desc");
+  if (hasSupabase()) {
+    block?.classList.remove("hidden");
+    if (desc) desc.textContent = "Google 계정으로 로그인하면 저장함이 기기 간에 동기화됩니다.";
+  } else {
+    block?.classList.add("hidden");
+    if (desc) desc.textContent = "닉네임으로 체험해 보세요. Supabase 설정 후 Google 로그인이 활성화됩니다.";
+  }
+}
+
 function openLoginModal() {
   const modal = $("login-modal");
   const input = $("login-nick");
   if (!modal) return;
-  const saved =
-    localStorage.getItem(COMMUNITY_LS.nick) || loadAuth().name || "";
+  syncLoginModalMode();
+  const saved = localStorage.getItem(COMMUNITY_LS.nick) || loadAuth().name || "";
   if (input) {
     input.value = saved;
-    setTimeout(() => input.focus(), 80);
+    setTimeout(() => {
+      if (hasSupabase()) $("login-google")?.focus();
+      else input.focus();
+    }, 80);
   }
   modal.classList.add("show");
   modal.setAttribute("aria-hidden", "false");
@@ -2199,6 +2323,53 @@ function closeLoginModal() {
   modal.setAttribute("aria-hidden", "true");
 }
 
+function resumePendingViewAfterAuth() {
+  if (!isLoggedIn()) return;
+  const pending = sessionStorage.getItem(PENDING_VIEW_LS) || state.pendingView;
+  if (!pending) return;
+  sessionStorage.removeItem(PENDING_VIEW_LS);
+  state.pendingView = null;
+  show(pending);
+}
+
+async function initSupabaseAuth() {
+  if (!hasSupabase() || typeof window.supabase === "undefined") return;
+  sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+    auth: { persistSession: true, detectSessionInUrl: true, flowType: "pkce" },
+  });
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) applySupabaseUser(session.user);
+  else clearStaleGoogleAuth();
+
+  sb.auth.onAuthStateChange((_event, session) => {
+    if (session?.user) applySupabaseUser(session.user);
+    else clearStaleGoogleAuth();
+    renderAuthUI();
+  });
+
+  if (window.location.hash.includes("access_token") || window.location.search.includes("code=")) {
+    window.history.replaceState({}, document.title, appRedirectUrl());
+  }
+  resumePendingViewAfterAuth();
+}
+
+async function loginWithGoogle() {
+  if (!sb) {
+    toast("Google 로그인 설정이 없어요.");
+    return;
+  }
+  if (state.pendingView) sessionStorage.setItem(PENDING_VIEW_LS, state.pendingView);
+  closeLoginModal();
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: appRedirectUrl() },
+  });
+  if (error) {
+    console.warn("Google OAuth:", error);
+    toast("Google 로그인을 시작하지 못했어요.");
+  }
+}
+
 function submitLogin() {
   const input = $("login-nick");
   const nick = String(input?.value || "").trim().slice(0, 12);
@@ -2207,27 +2378,34 @@ function submitLogin() {
     input?.focus();
     return;
   }
-  saveAuth({ loggedIn: true, name: nick });
+  saveAuth({ loggedIn: true, name: nick, userId: `local:${nick}`, provider: "local" });
   localStorage.setItem(COMMUNITY_LS.nick, nick);
   const communityNickEl = $("community-nick");
   if (communityNickEl) communityNickEl.value = nick;
   closeLoginModal();
   renderAuthUI();
-  toast(`${nick}님, 로그인했어요.`);
-  const pending = state.pendingView;
-  state.pendingView = null;
-  if (pending) show(pending);
+  toast(`${nick}님, 체험 로그인했어요.`);
+  resumePendingViewAfterAuth();
 }
 
-function logoutAuth() {
-  saveAuth({ loggedIn: false, name: "" });
+async function logoutAuth() {
+  const auth = loadAuth();
+  if (sb && auth.provider === "google") {
+    await sb.auth.signOut();
+  }
+  saveAuth({ loggedIn: false, name: "", userId: "", provider: "" });
   renderAuthUI();
   toast("로그아웃했어요.");
 }
 
 function initAuth() {
   $("auth-login-btn")?.addEventListener("click", openLoginModal);
-  $("auth-logout-btn")?.addEventListener("click", logoutAuth);
+  $("auth-logout-btn")?.addEventListener("click", () => {
+    logoutAuth().catch((err) => console.warn("logout:", err));
+  });
+  $("login-google")?.addEventListener("click", () => {
+    loginWithGoogle().catch((err) => console.warn("loginWithGoogle:", err));
+  });
   $("login-submit")?.addEventListener("click", submitLogin);
   $("login-cancel")?.addEventListener("click", closeLoginModal);
   $("login-modal")?.addEventListener("click", (e) => {
@@ -2239,7 +2417,9 @@ function initAuth() {
       submitLogin();
     }
   });
+  syncLoginModalMode();
   renderAuthUI();
+  initSupabaseAuth().catch((err) => console.warn("initSupabaseAuth:", err));
 }
 
 function initSuggestions() {

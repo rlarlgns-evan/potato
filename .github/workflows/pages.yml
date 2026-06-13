@@ -42,13 +42,23 @@ jobs:
           GEMINI="${GOOGLE_API_KEY#Value: }"
           GEMINI="${GEMINI#value: }"
           GEMINI="$(printf '%s' "$GEMINI" | sed 's/^[Vv][Aa][Ll][Uu][Ee]:[[:space:]]*//')"
+          SB_URL="${SUPABASE_URL#Value: }"
+          SB_URL="${SB_URL#value: }"
+          SB_URL="$(printf '%s' "$SB_URL" | sed 's/^[Vv][Aa][Ll][Uu][Ee]:[[:space:]]*//')"
+          SB_KEY="${SUPABASE_ANON_KEY#Value: }"
+          SB_KEY="${SB_KEY#value: }"
+          SB_KEY="$(printf '%s' "$SB_KEY" | sed 's/^[Vv][Aa][Ll][Uu][Ee]:[[:space:]]*//')"
           {
             printf 'window.KAKAO_JS_KEY = "%s";\n' "$KAKAO"
             printf 'window.GEMINI_API_KEY = "%s";\n' "$GEMINI"
+            printf 'window.SUPABASE_URL = "%s";\n' "$SB_URL"
+            printf 'window.SUPABASE_ANON_KEY = "%s";\n' "$SB_KEY"
           } > docs/config.js
         env:
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
       - uses: actions/configure-pages@v5
 
