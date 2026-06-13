@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=13" />
+  <link rel="stylesheet" href="style.css?v=14" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
@@ -41,6 +41,7 @@
               <strong>AI Concierge</strong>
               <span>실시간 여행 추천 · 강원 <span id="spot-count">24</span>곳</span>
             </div>
+            <button type="button" class="chat-community-link" data-nav="community" title="커뮤니티">◇</button>
           </div>
           <div class="chat-body" id="agent-messages" role="log" aria-live="polite"></div>
           <div class="chat-footer">
@@ -68,7 +69,8 @@
         <aside class="side">
           <div class="sb-logo">VoyageAI</div>
           <a class="sb-item" data-nav="explore">✦ 새 여행</a>
-          <a class="sb-item on">▤ 일정</a>
+          <a class="sb-item" data-nav="planner">▤ 일정</a>
+          <a class="sb-item" data-nav="community">◇ 커뮤니티</a>
           <a class="sb-item" data-nav="trips">♡ 저장</a>
           <a class="sb-foot" id="btn-logout">↪ 처음으로</a>
         </aside>
@@ -109,12 +111,52 @@
         </section>
       </div>
     </main>
+
+    <!-- ============ Community ============ -->
+    <main id="view-community" class="hidden">
+      <div class="planner-grid">
+        <aside class="side">
+          <div class="sb-logo">VoyageAI</div>
+          <a class="sb-item" data-nav="explore">✦ 새 여행</a>
+          <a class="sb-item" data-nav="planner">▤ 일정</a>
+          <a class="sb-item" data-nav="community">◇ 커뮤니티</a>
+          <a class="sb-item" data-nav="trips">♡ 저장</a>
+          <a class="sb-foot" id="btn-logout-community">↪ 처음으로</a>
+        </aside>
+        <section class="planner-main community-main">
+          <div class="community-head">
+            <div>
+              <h1>강원 여행 커뮤니티</h1>
+              <p>후기·질문·팁을 나누고, AI로 비슷한 코스를 바로 만들어 보세요.</p>
+            </div>
+            <span class="chip">실시간 피드</span>
+          </div>
+          <div class="community-filters" id="community-filters" role="tablist" aria-label="게시글 필터"></div>
+          <form class="community-compose" id="community-form">
+            <div class="community-compose-head">
+              <input type="text" id="community-nick" maxlength="12" placeholder="닉네임" aria-label="닉네임" />
+              <select id="community-type" aria-label="글 유형">
+                <option value="review">후기</option>
+                <option value="question">질문</option>
+                <option value="tip">팁</option>
+              </select>
+            </div>
+            <textarea id="community-input" rows="3" maxlength="500" placeholder="강원 여행 경험, 궁금한 점, 꿀팁을 공유해 주세요…"></textarea>
+            <div class="community-compose-foot">
+              <span class="community-char" id="community-char">0 / 500</span>
+              <button type="submit" class="btn-primary community-submit">게시하기</button>
+            </div>
+          </form>
+          <div class="community-feed" id="community-feed" aria-live="polite"></div>
+        </section>
+      </div>
+    </main>
   </div>
 
   <div class="toast" id="toast"></div>
 
   <script src="config.js"></script>
-  <script src="data.js?v=13"></script>
-  <script src="app.js?v=13"></script>
+  <script src="data.js?v=14"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>

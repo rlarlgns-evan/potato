@@ -35,6 +35,7 @@ const state = {
   map: null,
   chat: [],
   chatTyping: false,
+  communityFilter: "all",
 };
 
 function formatAgentText(text) {
@@ -138,7 +139,16 @@ function toast(msg) {
 /* ==================== View routing ==================== */
 function syncBodyMode(view) {
   document.body.classList.toggle("mode-landing", view === "explore");
-  document.body.classList.toggle("mode-planner", view === "planner");
+  document.body.classList.toggle(
+    "mode-planner",
+    view === "planner" || view === "community" || view === "trips"
+  );
+}
+
+function updateSidebar(view) {
+  document.querySelectorAll(".side .sb-item[data-nav]").forEach((el) => {
+    el.classList.toggle("on", el.dataset.nav === view);
+  });
 }
 
 function show(view) {
@@ -146,14 +156,17 @@ function show(view) {
     toast("일정은 AI 코스를 먼저 만들면 열려요.");
     view = "explore";
   }
-  if (view === "trips" || view === "community") {
-    toast("🚧 곧 제공될 기능이에요.");
+  if (view === "trips") {
+    toast("🚧 저장함은 곧 제공될 기능이에요.");
     return;
   }
   state.view = view;
   syncBodyMode(view);
-  $("view-explore").classList.toggle("hidden", view !== "explore");
-  $("view-planner").classList.toggle("hidden", view !== "planner");
+  $("view-explore")?.classList.toggle("hidden", view !== "explore");
+  $("view-planner")?.classList.toggle("hidden", view !== "planner");
+  $("view-community")?.classList.toggle("hidden", view !== "community");
+  updateSidebar(view);
+
   if (view === "explore") {
     ensureAgentWelcome();
     renderAgentChat();
@@ -162,8 +175,9 @@ function show(view) {
     setTimeout(() => landingMap?.invalidateSize(), 80);
   } else if (view === "planner") {
     pauseLandingMap();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    return;
+  } else if (view === "community") {
+    pauseLandingMap();
+    renderCommunity();
   }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -171,6 +185,30 @@ function show(view) {
 document.addEventListener("click", (e) => {
   const nav = e.target.closest("[data-nav]");
   if (nav) { e.preventDefault(); show(nav.dataset.nav); }
+
+  const likeBtn = e.target.closest("[data-like-id]");
+  if (likeBtn) {
+    e.preventDefault();
+    toggleCommunityLike(likeBtn.dataset.likeId);
+    return;
+  }
+
+  const aiBtn = e.target.closest("[data-ai-prompt]");
+  if (aiBtn) {
+    e.preventDefault();
+    const prompt = decodeURIComponent(aiBtn.dataset.aiPrompt || "");
+    if (prompt) {
+      show("explore");
+      submitAgentPrompt(prompt);
+    }
+  }
+
+  const filterBtn = e.target.closest("[data-community-filter]");
+  if (filterBtn) {
+    e.preventDefault();
+    state.communityFilter = filterBtn.dataset.communityFilter || "all";
+    renderCommunity();
+  }
 });
 
 /* ==================== Weather (Open-Meteo) ==================== */
@@ -1605,6 +1643,15 @@ function resetLandingMap() {
 
 $("btn-logout")?.addEventListener("click", (e) => {
   e.preventDefault();
+  resetSession();
+});
+
+$("btn-logout-community")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  resetSession();
+});
+
+function resetSession() {
   state.steps = [];
   state.query = "";
   state.chat = [];
@@ -1615,7 +1662,266 @@ $("btn-logout")?.addEventListener("click", (e) => {
   renderAgentChat();
   show("explore");
   toast("처음 화면으로 돌아왔어요.");
-});
+}
+
+/* ==================== Community ==================== */
+const COMMUNITY_FILTERS = [
+  { id: "all", label: "전체" },
+  { id: "review", label: "후기" },
+  { id: "question", label: "질문" },
+  { id: "tip", label: "팁" },
+];
+
+const COMMUNITY_TYPE_LABELS = { review: "후기", question: "질문", tip: "팁" };
+
+const COMMUNITY_SEED = [
+  {
+    id: "seed-1",
+    type: "review",
+    author: "민지",
+    region: "속초·양양",
+    title: "속초 KTX 당일치기, 이 순서가 제일 편했어요",
+    body: "서울 7시 KTX → 속초 해변 산책 → 중앙시장 점심. 설악 케이블카는 4시간 코스에 넣기엔 빡세서 다음에 가려고요. 해변은 오전이 한산해서 좋았습니다.",
+    tags: ["KTX", "당일치기", "바다"],
+    likes: 24,
+    ago: "2시간 전",
+    aiPrompt: "서울에서 KTX 당일치기 속초 바다 코스 추천해줘",
+    grad: "linear-gradient(135deg,#006a61,#66bcb0)",
+  },
+  {
+    id: "seed-2",
+    type: "question",
+    author: "준호",
+    region: "강릉",
+    title: "강릉 카페 3곳만 골라주실 분?",
+    body: "안목해변 쪽이랑 경포대 쪽 중 어디를 베이스로 두는 게 동선이 편할까요? 대중교통만 이용합니다.",
+    tags: ["카페", "대중교통", "강릉"],
+    likes: 11,
+    ago: "5시간 전",
+    aiPrompt: "강릉 카페 3곳 대중교통 동선 코스 추천해줘",
+    grad: "linear-gradient(135deg,#38bdf8,#7dd3fc)",
+  },
+  {
+    id: "seed-3",
+    type: "tip",
+    author: "수연",
+    region: "평창·정선",
+    title: "겨울 강원 KTX + 렌터카 꿀팁",
+    body: "진부역에서 내리면 렌터카 픽업이 빠르고, 정선 아리랑시장은 11시 전에 가면 주차가 수월해요. 체인 없으면 렌트카 옵션 꼭 확인!",
+    tags: ["KTX", "렌터카", "겨울"],
+    likes: 37,
+    ago: "어제",
+    aiPrompt: "진부역 KTX 렌터카로 평창 정선 1박2일 코스 추천해줘",
+    grad: "linear-gradient(135deg,#a78bfa,#ddd6fe)",
+  },
+  {
+    id: "seed-4",
+    type: "review",
+    author: "지우",
+    region: "춘천",
+    title: "춘천 1박2일 가족 여행 후기",
+    body: "남이섬 → 닭갈비 → 레고랜드 순서. 아이들은 레고랜드 반나절이면 충분했고, 섬은 오후 3시쯤 사람이 줄어요.",
+    tags: ["가족", "1박2일", "춘천"],
+    likes: 19,
+    ago: "2일 전",
+    aiPrompt: "춘천 가족 1박2일 남이섬 레고랜드 코스 추천해줘",
+    grad: "linear-gradient(135deg,#fb923c,#fed7aa)",
+  },
+  {
+    id: "seed-5",
+    type: "question",
+    author: "현우",
+    region: "삼척·동해",
+    title: "동해 쪽 일몰 명소 추천 부탁드려요",
+    body: "차 없이 KTX로 가는데, 당일치기로 일몰 볼 만한 곳이 있을까요? 3월 주말 기준입니다.",
+    tags: ["일몰", "KTX", "동해"],
+    likes: 8,
+    ago: "3일 전",
+    aiPrompt: "KTX 당일치기 동해 삼척 일몰 명소 코스 추천해줘",
+    grad: "linear-gradient(135deg,#0ea5e9,#bae6fd)",
+  },
+  {
+    id: "seed-6",
+    type: "tip",
+    author: "예린",
+    region: "인제·양구",
+    title: "파로호 둘레길 자전거 대여 위치",
+    body: "양구 쪽 입구 근처 대여소가 저렴하고, 오후에는 바람이 세니까 방풍 재킷 챙기세요. 왕복 2시간 코스가 입문자에게 딱입니다.",
+    tags: ["자전거", "파로호", "팁"],
+    likes: 15,
+    ago: "4일 전",
+    aiPrompt: "양구 파로호 자전거 반나절 코스 추천해줘",
+    grad: "linear-gradient(135deg,#059669,#6ee7b7)",
+  },
+];
+
+const COMMUNITY_LS = {
+  likes: "voyageai_community_likes",
+  posts: "voyageai_community_posts",
+  nick: "voyageai_community_nick",
+};
+
+function loadCommunityLikes() {
+  try {
+    const raw = localStorage.getItem(COMMUNITY_LS.likes);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveCommunityLikes(set) {
+  localStorage.setItem(COMMUNITY_LS.likes, JSON.stringify([...set]));
+}
+
+function loadUserCommunityPosts() {
+  try {
+    const raw = localStorage.getItem(COMMUNITY_LS.posts);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveUserCommunityPosts(posts) {
+  localStorage.setItem(COMMUNITY_LS.posts, JSON.stringify(posts.slice(0, 30)));
+}
+
+function communityNick() {
+  const el = $("community-nick");
+  const saved = localStorage.getItem(COMMUNITY_LS.nick) || "";
+  if (el && !el.value && saved) el.value = saved;
+  return String(el?.value || saved || "여행러").trim().slice(0, 12) || "여행러";
+}
+
+function allCommunityPosts() {
+  const userPosts = loadUserCommunityPosts().map((p) => ({
+    ...p,
+    isUser: true,
+    likes: p.likes ?? 0,
+  }));
+  return [...userPosts, ...COMMUNITY_SEED];
+}
+
+function communityLikeCount(post, liked) {
+  const base = post.likes ?? 0;
+  return base + (liked.has(post.id) ? 1 : 0);
+}
+
+function toggleCommunityLike(id) {
+  const liked = loadCommunityLikes();
+  if (liked.has(id)) liked.delete(id);
+  else liked.add(id);
+  saveCommunityLikes(liked);
+  renderCommunity();
+}
+
+function renderCommunityFilters() {
+  const el = $("community-filters");
+  if (!el) return;
+  el.innerHTML = COMMUNITY_FILTERS.map(
+    (f) =>
+      `<button type="button" class="community-filter${state.communityFilter === f.id ? " on" : ""}" data-community-filter="${f.id}" role="tab" aria-selected="${state.communityFilter === f.id}">${esc(f.label)}</button>`
+  ).join("");
+}
+
+function renderCommunityFeed() {
+  const feed = $("community-feed");
+  if (!feed) return;
+  const liked = loadCommunityLikes();
+  const filter = state.communityFilter;
+  const posts = allCommunityPosts().filter((p) => filter === "all" || p.type === filter);
+
+  if (!posts.length) {
+    feed.innerHTML = `<p class="community-empty">아직 글이 없어요. 첫 번째 이야기를 남겨 보세요!</p>`;
+    return;
+  }
+
+  feed.innerHTML = posts
+    .map((p) => {
+      const typeLabel = COMMUNITY_TYPE_LABELS[p.type] || "글";
+      const likeCount = communityLikeCount(p, liked);
+      const likedOn = liked.has(p.id);
+      const tags = (p.tags || [])
+        .map((t) => `<span class="community-tag">${esc(t)}</span>`)
+        .join("");
+      const aiPrompt = pillPromptAttr(p.aiPrompt || p.body || p.title);
+      const title = p.title ? `<h3>${esc(p.title)}</h3>` : "";
+      return (
+        `<article class="community-card${p.isUser ? " user" : ""}">` +
+        `<div class="community-card-thumb" style="background:${p.grad || "linear-gradient(135deg,#006a61,#66bcb0)"}"></div>` +
+        `<div class="community-card-body">` +
+        `<div class="community-card-meta">` +
+        `<span class="community-type type-${esc(p.type)}">${esc(typeLabel)}</span>` +
+        `<span>${esc(p.author)} · ${esc(p.region || "강원")}</span>` +
+        `<span class="community-ago">${esc(p.ago || "방금")}</span>` +
+        `</div>` +
+        title +
+        `<p class="community-text">${esc(p.body)}</p>` +
+        (tags ? `<div class="community-tags">${tags}</div>` : "") +
+        `<div class="community-actions">` +
+        `<button type="button" class="community-like${likedOn ? " on" : ""}" data-like-id="${esc(p.id)}" aria-pressed="${likedOn}">♡ ${likeCount}</button>` +
+        (p.aiPrompt
+          ? `<button type="button" class="community-ai" data-ai-prompt="${aiPrompt}">✦ AI 코스 만들기</button>`
+          : "") +
+        `</div></div></article>`
+      );
+    })
+    .join("");
+}
+
+function renderCommunity() {
+  communityNick();
+  renderCommunityFilters();
+  renderCommunityFeed();
+}
+
+function submitCommunityPost(e) {
+  e.preventDefault();
+  const input = $("community-input");
+  const text = String(input?.value || "").trim();
+  if (text.length < 8) {
+    toast("8자 이상 입력해 주세요.");
+    return;
+  }
+  const nick = communityNick();
+  localStorage.setItem(COMMUNITY_LS.nick, nick);
+  const type = $("community-type")?.value || "tip";
+  const posts = loadUserCommunityPosts();
+  posts.unshift({
+    id: `user-${Date.now()}`,
+    type,
+    author: nick,
+    region: "강원",
+    title: text.length > 42 ? `${text.slice(0, 42)}…` : "",
+    body: text,
+    tags: [],
+    likes: 0,
+    ago: "방금",
+    aiPrompt: `${text} — 이 조건으로 강원 여행 코스 추천해줘`,
+    grad: "linear-gradient(135deg,#006a61,#88d6fd)",
+  });
+  saveUserCommunityPosts(posts);
+  if (input) input.value = "";
+  updateCommunityCharCount();
+  toast("게시했어요!");
+  renderCommunity();
+}
+
+function updateCommunityCharCount() {
+  const input = $("community-input");
+  const el = $("community-char");
+  if (!input || !el) return;
+  el.textContent = `${input.value.length} / 500`;
+}
+
+function initCommunity() {
+  $("community-form")?.addEventListener("submit", submitCommunityPost);
+  $("community-input")?.addEventListener("input", updateCommunityCharCount);
+  const saved = localStorage.getItem(COMMUNITY_LS.nick);
+  if (saved && $("community-nick")) $("community-nick").value = saved;
+  updateCommunityCharCount();
+}
 
 function initSuggestions() {
   const pillsEl = $("suggest-pills");
@@ -1638,6 +1944,7 @@ function init() {
     const spotEl = $("spot-count");
     if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
     initSuggestions();
+    initCommunity();
     ensureAgentWelcome();
     renderAgentChat();
     if ($("agent-spin")) $("agent-spin").style.display = "none";
