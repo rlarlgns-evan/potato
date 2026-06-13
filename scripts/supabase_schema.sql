@@ -1,5 +1,5 @@
 -- VoyageAI · Supabase schema (SQL Editor에 붙여넣기)
--- Authentication → Providers → Kakao 활성화 후 실행
+-- Authentication → Providers → Google 활성화 후 실행
 -- Redirect: https://rlarlgns-evan.github.io/potato/
 
 create table if not exists public.saved_trips (
