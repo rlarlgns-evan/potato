@@ -211,6 +211,13 @@ document.addEventListener("click", (e) => {
     e.preventDefault();
     state.communityFilter = filterBtn.dataset.communityFilter || "all";
     renderCommunity();
+    return;
+  }
+
+  const deleteBtn = e.target.closest("[data-delete-post]");
+  if (deleteBtn) {
+    e.preventDefault();
+    deleteCommunityPost(deleteBtn.dataset.deletePost);
   }
 });
 
@@ -1819,6 +1826,24 @@ function toggleCommunityLike(id) {
   renderCommunity();
 }
 
+function deleteCommunityPost(id) {
+  if (!id || !String(id).startsWith("user-")) return;
+  const posts = loadUserCommunityPosts();
+  if (!posts.some((p) => p.id === id)) {
+    toast("삭제할 수 없는 글이에요.");
+    return;
+  }
+  if (!confirm("내가 작성한 글을 삭제할까요?")) return;
+  saveUserCommunityPosts(posts.filter((p) => p.id !== id));
+  const liked = loadCommunityLikes();
+  if (liked.has(id)) {
+    liked.delete(id);
+    saveCommunityLikes(liked);
+  }
+  toast("글이 삭제되었어요.");
+  renderCommunity();
+}
+
 function renderCommunityFilters() {
   const el = $("community-filters");
   if (!el) return;
@@ -1850,6 +1875,9 @@ function renderCommunityFeed() {
         .join("");
       const aiPrompt = pillPromptAttr(p.aiPrompt || p.body || p.title);
       const title = p.title ? `<h3>${esc(p.title)}</h3>` : "";
+      const deleteBtn = p.isUser
+        ? `<button type="button" class="community-delete" data-delete-post="${esc(p.id)}" aria-label="내 글 삭제">삭제</button>`
+        : "";
       return (
         `<article class="community-card${p.isUser ? " user" : ""}">` +
         `<div class="community-card-thumb" style="background:${p.grad || "linear-gradient(135deg,#006a61,#66bcb0)"}"></div>` +
@@ -1857,7 +1885,9 @@ function renderCommunityFeed() {
         `<div class="community-card-meta">` +
         `<span class="community-type type-${esc(p.type)}">${esc(typeLabel)}</span>` +
         `<span>${esc(p.author)} · ${esc(p.region || "강원")}</span>` +
+        (p.isUser ? `<span class="community-mine">내 글</span>` : "") +
         `<span class="community-ago">${esc(p.ago || "방금")}</span>` +
+        deleteBtn +
         `</div>` +
         title +
         `<p class="community-text">${esc(p.body)}</p>` +

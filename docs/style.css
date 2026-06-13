@@ -1064,7 +1064,36 @@ body.mode-planner .planner-grid {
 .community-type.type-review { background: rgba(0, 106, 97, 0.12); color: var(--primary); }
 .community-type.type-question { background: rgba(56, 189, 248, 0.18); color: #0369a1; }
 .community-type.type-tip { background: rgba(167, 139, 250, 0.18); color: #6d28d9; }
+.community-mine {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(0, 106, 97, 0.1);
+  color: var(--primary);
+}
 .community-ago { margin-left: auto; opacity: 0.75; }
+.community-delete {
+  margin-left: auto;
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--error);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.community-delete:hover {
+  background: rgba(186, 26, 26, 0.08);
+  text-decoration: underline;
+}
+.community-card-meta:has(.community-delete) .community-ago {
+  margin-left: 0;
+}
 .community-card h3 {
   margin: 0 0 0.35rem;
   font-size: 0.95rem;
