@@ -1798,7 +1798,12 @@ function saveUserCommunityPosts(posts) {
 }
 
 function communityNick() {
+  const auth = loadAuth();
   const el = $("community-nick");
+  if (auth.loggedIn && auth.name) {
+    if (el) el.value = auth.name;
+    return auth.name;
+  }
   const saved = localStorage.getItem(COMMUNITY_LS.nick) || "";
   if (el && !el.value && saved) el.value = saved;
   return String(el?.value || saved || "여행러").trim().slice(0, 12) || "여행러";
@@ -1956,7 +1961,7 @@ function initCommunity() {
   updateCommunityCharCount();
 }
 
-/* ==================== Auth (login-ready toggle) ==================== */
+/* ==================== Auth (login modal) ==================== */
 const AUTH_LS = "voyageai_auth_session";
 
 function loadAuth() {
@@ -1964,7 +1969,7 @@ function loadAuth() {
     const raw = localStorage.getItem(AUTH_LS);
     if (raw) return JSON.parse(raw);
   } catch { /* ignore */ }
-  return { loggedIn: false, name: "게스트" };
+  return { loggedIn: false, name: "" };
 }
 
 function saveAuth(auth) {
@@ -1975,38 +1980,89 @@ function isLoggedIn() {
   return Boolean(loadAuth().loggedIn);
 }
 
-function renderAuthToggle() {
-  const auth = loadAuth();
-  const btn = $("auth-toggle");
-  const label = $("auth-label");
-  if (!btn) return;
-  btn.classList.toggle("on", auth.loggedIn);
-  btn.setAttribute("aria-checked", String(auth.loggedIn));
-  if (label) label.textContent = auth.loggedIn ? auth.name : "게스트";
+function authInitial(name) {
+  const ch = String(name || "Y").trim()[0];
+  return ch ? ch.toUpperCase() : "Y";
 }
 
-function toggleAuth() {
+function renderAuthUI() {
   const auth = loadAuth();
-  if (auth.loggedIn) {
-    saveAuth({ loggedIn: false, name: "게스트" });
-    toast("로그아웃했어요.");
+  const loginBtn = $("auth-login-btn");
+  const userBox = $("auth-user");
+  const label = $("auth-label");
+  const avatar = $("auth-avatar");
+  if (!loginBtn || !userBox) return;
+
+  if (auth.loggedIn && auth.name) {
+    loginBtn.classList.add("hidden");
+    userBox.classList.remove("hidden");
+    if (label) label.textContent = auth.name;
+    if (avatar) avatar.textContent = authInitial(auth.name);
   } else {
-    const nickEl = $("community-nick");
-    const nick =
-      String(nickEl?.value || localStorage.getItem(COMMUNITY_LS.nick) || "여행러")
-        .trim()
-        .slice(0, 12) || "여행러";
-    saveAuth({ loggedIn: true, name: nick });
-    localStorage.setItem(COMMUNITY_LS.nick, nick);
-    if (nickEl) nickEl.value = nick;
-    toast(`${nick}님, 로그인 준비 완료 (데모)`);
+    loginBtn.classList.remove("hidden");
+    userBox.classList.add("hidden");
   }
-  renderAuthToggle();
+}
+
+function openLoginModal() {
+  const modal = $("login-modal");
+  const input = $("login-nick");
+  if (!modal) return;
+  const saved =
+    localStorage.getItem(COMMUNITY_LS.nick) || loadAuth().name || "";
+  if (input) {
+    input.value = saved;
+    setTimeout(() => input.focus(), 80);
+  }
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeLoginModal() {
+  const modal = $("login-modal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function submitLogin() {
+  const input = $("login-nick");
+  const nick = String(input?.value || "").trim().slice(0, 12);
+  if (nick.length < 2) {
+    toast("닉네임은 2자 이상 입력해 주세요.");
+    input?.focus();
+    return;
+  }
+  saveAuth({ loggedIn: true, name: nick });
+  localStorage.setItem(COMMUNITY_LS.nick, nick);
+  const communityNickEl = $("community-nick");
+  if (communityNickEl) communityNickEl.value = nick;
+  closeLoginModal();
+  renderAuthUI();
+  toast(`${nick}님, 로그인했어요.`);
+}
+
+function logoutAuth() {
+  saveAuth({ loggedIn: false, name: "" });
+  renderAuthUI();
+  toast("로그아웃했어요.");
 }
 
 function initAuth() {
-  $("auth-toggle")?.addEventListener("click", toggleAuth);
-  renderAuthToggle();
+  $("auth-login-btn")?.addEventListener("click", openLoginModal);
+  $("auth-logout-btn")?.addEventListener("click", logoutAuth);
+  $("login-submit")?.addEventListener("click", submitLogin);
+  $("login-cancel")?.addEventListener("click", closeLoginModal);
+  $("login-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "login-modal") closeLoginModal();
+  });
+  $("login-nick")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submitLogin();
+    }
+  });
+  renderAuthUI();
 }
 
 function initSuggestions() {
