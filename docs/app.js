@@ -2211,7 +2211,7 @@ function initTrips() {
   });
 }
 
-/* ==================== Auth (Supabase Google + local nick) ==================== */
+/* ==================== Auth (Supabase Kakao + local nick) ==================== */
 const AUTH_LS = "voyageai_auth_session";
 let sb = null;
 
@@ -2252,7 +2252,7 @@ function authInitial(name) {
 }
 
 function applySupabaseUser(user) {
-  const provider = user.app_metadata?.provider || "google";
+  const provider = user.app_metadata?.provider || "kakao";
   const meta = user.user_metadata || {};
   const name = String(
     meta.full_name ||

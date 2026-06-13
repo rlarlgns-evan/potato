@@ -606,7 +606,7 @@ a { color: inherit; }
 
 .login-supabase { margin-bottom: 0.85rem; }
 .login-supabase.hidden { display: none; }
-.btn-google {
+.btn-kakao {
   width: 100%;
   display: flex;
   align-items: center;
@@ -617,28 +617,19 @@ a { color: inherit; }
   font-weight: 700;
   padding: 0.7rem 1rem;
   border-radius: 12px;
-  border: 1px solid var(--outline-variant);
-  background: #fff;
-  color: var(--on-surface);
+  border: 1px solid #e5d200;
+  background: #fee500;
+  color: #191919;
   cursor: pointer;
-  transition: all 0.15s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: filter 0.15s, box-shadow 0.15s;
 }
-.btn-google:hover {
-  border-color: rgba(0, 106, 97, 0.35);
-  box-shadow: 0 4px 16px rgba(0, 106, 97, 0.1);
+.btn-kakao:hover {
+  filter: brightness(0.97);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
-.btn-google-icon {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #4285f4, #34a853);
-  color: #fff;
-  font-size: 0.72rem;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.btn-kakao-icon {
+  font-size: 1rem;
+  line-height: 1;
 }
 .login-divider {
   margin: 0.75rem 0 0.65rem;
