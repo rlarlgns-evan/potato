@@ -202,6 +202,11 @@ document.addEventListener("click", (e) => {
   const likeBtn = e.target.closest("[data-like-id]");
   if (likeBtn) {
     e.preventDefault();
+    if (!canUseCommunity()) {
+      toast("좋아요는 Google·카카오 로그인 후 이용할 수 있어요.");
+      openLoginModal();
+      return;
+    }
     toggleCommunityLike(likeBtn.dataset.likeId);
     return;
   }
@@ -1875,7 +1880,21 @@ function communityLikeCount(post, liked) {
   return base + (liked.has(post.id) ? 1 : 0);
 }
 
+function isOAuthProvider(provider) {
+  return provider === "kakao" || provider === "google";
+}
+
+function canUseCommunity() {
+  const auth = loadAuth();
+  return Boolean(auth.loggedIn && isOAuthProvider(auth.provider));
+}
+
 function toggleCommunityLike(id) {
+  if (!canUseCommunity()) {
+    toast("좋아요는 Google·카카오 로그인 후 이용할 수 있어요.");
+    openLoginModal();
+    return;
+  }
   const liked = loadCommunityLikes();
   if (liked.has(id)) liked.delete(id);
   else liked.add(id);
@@ -1884,6 +1903,11 @@ function toggleCommunityLike(id) {
 }
 
 function deleteCommunityPost(id) {
+  if (!canUseCommunity()) {
+    toast("Google·카카오 로그인 후 삭제할 수 있어요.");
+    openLoginModal();
+    return;
+  }
   if (!id || !String(id).startsWith("user-")) return;
   const posts = loadUserCommunityPosts();
   if (!posts.some((p) => p.id === id)) {
@@ -1932,9 +1956,12 @@ function renderCommunityFeed() {
         .join("");
       const aiPrompt = pillPromptAttr(p.aiPrompt || p.body || p.title);
       const title = p.title ? `<h3>${esc(p.title)}</h3>` : "";
-      const deleteBtn = p.isUser
+      const deleteBtn = p.isUser && canUseCommunity()
         ? `<button type="button" class="community-delete" data-delete-post="${esc(p.id)}" aria-label="내 글 삭제">삭제</button>`
         : "";
+      const likeControl = canUseCommunity()
+        ? `<button type="button" class="community-like${likedOn ? " on" : ""}" data-like-id="${esc(p.id)}" aria-pressed="${likedOn}">♡ ${likeCount}</button>`
+        : `<span class="community-like readonly" aria-hidden="true">♡ ${likeCount}</span>`;
       return (
         `<article class="community-card${p.isUser ? " user" : ""}">` +
         `<div class="community-card-thumb" style="background:${p.grad || "linear-gradient(135deg,#006a61,#66bcb0)"}"></div>` +
@@ -1950,7 +1977,7 @@ function renderCommunityFeed() {
         `<p class="community-text">${esc(p.body)}</p>` +
         (tags ? `<div class="community-tags">${tags}</div>` : "") +
         `<div class="community-actions">` +
-        `<button type="button" class="community-like${likedOn ? " on" : ""}" data-like-id="${esc(p.id)}" aria-pressed="${likedOn}">♡ ${likeCount}</button>` +
+        likeControl +
         (p.aiPrompt
           ? `<button type="button" class="community-ai" data-ai-prompt="${aiPrompt}">✦ AI 코스 만들기</button>`
           : "") +
@@ -1960,14 +1987,28 @@ function renderCommunityFeed() {
     .join("");
 }
 
+function renderCommunityCompose() {
+  const form = $("community-form");
+  const locked = $("community-compose-locked");
+  const canPost = canUseCommunity();
+  form?.classList.toggle("hidden", !canPost);
+  locked?.classList.toggle("hidden", canPost);
+  if (canPost) communityNick();
+}
+
 function renderCommunity() {
-  communityNick();
+  renderCommunityCompose();
   renderCommunityFilters();
   renderCommunityFeed();
 }
 
 function submitCommunityPost(e) {
   e.preventDefault();
+  if (!canUseCommunity()) {
+    toast("글쓰기는 Google·카카오 로그인 후 이용할 수 있어요.");
+    openLoginModal();
+    return;
+  }
   const input = $("community-input");
   const text = String(input?.value || "").trim();
   if (text.length < 8) {
@@ -2006,6 +2047,7 @@ function updateCommunityCharCount() {
 }
 
 function initCommunity() {
+  $("community-login-btn")?.addEventListener("click", openLoginModal);
   $("community-form")?.addEventListener("submit", submitCommunityPost);
   $("community-input")?.addEventListener("input", updateCommunityCharCount);
   const saved = localStorage.getItem(COMMUNITY_LS.nick);
@@ -2053,10 +2095,6 @@ function persistSavedTripsLocal(trips) {
 function canUseSupabaseCloud() {
   const auth = loadAuth();
   return Boolean(sb && auth.loggedIn && auth.userId && isOAuthProvider(auth.provider));
-}
-
-function isOAuthProvider(provider) {
-  return provider === "kakao" || provider === "google";
 }
 
 function rowToTrip(row) {
@@ -2325,6 +2363,7 @@ function renderAuthUI() {
     loginBtn.classList.remove("hidden");
     userBox.classList.add("hidden");
   }
+  if (state.view === "community") renderCommunity();
 }
 
 const OAUTH_PROVIDERS = {

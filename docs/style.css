@@ -1120,6 +1120,22 @@ body.mode-planner .planner-grid {
   color: #fff;
   border-color: var(--primary);
 }
+.community-compose-locked {
+  margin-bottom: 1rem;
+  padding: 1.1rem 1.15rem;
+  border-radius: 16px;
+  border: 1px dashed rgba(0, 106, 97, 0.28);
+  background: rgba(255, 255, 255, 0.82);
+  text-align: center;
+}
+.community-compose-locked.hidden { display: none; }
+.community-compose.hidden { display: none; }
+.community-compose-locked-text {
+  margin: 0 0 0.85rem;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--on-surface-variant);
+}
 .community-compose {
   background: var(--surface-low);
   border: 1px solid var(--outline-variant);
@@ -1319,6 +1335,13 @@ body.mode-planner .planner-grid {
   border-color: #fda4af;
   background: #fff1f2;
   color: #e11d48;
+}
+.community-like.readonly {
+  display: inline-flex;
+  align-items: center;
+  cursor: default;
+  opacity: 0.85;
+  pointer-events: none;
 }
 .community-ai {
   border: 1px solid rgba(0, 106, 97, 0.25);

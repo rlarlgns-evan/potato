@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=26" />
+  <link rel="stylesheet" href="style.css?v=27" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
@@ -152,6 +152,10 @@
             <span class="chip">실시간 피드</span>
           </div>
           <div class="community-filters" id="community-filters" role="tablist" aria-label="게시글 필터"></div>
+          <div class="community-compose-locked hidden" id="community-compose-locked">
+            <p class="community-compose-locked-text">글쓰기·좋아요는 <strong>Google·카카오 로그인</strong> 후 이용할 수 있어요.</p>
+            <button type="button" class="btn-primary" id="community-login-btn">로그인하고 참여하기</button>
+          </div>
           <form class="community-compose" id="community-form">
             <div class="community-compose-head">
               <input type="text" id="community-nick" maxlength="12" placeholder="닉네임" aria-label="닉네임" />
@@ -226,7 +230,7 @@
 
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="data.js?v=26"></script>
-  <script src="app.js?v=26"></script>
+  <script src="data.js?v=27"></script>
+  <script src="app.js?v=27"></script>
 </body>
 </html>
