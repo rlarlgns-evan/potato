@@ -2090,30 +2090,41 @@ function saveCurrentTrip() {
 }
 
 async function saveCurrentTripAsync() {
+  const auth = loadAuth();
   const stops = destinationSteps(state.steps);
   const payload = {
-    query: state.query,
-    meta: JSON.parse(JSON.stringify(state.meta)),
+    query: state.query || "",
+    meta: JSON.parse(JSON.stringify(state.meta || {})),
     steps: JSON.parse(JSON.stringify(state.steps)),
     focus_order: state.focusOrder,
     stop_names: stops.map((s) => s.spot.name).join(" → "),
   };
 
   if (canUseSupabaseCloud()) {
-    const { error } = await sb.from("saved_trips").insert(payload);
-    if (error) throw error;
-    toast("저장함에 담았어요. (클라우드)");
+    if (!auth.userId) {
+      toast("로그인 정보를 확인할 수 없어요. 다시 로그인해 주세요.");
+      return;
+    }
+    const { error } = await sb.from("saved_trips").insert({
+      ...payload,
+      user_id: auth.userId,
+    });
+    if (error) {
+      console.warn("Supabase saved_trips insert:", error);
+      throw error;
+    }
+    toast("저장함에 담았어요.");
     return;
   }
 
   const trip = {
     id: `trip-${Date.now()}`,
     savedAt: new Date().toISOString(),
-    focusOrder: state.focusOrder,
-    stopNames: payload.stop_names,
-    ...payload,
+    query: payload.query,
     meta: payload.meta,
     steps: payload.steps,
+    focusOrder: state.focusOrder,
+    stopNames: payload.stop_names,
   };
   const trips = loadSavedTripsLocal();
   trips.unshift(trip);

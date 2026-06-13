@@ -387,6 +387,20 @@ a { color: inherit; }
   box-shadow: var(--shadow);
 }
 .tailored-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.tailored-head-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+  min-width: min(100%, 280px);
+}
+.btn-save-trip {
+  align-self: stretch;
+  text-align: center;
+}
+@media (min-width: 560px) {
+  .btn-save-trip { align-self: flex-end; }
+}
 .tailored-head h1 { margin: 0 0 0.35rem; font-size: 1.55rem; font-weight: 800; color: var(--primary); letter-spacing: -0.03em; }
 .tailored-head p { margin: 0; font-size: 0.84rem; color: var(--on-surface-variant); max-width: 540px; line-height: 1.55; }
 .q-line { margin-top: 0.35rem !important; font-size: 0.78rem !important; }

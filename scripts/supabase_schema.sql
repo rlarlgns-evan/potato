@@ -1,5 +1,6 @@
 -- VoyageAI · Supabase schema (SQL Editor에 붙여넣기)
--- Authentication → Providers → Google 활성화 후 실행
+-- Authentication → Providers → Google / Kakao 활성화 후 실행
+-- insert 시 user_id는 auth.uid()와 일치해야 RLS 통과 (앱에서 user_id 전달)
 -- Redirect: https://rlarlgns-evan.github.io/potato/
 
 create table if not exists public.saved_trips (
