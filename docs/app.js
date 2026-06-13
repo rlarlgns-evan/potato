@@ -2211,7 +2211,7 @@ function initTrips() {
   });
 }
 
-/* ==================== Auth (Supabase Kakao + local nick) ==================== */
+/* ==================== Auth (Supabase Google/Kakao + local nick) ==================== */
 const AUTH_LS = "voyageai_auth_session";
 let sb = null;
 
@@ -2297,15 +2297,17 @@ function renderAuthUI() {
   }
 }
 
+const OAUTH_PROVIDERS = {
+  google: { label: "Google" },
+  kakao: { label: "카카오" },
+};
+
 function syncLoginModalMode() {
-  const block = $("login-supabase-block");
   const desc = $("login-modal-desc");
-  if (hasSupabase()) {
-    block?.classList.remove("hidden");
-    if (desc) desc.textContent = "카카오 계정으로 로그인하면 저장함이 기기 간에 동기화됩니다.";
-  } else {
-    block?.classList.add("hidden");
-    if (desc) desc.textContent = "닉네임으로 체험해 보세요. Supabase 설정 후 카카오 로그인이 활성화됩니다.";
+  if (desc) {
+    desc.textContent = hasSupabase()
+      ? "Google·카카오로 로그인하면 저장함이 기기 간에 동기화됩니다."
+      : "Google·카카오로 로그인하거나, 닉네임으로 체험해 보세요. (클라우드 동기화는 Supabase 연결 후)";
   }
 }
 
@@ -2318,8 +2320,7 @@ function openLoginModal() {
   if (input) {
     input.value = saved;
     setTimeout(() => {
-      if (hasSupabase()) $("login-kakao")?.focus();
-      else input.focus();
+      $("login-google")?.focus();
     }, 80);
   }
   modal.classList.add("show");
@@ -2363,20 +2364,26 @@ async function initSupabaseAuth() {
   resumePendingViewAfterAuth();
 }
 
-async function loginWithKakao() {
+async function loginWithOAuth(provider) {
+  const info = OAUTH_PROVIDERS[provider];
+  if (!info) return;
+  if (!hasSupabase()) {
+    toast("클라우드 로그인 설정(Supabase)이 아직 연결되지 않았어요.");
+    return;
+  }
   if (!sb) {
-    toast("카카오 로그인 설정이 없어요.");
+    toast(`${info.label} 로그인을 준비 중이에요. 잠시 후 다시 시도해 주세요.`);
     return;
   }
   if (state.pendingView) sessionStorage.setItem(PENDING_VIEW_LS, state.pendingView);
   closeLoginModal();
   const { error } = await sb.auth.signInWithOAuth({
-    provider: "kakao",
+    provider,
     options: { redirectTo: appRedirectUrl() },
   });
   if (error) {
-    console.warn("Kakao OAuth:", error);
-    toast("카카오 로그인을 시작하지 못했어요.");
+    console.warn(`${info.label} OAuth:`, error);
+    toast(`${info.label} 로그인을 시작하지 못했어요.`);
   }
 }
 
@@ -2413,8 +2420,11 @@ function initAuth() {
   $("auth-logout-btn")?.addEventListener("click", () => {
     logoutAuth().catch((err) => console.warn("logout:", err));
   });
+  $("login-google")?.addEventListener("click", () => {
+    loginWithOAuth("google").catch((err) => console.warn("loginWithOAuth(google):", err));
+  });
   $("login-kakao")?.addEventListener("click", () => {
-    loginWithKakao().catch((err) => console.warn("loginWithKakao:", err));
+    loginWithOAuth("kakao").catch((err) => console.warn("loginWithOAuth(kakao):", err));
   });
   $("login-submit")?.addEventListener("click", submitLogin);
   $("login-cancel")?.addEventListener("click", closeLoginModal);
