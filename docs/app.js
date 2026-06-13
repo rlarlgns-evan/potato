@@ -136,6 +136,11 @@ function toast(msg) {
 }
 
 /* ==================== View routing ==================== */
+function syncBodyMode(view) {
+  document.body.classList.toggle("mode-landing", view === "explore");
+  document.body.classList.toggle("mode-planner", view === "planner");
+}
+
 function show(view) {
   if (view === "planner" && !state.steps.length) {
     toast("일정은 AI 코스를 먼저 만들면 열려요.");
@@ -146,15 +151,19 @@ function show(view) {
     return;
   }
   state.view = view;
+  syncBodyMode(view);
   $("view-explore").classList.toggle("hidden", view !== "explore");
   $("view-planner").classList.toggle("hidden", view !== "planner");
-  document.querySelectorAll(".nav-links a").forEach((a) => {
-    a.classList.toggle("on", a.dataset.nav === view);
-  });
   if (view === "explore") {
     ensureAgentWelcome();
     renderAgentChat();
     $("agent-input")?.focus();
+    initLandingMap();
+    setTimeout(() => landingMap?.invalidateSize(), 80);
+  } else if (view === "planner") {
+    pauseLandingMap();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
   }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -926,7 +935,7 @@ function applyCurationResult(prompt, result) {
   setTimeout(() => {
     show("planner");
     renderPlanner();
-  }, 450);
+  }, 500);
 }
 
 async function runCuration(prompt) {
@@ -1479,30 +1488,120 @@ $("agent-input")?.addEventListener("keydown", (e) => {
   }
 });
 
-$("nav-search")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  show("explore");
-  $("agent-input")?.focus();
-});
+/* ==================== Landing map (interactive background) ==================== */
+let landingMap = null;
+let landingMarkers = [];
+let landingBooting = false;
 
-$("more-tags")?.addEventListener("click", () => {
-  const btn = $("more-tags");
-  const expanded = btn.dataset.x === "1";
-  document.querySelectorAll("#interest-tags .extra").forEach((t) => t.remove());
-  if (!expanded) {
-    ["등산", "야경", "현지 시장"].forEach((t) => {
-      const span = document.createElement("span");
-      span.className = "tag extra";
-      span.textContent = t;
-      btn.before(span);
+function gangwonBounds() {
+  const lats = ENRICHED_SPOTS.map((s) => s.lat);
+  const lngs = ENRICHED_SPOTS.map((s) => s.lng);
+  return [
+    [Math.min(...lats) - 0.08, Math.min(...lngs) - 0.12],
+    [Math.max(...lats) + 0.08, Math.max(...lngs) + 0.12],
+  ];
+}
+
+function landingPopupHtml(spot) {
+  return (
+    `<strong>${esc(spot.name)}</strong><br>` +
+    `<span style="color:#3e4947">${esc(spot.region)} · ${esc(spot.theme)}</span><br>` +
+    `<button type="button" class="landing-popup-btn" data-spot="${esc(spot.name)}">이곳 포함해서 추천 →</button>`
+  );
+}
+
+function focusLandingSpot(spot) {
+  landingMarkers.forEach(({ spot: s, marker, el }) => {
+    const on = s.name === spot.name;
+    if (el) el.classList.toggle("on", on);
+    if (on && landingMap) landingMap.panTo([spot.lat, spot.lng], { animate: true, duration: 0.6 });
+  });
+}
+
+function buildLandingMap() {
+  const el = $("landing-map");
+  if (!el || landingMap) return;
+  landingMap = L.map(el, {
+    zoomControl: false,
+    attributionControl: true,
+    scrollWheelZoom: true,
+    dragging: true,
+    touchZoom: true,
+  });
+  L.control.zoom({ position: "bottomright" }).addTo(landingMap);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    maxZoom: 14,
+    minZoom: 7,
+    attribution: "© OpenStreetMap © CARTO",
+    subdomains: "abcd",
+  }).addTo(landingMap);
+  landingMap.fitBounds(gangwonBounds(), { padding: [40, 40] });
+
+  ENRICHED_SPOTS.forEach((spot) => {
+    const icon = L.divIcon({
+      className: "",
+      html: '<div class="landing-spot-dot"></div>',
+      iconSize: [12, 12],
+      iconAnchor: [6, 6],
     });
-    btn.textContent = "접기";
-    btn.dataset.x = "1";
-  } else {
-    btn.textContent = "+3 더보기";
-    btn.dataset.x = "0";
+    const marker = L.marker([spot.lat, spot.lng], { icon }).addTo(landingMap);
+    marker.bindPopup(landingPopupHtml(spot), { maxWidth: 240 });
+    const dotEl = marker.getElement()?.querySelector(".landing-spot-dot");
+    marker.on("mouseover", () => focusLandingSpot(spot));
+    marker.on("mouseout", () => {
+      if (dotEl) dotEl.classList.remove("on");
+    });
+    marker.on("popupopen", () => {
+      focusLandingSpot(spot);
+      const btn = marker.getPopup()?.getElement()?.querySelector(".landing-popup-btn");
+      btn?.addEventListener("click", () => {
+        const input = $("agent-input");
+        if (input) {
+          input.value = `${spot.name} 포함 강원 여행 코스 추천해줘`;
+          autoResizeAgentInput();
+          input.focus();
+        }
+        landingMap.closePopup();
+      });
+    });
+    landingMarkers.push({ spot, marker, el: dotEl });
+  });
+
+  landingMap.on("click", () => landingMap.closePopup());
+  setTimeout(() => landingMap?.invalidateSize(), 100);
+  setTimeout(() => landingMap?.invalidateSize(), 500);
+}
+
+function initLandingMap() {
+  if (landingMap || landingBooting) return;
+  const el = $("landing-map");
+  if (!el) return;
+  if (typeof L !== "undefined") {
+    buildLandingMap();
+    return;
   }
-});
+  landingBooting = true;
+  const s = document.createElement("script");
+  s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+  s.onload = () => {
+    landingBooting = false;
+    buildLandingMap();
+  };
+  document.head.appendChild(s);
+}
+
+function pauseLandingMap() {
+  if (!landingMap) return;
+  landingMap.closePopup();
+}
+
+function resetLandingMap() {
+  if (landingMap) {
+    landingMap.remove();
+    landingMap = null;
+  }
+  landingMarkers = [];
+}
 
 $("btn-logout")?.addEventListener("click", (e) => {
   e.preventDefault();
@@ -1510,47 +1609,39 @@ $("btn-logout")?.addEventListener("click", (e) => {
   state.query = "";
   state.chat = [];
   state.chatTyping = false;
+  resetMapState();
+  resetLandingMap();
   ensureAgentWelcome();
   renderAgentChat();
   show("explore");
-  toast("로그아웃했어요.");
+  toast("처음 화면으로 돌아왔어요.");
 });
 
-function initHighlights() {
-  $("highlights").innerHTML = HIGHLIGHTS.map(
-    (h) =>
-      `<div class="hl-card">
-         <div class="hl-icon" style="background:${h.bg}">${h.icon}</div>
-         <strong>${esc(h.title)}</strong>
-         <span>${esc(h.region)}</span>
-       </div>`
+function initSuggestions() {
+  const pillsEl = $("suggest-pills");
+  if (!pillsEl) return;
+  pillsEl.innerHTML = SUGGESTIONS.map(
+    (s) =>
+      `<button type="button" data-prompt="${pillPromptAttr(s.prompt)}">${esc(s.label)}</button>`
   ).join("");
+  pillsEl.querySelectorAll("button").forEach((b) => {
+    b.addEventListener("click", () => {
+      submitAgentPrompt(decodeURIComponent(b.dataset.prompt || ""));
+    });
+  });
 }
 
 /* ==================== Init ==================== */
 function init() {
   try {
-    if ($("intro")) $("intro").innerHTML = REGION_INTRO;
+    syncBodyMode("explore");
     const spotEl = $("spot-count");
     if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
-    const pillsEl = $("suggest-pills");
-    if (pillsEl) {
-      pillsEl.innerHTML = SUGGESTIONS.map(
-        (s) =>
-          `<button type="button" data-prompt="${pillPromptAttr(s.prompt)}">${esc(s.label)}</button>`
-      ).join("");
-      pillsEl.querySelectorAll("button").forEach((b) => {
-        b.addEventListener("click", () => {
-          submitAgentPrompt(decodeURIComponent(b.dataset.prompt || ""));
-        });
-      });
-    }
+    initSuggestions();
     ensureAgentWelcome();
     renderAgentChat();
     if ($("agent-spin")) $("agent-spin").style.display = "none";
-    initHighlights();
-    initFestivals();
-    initWeather();
+    initLandingMap();
   } catch (err) {
     console.error("init failed:", err);
     toast("화면 로딩 오류 — 새로고침(Ctrl+Shift+R) 해 주세요.");

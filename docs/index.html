@@ -23,127 +23,54 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=10" />
+  <link rel="stylesheet" href="style.css?v=12" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
-<body>
+<body class="mode-landing">
   <div class="wrap">
-    <!-- ============ Top nav ============ -->
-    <header class="topnav">
-      <div class="topnav-grid">
-        <a class="logo" data-nav="explore">VoyageAI</a>
-        <nav class="nav-links">
-          <a data-nav="explore" class="on">탐색</a>
-          <a data-nav="planner">일정</a>
-          <a data-nav="trips">내 여행</a>
-          <a data-nav="community">커뮤니티</a>
-        </nav>
-        <div class="nav-right">
-          <button title="알림" data-nav="trips">🔔</button>
-          <span class="avatar-dot">AJ</span>
+    <!-- ============ Landing: AI chat + Gangwon map ============ -->
+    <main id="view-explore" class="landing-view">
+      <div id="landing-map" aria-hidden="true"></div>
+      <div class="landing-scrim" aria-hidden="true"></div>
+
+      <div class="landing-content">
+        <div class="chat-shell chat-landing" id="chat-shell">
+          <div class="chat-shell-header">
+            <span class="chat-dot"></span>
+            <div class="chat-shell-title">
+              <strong>AI Concierge</strong>
+              <span>실시간 여행 추천 · 강원 <span id="spot-count">24</span>곳</span>
+            </div>
+          </div>
+          <div class="chat-body" id="agent-messages" role="log" aria-live="polite"></div>
+          <div class="chat-footer">
+            <div class="chat-starters" id="agent-starters">
+              <p class="suggest-label">이렇게 물어보세요</p>
+              <div class="pills" id="suggest-pills"></div>
+            </div>
+            <form class="chat-input-bar" id="agent-form">
+              <div class="chat-input-inner">
+                <textarea id="agent-input" rows="1" placeholder="메시지를 입력하세요…" autocomplete="off"></textarea>
+                <button class="chat-send-btn" id="agent-send" type="submit" aria-label="전송">
+                  <span id="agent-send-label">↑</span>
+                  <span class="spinner" id="agent-spin"></span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
-      <a class="nav-search" id="nav-search">목적지 검색…</a>
-    </header>
-
-    <!-- ============ Explore ============ -->
-    <main id="view-explore">
-      <div class="cols">
-        <section>
-          <div class="welcome">
-            <div class="welcome-row">
-              <span class="kicker">AI Journey Curator</span>
-              <span class="welcome-badge">강원 GANGWON</span>
-            </div>
-            <h2>안녕하세요, 여행자님</h2>
-            <p id="intro"></p>
-          </div>
-
-          <div class="chat-shell" id="chat-shell">
-            <div class="chat-shell-header">
-              <span class="chat-dot"></span>
-              <div class="chat-shell-title">
-                <strong>AI Concierge</strong>
-                <span>실시간 여행 추천 · 강원 <span id="spot-count">24</span>곳</span>
-              </div>
-            </div>
-            <div class="chat-body" id="agent-messages" role="log" aria-live="polite">
-              <div class="bubble-ai" id="agent-welcome-fallback">✦ 안녕하세요! 강원도 여행의 무엇이든 물어보세요. 출발지·교통·일정·동행·테마를 알려주시면 맞춤 동선과 지도를 만들어 드릴게요.</div>
-            </div>
-            <div class="chat-footer">
-              <div class="chat-starters" id="agent-starters">
-                <p class="suggest-label">이렇게 물어보세요</p>
-                <div class="pills" id="suggest-pills"></div>
-              </div>
-              <form class="chat-input-bar" id="agent-form">
-                <div class="chat-input-inner">
-                  <textarea id="agent-input" rows="1" placeholder="메시지를 입력하세요…" autocomplete="off"></textarea>
-                  <button class="chat-send-btn" id="agent-send" type="submit" aria-label="전송">
-                    <span id="agent-send-label">↑</span>
-                    <span class="spinner" id="agent-spin"></span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          <div class="highlights" id="highlights"></div>
-
-          <div class="dash">
-            <div class="box">
-              <p class="lbl">날씨</p>
-              <div id="wx-body"></div>
-              <div class="dots" id="wx-dots"></div>
-            </div>
-            <div class="box">
-              <p class="lbl">축제</p>
-              <div class="fest-vp"><div class="fest-tr" id="fest-tr"></div></div>
-            </div>
-            <div class="box tip-glass">
-              <p class="lbl">여행 팁</p>
-              <p class="sub">"해안도로는 해 지기 직전이 가장 아름다워요. 황금빛 노을 드라이브를 놓치지 마세요."</p>
-            </div>
-          </div>
-
-        </section>
-
-        <aside class="profile">
-          <div class="avatar">AJ</div>
-          <p class="elite">ELITE EXPLORER ✓</p>
-          <h4>Evan Kim</h4>
-          <div class="stat-row">
-            <div class="stat"><strong>12</strong><span>Trips</span></div>
-            <div class="stat"><strong>840</strong><span>Points</span></div>
-          </div>
-          <p class="section-lbl">관심 테마 ✎</p>
-          <div class="tags" id="interest-tags">
-            <span class="tag t1">해안 드라이브</span>
-            <span class="tag t2">미식</span>
-            <span class="tag t3">사진</span>
-            <button class="tag toggle" id="more-tags">+3 더보기</button>
-          </div>
-          <div class="saved">
-            <p class="s1">Saved Discovery ♡</p>
-            <p class="s2">East Coast Scenic Route</p>
-            <p class="s3">Saved on Sep 14 · 4.2 mi</p>
-          </div>
-          <div class="voucher">
-            <p>🎁 <strong>Travel Voucher</strong><br />15% off car rentals in Gangwon</p>
-          </div>
-        </aside>
       </div>
     </main>
 
-    <!-- ============ Planner ============ -->
+    <!-- ============ Planner (after chat) ============ -->
     <main id="view-planner" class="hidden">
       <div class="planner-grid">
         <aside class="side">
           <div class="sb-logo">VoyageAI</div>
-          <a class="sb-item" data-nav="explore">▦ Dashboard</a>
-          <a class="sb-item" data-nav="explore">◎ Destinations</a>
-          <a class="sb-item on">▤ Itinerary</a>
-          <a class="sb-item" data-nav="trips">♡ Favorites</a>
-          <a class="sb-foot" id="btn-logout">↪ Logout</a>
+          <a class="sb-item" data-nav="explore">✦ 새 여행</a>
+          <a class="sb-item on">▤ 일정</a>
+          <a class="sb-item" data-nav="trips">♡ 저장</a>
+          <a class="sb-foot" id="btn-logout">↪ 처음으로</a>
         </aside>
         <section>
           <div class="tailored-head">
@@ -187,7 +114,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="config.js"></script>
-  <script src="data.js?v=10"></script>
-  <script src="app.js?v=10"></script>
+  <script src="data.js?v=12"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>
