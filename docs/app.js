@@ -2021,7 +2021,12 @@ function persistSavedTripsLocal(trips) {
 }
 
 function canUseSupabaseCloud() {
-  return Boolean(sb && loadAuth().loggedIn && loadAuth().provider === "google" && loadAuth().userId);
+  const auth = loadAuth();
+  return Boolean(sb && auth.loggedIn && auth.userId && isOAuthProvider(auth.provider));
+}
+
+function isOAuthProvider(provider) {
+  return provider === "kakao" || provider === "google";
 }
 
 function rowToTrip(row) {
@@ -2206,7 +2211,7 @@ function initTrips() {
   });
 }
 
-/* ==================== Auth (Supabase Google + local nick) ==================== */
+/* ==================== Auth (Supabase Kakao + local nick) ==================== */
 const AUTH_LS = "voyageai_auth_session";
 let sb = null;
 
@@ -2247,23 +2252,28 @@ function authInitial(name) {
 }
 
 function applySupabaseUser(user) {
+  const provider = user.app_metadata?.provider || "kakao";
+  const meta = user.user_metadata || {};
   const name = String(
-    user.user_metadata?.full_name ||
-      user.user_metadata?.name ||
+    meta.full_name ||
+      meta.name ||
+      meta.nickname ||
+      meta.preferred_username ||
+      meta.user_name ||
       user.email?.split("@")[0] ||
       "여행러"
   )
     .trim()
     .slice(0, 12);
-  saveAuth({ loggedIn: true, name, userId: user.id, provider: "google" });
+  saveAuth({ loggedIn: true, name, userId: user.id, provider });
   localStorage.setItem(COMMUNITY_LS.nick, name);
   const nickEl = $("community-nick");
   if (nickEl) nickEl.value = name;
 }
 
-function clearStaleGoogleAuth() {
+function clearStaleOAuthAuth() {
   const auth = loadAuth();
-  if (auth.provider === "google") {
+  if (isOAuthProvider(auth.provider)) {
     saveAuth({ loggedIn: false, name: "", userId: "", provider: "" });
   }
 }
@@ -2292,10 +2302,10 @@ function syncLoginModalMode() {
   const desc = $("login-modal-desc");
   if (hasSupabase()) {
     block?.classList.remove("hidden");
-    if (desc) desc.textContent = "Google 계정으로 로그인하면 저장함이 기기 간에 동기화됩니다.";
+    if (desc) desc.textContent = "카카오 계정으로 로그인하면 저장함이 기기 간에 동기화됩니다.";
   } else {
     block?.classList.add("hidden");
-    if (desc) desc.textContent = "닉네임으로 체험해 보세요. Supabase 설정 후 Google 로그인이 활성화됩니다.";
+    if (desc) desc.textContent = "닉네임으로 체험해 보세요. Supabase 설정 후 카카오 로그인이 활성화됩니다.";
   }
 }
 
@@ -2308,7 +2318,7 @@ function openLoginModal() {
   if (input) {
     input.value = saved;
     setTimeout(() => {
-      if (hasSupabase()) $("login-google")?.focus();
+      if (hasSupabase()) $("login-kakao")?.focus();
       else input.focus();
     }, 80);
   }
@@ -2339,11 +2349,11 @@ async function initSupabaseAuth() {
   });
   const { data: { session } } = await sb.auth.getSession();
   if (session?.user) applySupabaseUser(session.user);
-  else clearStaleGoogleAuth();
+  else clearStaleOAuthAuth();
 
   sb.auth.onAuthStateChange((_event, session) => {
     if (session?.user) applySupabaseUser(session.user);
-    else clearStaleGoogleAuth();
+    else clearStaleOAuthAuth();
     renderAuthUI();
   });
 
@@ -2353,20 +2363,20 @@ async function initSupabaseAuth() {
   resumePendingViewAfterAuth();
 }
 
-async function loginWithGoogle() {
+async function loginWithKakao() {
   if (!sb) {
-    toast("Google 로그인 설정이 없어요.");
+    toast("카카오 로그인 설정이 없어요.");
     return;
   }
   if (state.pendingView) sessionStorage.setItem(PENDING_VIEW_LS, state.pendingView);
   closeLoginModal();
   const { error } = await sb.auth.signInWithOAuth({
-    provider: "google",
+    provider: "kakao",
     options: { redirectTo: appRedirectUrl() },
   });
   if (error) {
-    console.warn("Google OAuth:", error);
-    toast("Google 로그인을 시작하지 못했어요.");
+    console.warn("Kakao OAuth:", error);
+    toast("카카오 로그인을 시작하지 못했어요.");
   }
 }
 
@@ -2390,7 +2400,7 @@ function submitLogin() {
 
 async function logoutAuth() {
   const auth = loadAuth();
-  if (sb && auth.provider === "google") {
+  if (sb && isOAuthProvider(auth.provider)) {
     await sb.auth.signOut();
   }
   saveAuth({ loggedIn: false, name: "", userId: "", provider: "" });
@@ -2403,8 +2413,8 @@ function initAuth() {
   $("auth-logout-btn")?.addEventListener("click", () => {
     logoutAuth().catch((err) => console.warn("logout:", err));
   });
-  $("login-google")?.addEventListener("click", () => {
-    loginWithGoogle().catch((err) => console.warn("loginWithGoogle:", err));
+  $("login-kakao")?.addEventListener("click", () => {
+    loginWithKakao().catch((err) => console.warn("loginWithKakao:", err));
   });
   $("login-submit")?.addEventListener("click", submitLogin);
   $("login-cancel")?.addEventListener("click", closeLoginModal);
