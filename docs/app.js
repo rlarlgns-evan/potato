@@ -1642,6 +1642,10 @@ function init() {
     renderAgentChat();
     if ($("agent-spin")) $("agent-spin").style.display = "none";
     initLandingMap();
+    window.addEventListener("resize", () => {
+      landingMap?.invalidateSize();
+      state.map?.invalidateSize();
+    }, { passive: true });
   } catch (err) {
     console.error("init failed:", err);
     toast("화면 로딩 오류 — 새로고침(Ctrl+Shift+R) 해 주세요.");
