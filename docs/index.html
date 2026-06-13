@@ -23,19 +23,36 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=16" />
+  <link rel="stylesheet" href="style.css?v=17" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
   <div class="wrap">
     <header class="app-categories" id="app-categories">
       <a class="app-logo" data-nav="explore">VoyageAI</a>
-      <nav class="app-tabs" role="navigation" aria-label="카테고리">
-        <a class="app-tab" data-nav="explore">✦ AI 여행</a>
-        <a class="app-tab" data-nav="planner">▤ 일정</a>
-        <a class="app-tab" data-nav="community">◇ 커뮤니티</a>
-        <a class="app-tab" data-nav="trips">♡ 저장</a>
-      </nav>
+      <div class="app-nav-right">
+        <nav class="app-tabs" role="navigation" aria-label="카테고리">
+          <a class="app-tab" data-nav="explore">✦ AI 여행</a>
+          <a class="app-tab" data-nav="planner">▤ 일정</a>
+          <a class="app-tab" data-nav="community">◇ 커뮤니티</a>
+          <a class="app-tab" data-nav="trips">♡ 저장</a>
+        </nav>
+        <div class="app-auth" id="app-auth">
+          <span class="auth-label" id="auth-label">게스트</span>
+          <button
+            type="button"
+            class="auth-toggle"
+            id="auth-toggle"
+            role="switch"
+            aria-checked="false"
+            aria-label="로그인 상태 전환"
+          >
+            <span class="auth-toggle-track" aria-hidden="true">
+              <span class="auth-toggle-thumb"></span>
+            </span>
+          </button>
+        </div>
+      </div>
     </header>
 
     <!-- ============ Landing: AI chat + Gangwon map ============ -->
@@ -165,7 +182,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="config.js"></script>
-  <script src="data.js?v=16"></script>
-  <script src="app.js?v=16"></script>
+  <script src="data.js?v=17"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>

@@ -1956,6 +1956,59 @@ function initCommunity() {
   updateCommunityCharCount();
 }
 
+/* ==================== Auth (login-ready toggle) ==================== */
+const AUTH_LS = "voyageai_auth_session";
+
+function loadAuth() {
+  try {
+    const raw = localStorage.getItem(AUTH_LS);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return { loggedIn: false, name: "게스트" };
+}
+
+function saveAuth(auth) {
+  localStorage.setItem(AUTH_LS, JSON.stringify(auth));
+}
+
+function isLoggedIn() {
+  return Boolean(loadAuth().loggedIn);
+}
+
+function renderAuthToggle() {
+  const auth = loadAuth();
+  const btn = $("auth-toggle");
+  const label = $("auth-label");
+  if (!btn) return;
+  btn.classList.toggle("on", auth.loggedIn);
+  btn.setAttribute("aria-checked", String(auth.loggedIn));
+  if (label) label.textContent = auth.loggedIn ? auth.name : "게스트";
+}
+
+function toggleAuth() {
+  const auth = loadAuth();
+  if (auth.loggedIn) {
+    saveAuth({ loggedIn: false, name: "게스트" });
+    toast("로그아웃했어요.");
+  } else {
+    const nickEl = $("community-nick");
+    const nick =
+      String(nickEl?.value || localStorage.getItem(COMMUNITY_LS.nick) || "여행러")
+        .trim()
+        .slice(0, 12) || "여행러";
+    saveAuth({ loggedIn: true, name: nick });
+    localStorage.setItem(COMMUNITY_LS.nick, nick);
+    if (nickEl) nickEl.value = nick;
+    toast(`${nick}님, 로그인 준비 완료 (데모)`);
+  }
+  renderAuthToggle();
+}
+
+function initAuth() {
+  $("auth-toggle")?.addEventListener("click", toggleAuth);
+  renderAuthToggle();
+}
+
 function initSuggestions() {
   const pillsEl = $("suggest-pills");
   if (!pillsEl) return;
@@ -1978,6 +2031,7 @@ function init() {
     if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
     initSuggestions();
     initCommunity();
+    initAuth();
     updateSidebar("explore");
     ensureAgentWelcome();
     renderAgentChat();
