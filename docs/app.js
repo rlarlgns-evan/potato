@@ -1775,16 +1775,9 @@ function saveUserCommunityPosts(posts) {
   localStorage.setItem(COMMUNITY_LS.posts, JSON.stringify(posts.slice(0, 30)));
 }
 
-function communityNick() {
+function getCommunityAuthorName() {
   const auth = loadAuth();
-  const el = $("community-nick");
-  if (auth.loggedIn && auth.name) {
-    if (el) el.value = auth.name;
-    return auth.name;
-  }
-  const saved = localStorage.getItem(COMMUNITY_LS.nick) || "";
-  if (el && !el.value && saved) el.value = saved;
-  return String(el?.value || saved || "여행러").trim().slice(0, 12) || "여행러";
+  return String(auth.loggedIn && auth.name ? auth.name : "여행러").trim().slice(0, 12) || "여행러";
 }
 
 function allCommunityPosts() {
@@ -1863,7 +1856,7 @@ function renderCommunityFeed() {
   const posts = allCommunityPosts().filter((p) => filter === "all" || p.type === filter);
 
   if (!posts.length) {
-    feed.innerHTML = `<p class="community-empty">아직 글이 없어요. 첫 번째 이야기를 남겨 보세요!</p>`;
+    feed.innerHTML = `<p class="community-empty">아직 게시글이 없어요.${canUseCommunity() ? " 첫 번째 이야기를 남겨 보세요!" : ""}</p>`;
     return;
   }
 
@@ -1911,10 +1904,13 @@ function renderCommunityFeed() {
 function renderCommunityCompose() {
   const form = $("community-form");
   const locked = $("community-compose-locked");
+  const authorEl = $("community-author");
   const canPost = canUseCommunity();
   form?.classList.toggle("hidden", !canPost);
   locked?.classList.toggle("hidden", canPost);
-  if (canPost) communityNick();
+  if (authorEl && canPost) {
+    authorEl.textContent = `${getCommunityAuthorName()}님으로 작성`;
+  }
 }
 
 function renderCommunity() {
@@ -1936,8 +1932,7 @@ function submitCommunityPost(e) {
     toast("8자 이상 입력해 주세요.");
     return;
   }
-  const nick = communityNick();
-  localStorage.setItem(COMMUNITY_LS.nick, nick);
+  const nick = getCommunityAuthorName();
   const type = $("community-type")?.value || "tip";
   const posts = loadUserCommunityPosts();
   posts.unshift({
@@ -1971,8 +1966,6 @@ function initCommunity() {
   $("community-login-btn")?.addEventListener("click", openLoginModal);
   $("community-form")?.addEventListener("submit", submitCommunityPost);
   $("community-input")?.addEventListener("input", updateCommunityCharCount);
-  const saved = localStorage.getItem(COMMUNITY_LS.nick);
-  if (saved && $("community-nick")) $("community-nick").value = saved;
   updateCommunityCharCount();
 }
 
@@ -2256,8 +2249,6 @@ function applySupabaseUser(user) {
     .slice(0, 12);
   saveAuth({ loggedIn: true, name, userId: user.id, provider });
   localStorage.setItem(COMMUNITY_LS.nick, name);
-  const nickEl = $("community-nick");
-  if (nickEl) nickEl.value = name;
 }
 
 function clearStaleOAuthAuth() {
@@ -2387,8 +2378,6 @@ function submitLogin() {
   }
   saveAuth({ loggedIn: true, name: nick, userId: `local:${nick}`, provider: "local" });
   localStorage.setItem(COMMUNITY_LS.nick, nick);
-  const communityNickEl = $("community-nick");
-  if (communityNickEl) communityNickEl.value = nick;
   closeLoginModal();
   renderAuthUI();
   toast(`${nick}님, 체험 로그인했어요.`);
@@ -2446,9 +2435,25 @@ function initSuggestions() {
   });
 }
 
+/* ==================== Mobile UI scale ==================== */
+const MOBILE_SCALE_MAX = 768;
+const MOBILE_DESIGN_WIDTH = 390;
+
+function syncMobileUiScale() {
+  const root = document.documentElement;
+  const w = root.clientWidth;
+  if (w > MOBILE_SCALE_MAX) {
+    root.style.removeProperty("--ui-scale");
+    return;
+  }
+  const scale = Math.min(1, Math.max(0.84, w / MOBILE_DESIGN_WIDTH));
+  root.style.setProperty("--ui-scale", scale.toFixed(3));
+}
+
 /* ==================== Init ==================== */
 function init() {
   try {
+    syncMobileUiScale();
     syncBodyMode("explore");
     const spotEl = $("spot-count");
     if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
@@ -2462,6 +2467,7 @@ function init() {
     if ($("agent-spin")) $("agent-spin").style.display = "none";
     initLandingMap();
     window.addEventListener("resize", () => {
+      syncMobileUiScale();
       landingMap?.invalidateSize();
       state.map?.invalidateSize();
     }, { passive: true });

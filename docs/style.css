@@ -1044,6 +1044,33 @@ body.mode-planner .planner-grid {
   .auth-label { font-size: 0.74rem; }
 }
 
+@media (max-width: 768px) {
+  :root {
+    --page-pad: clamp(0.45rem, 2.5vw, 0.75rem);
+    --radius: 18px;
+  }
+  body.mode-landing .wrap,
+  body.mode-planner .wrap {
+    zoom: var(--ui-scale, 1);
+  }
+  .planner-grid > .side {
+    display: none;
+  }
+  .planner-main {
+    padding: 0.85rem;
+  }
+  .community-head h1,
+  .trips-head h1 {
+    font-size: 1.25rem;
+  }
+  .community-compose-foot {
+    flex-wrap: wrap;
+  }
+  .community-submit {
+    width: 100%;
+  }
+}
+
 @media (max-width: 540px) {
   :root {
     --chat-width: 100%;
@@ -1145,10 +1172,18 @@ body.mode-planner .planner-grid {
 }
 .community-compose-head {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.55rem;
 }
-.community-compose-head input,
+.community-author {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--primary);
+}
 .community-compose-head select {
   font-family: inherit;
   font-size: 0.82rem;
@@ -1157,10 +1192,9 @@ body.mode-planner .planner-grid {
   padding: 0.5rem 0.7rem;
   background: #fff;
   outline: none;
+  flex: 0 0 auto;
+  min-width: 88px;
 }
-.community-compose-head input { width: 120px; }
-.community-compose-head select { flex: 1; max-width: 120px; }
-.community-compose-head input:focus,
 .community-compose-head select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(102, 188, 176, 0.15);
