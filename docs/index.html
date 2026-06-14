@@ -59,7 +59,10 @@
           <div class="profile-dropdown-head" id="profile-dropdown-head">
             <span class="profile-dropdown-avatar vico-wrap" id="profile-dropdown-avatar">Y</span>
             <div class="profile-dropdown-meta">
-              <strong id="profile-dropdown-name">게스트</strong>
+              <div class="profile-dropdown-name-row">
+                <strong id="profile-dropdown-name">게스트</strong>
+                <button type="button" class="profile-settings-btn hidden" id="profile-account-btn">계정 설정</button>
+              </div>
               <span id="profile-dropdown-provider">로그인 전</span>
             </div>
           </div>
@@ -68,10 +71,6 @@
           <div class="profile-dropdown-nav">
             <button type="button" class="profile-action profile-action-nav" data-nav="planner" id="profile-planner-btn"><span class="vico vico-action" data-vico="planner"></span>내 일정</button>
             <button type="button" class="profile-action profile-action-nav" data-nav="trips" id="profile-trips-btn"><span class="vico vico-action" data-vico="trips"></span>찜 목록</button>
-          </div>
-          <p class="profile-dropdown-section hidden" id="profile-manage-label">프로필 관리</p>
-          <div class="profile-dropdown-manage hidden" id="profile-dropdown-manage">
-            <button type="button" class="profile-action profile-action-nav" id="profile-account-btn"><span class="vico vico-action" data-vico="profile"></span>계정 정보</button>
             <button type="button" class="profile-action profile-action-nav" data-nav="community" id="profile-community-btn"><span class="vico vico-action" data-vico="community"></span>커뮤니티 활동</button>
           </div>
           <div class="profile-dropdown-divider" role="separator" aria-hidden="true"></div>
@@ -297,7 +296,7 @@
 
   <div class="modal-bg" id="profile-modal" aria-hidden="true">
     <div class="modal profile-modal" role="dialog" aria-labelledby="profile-modal-title">
-      <h3 id="profile-modal-title">프로필 관리</h3>
+      <h3 id="profile-modal-title">계정 설정</h3>
       <div class="profile-card">
         <span class="profile-card-avatar" id="profile-card-avatar">Y</span>
         <div>

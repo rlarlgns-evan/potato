@@ -2568,31 +2568,28 @@ function renderAuthUI() {
   const ddName = $("profile-dropdown-name");
   const ddProvider = $("profile-dropdown-provider");
   const ddAvatar = $("profile-dropdown-avatar");
-  const manageLabel = $("profile-manage-label");
-  const manageBlock = $("profile-dropdown-manage");
+  const settingsBtn = $("profile-account-btn");
   if (!loginBtn || !logoutBtn) return;
 
   if (auth.loggedIn && auth.name) {
     loginBtn.classList.add("hidden");
     logoutBtn.classList.remove("hidden");
+    settingsBtn?.classList.remove("hidden");
     if (label) label.textContent = auth.name;
     if (avatar) avatar.textContent = authInitial(auth.name);
     if (ddName) ddName.textContent = auth.name;
     if (ddProvider) ddProvider.textContent = providerLabel(auth.provider);
     if (ddAvatar) ddAvatar.textContent = authInitial(auth.name);
-    manageLabel?.classList.remove("hidden");
-    manageBlock?.classList.remove("hidden");
     if (hint) hint.textContent = `${auth.name}님, 내 일정·찜 목록·커뮤니티를 이용할 수 있어요.`;
   } else {
     loginBtn.classList.remove("hidden");
     logoutBtn.classList.add("hidden");
+    settingsBtn?.classList.add("hidden");
     if (label) label.textContent = "로그인";
     if (avatar) avatar.textContent = "Y";
     if (ddName) ddName.textContent = "게스트";
     if (ddProvider) ddProvider.textContent = "로그인 전";
     if (ddAvatar) ddAvatar.textContent = "Y";
-    manageLabel?.classList.add("hidden");
-    manageBlock?.classList.add("hidden");
     if (hint) hint.textContent = "Google·카카오로 로그인하면 내 일정·찜 목록·커뮤니티를 이용할 수 있어요.";
   }
   if (state.view === "community") renderCommunity();

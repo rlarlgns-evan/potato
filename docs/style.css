@@ -1176,6 +1176,43 @@ button, input, textarea, select { font-family: inherit; }
   justify-content: center;
   flex-shrink: 0;
 }
+.profile-dropdown-meta {
+  flex: 1;
+  min-width: 0;
+}
+.profile-dropdown-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.profile-dropdown-name-row strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-settings-btn {
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--primary);
+  background: rgba(102, 188, 176, 0.12);
+  border: 1px solid rgba(102, 188, 176, 0.24);
+  border-radius: 999px;
+  padding: 0.24rem 0.55rem;
+  cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast) var(--ease-spring);
+}
+.profile-settings-btn:hover {
+  background: rgba(102, 188, 176, 0.22);
+  border-color: rgba(102, 188, 176, 0.4);
+  transform: translateY(-1px);
+}
+.profile-settings-btn.hidden { display: none; }
 .profile-dropdown-meta strong {
   display: block;
   font-size: 0.82rem;
@@ -1843,7 +1880,7 @@ body.mode-planner .planner-grid {
     --chat-height: min(620px, calc(100svh - var(--app-nav-h) - 3rem));
   }
   .app-logo-text { font-size: 1rem; }
-  .app-logo-mark { width: 1.65rem; height: 1.65rem; }
+  .app-logo-mark { width: 1.85rem; height: 1.85rem; }
   .tab-lbl { font-size: 0.64rem; }
   .tab-ico.vico { width: 2.35rem; height: 2.35rem; padding: 0.45rem; }
   .app-tab { min-width: 3.35rem; padding: 0.32rem 0.48rem 0.26rem; }
@@ -1869,9 +1906,8 @@ body.mode-planner .planner-grid {
     white-space: nowrap;
   }
   .app-logo-mark {
-    width: 1.35rem;
-    height: 1.35rem;
-    padding: 0.24rem;
+    width: 1.5rem;
+    height: 1.5rem;
   }
   .app-tab {
     min-width: 2.85rem;
