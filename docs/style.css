@@ -782,10 +782,7 @@ a { color: inherit; }
   flex-shrink: 0;
 }
 .app-tab-group-mid {
-  padding: 0.12rem 0.2rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.45);
-  border: 1px solid rgba(102, 188, 176, 0.12);
+  /* same as sibling groups — no extra pill wrapper */
 }
 .app-tabs::-webkit-scrollbar { display: none; }
 .app-tab {
