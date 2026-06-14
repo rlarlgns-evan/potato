@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=53" />
+  <link rel="stylesheet" href="style.css?v=57" />
   <link rel="icon" type="image/png" href="assets/mascot-icon.png" />
   <link rel="apple-touch-icon" href="assets/mascot-icon.png" />
 </head>
@@ -84,8 +84,20 @@
 
     <!-- ============ Landing: AI chat + Gangwon map ============ -->
     <main id="view-explore" class="landing-view">
-      <div id="landing-map" aria-hidden="true"></div>
+      <div id="landing-map" class="landing-map-stage" aria-hidden="true">
+        <div class="landing-map-frame">
+          <img class="landing-map-art" src="assets/gangwon-hero.svg?v=57" alt="" width="960" height="820" decoding="async" />
+          <svg class="landing-pins-svg" viewBox="0 0 960 820" aria-hidden="true">
+            <g id="landing-pins"></g>
+          </svg>
+          <div class="landing-tip hidden" id="landing-tip" role="dialog" aria-live="polite"></div>
+        </div>
+      </div>
       <div class="landing-scrim" aria-hidden="true"></div>
+      <div class="landing-map-badge" aria-hidden="true">
+        <span class="landing-map-badge-pulse"></span>
+        <span>강원 큐레이션 <strong id="landing-spot-count">24</strong>곳</span>
+      </div>
 
       <div class="landing-content">
         <div class="chat-shell chat-landing" id="chat-shell">
@@ -343,6 +355,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="data.js?v=53"></script>
   <script src="icons.js?v=53"></script>
-  <script src="app.js?v=53"></script>
+  <script src="app.js?v=57"></script>
 </body>
 </html>
