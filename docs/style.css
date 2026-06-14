@@ -1800,17 +1800,13 @@ body.mode-planner .wrap {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background: #a8dce8;
-  overflow: hidden;
+  background: #c8ddd8;
 }
-.landing-map-img {
+#landing-map .leaflet-container {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center 42%;
-  display: block;
-  user-select: none;
-  pointer-events: none;
+  background: #c8ddd8;
+  font-family: inherit;
 }
 
 .landing-scrim {
