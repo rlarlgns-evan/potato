@@ -36,7 +36,27 @@ const state = {
   chat: [],
   chatTyping: false,
   communityFilter: "all",
+  spotsFilter: "all",
   pendingView: null,
+};
+
+const SPECIAL_NAV = {
+  festivals: {
+    prompt: "강원도 축제·계절 행사가 포함된 여행 코스 추천해줘",
+  },
+  weather: {
+    prompt: "강원도 여행 날씨·옷차림·준비물 팁 알려줘",
+  },
+};
+
+const SPOT_THEME_LABELS = {
+  all: "전체",
+  nature: "자연",
+  culture: "문화",
+  experience: "체험",
+  calm: "힐링",
+  night: "야경",
+  drive: "드라이브",
 };
 
 function formatAgentText(text) {
@@ -142,7 +162,7 @@ function syncBodyMode(view) {
   document.body.classList.toggle("mode-landing", view === "explore");
   document.body.classList.toggle(
     "mode-planner",
-    view === "planner" || view === "community" || view === "trips"
+    view === "planner" || view === "community" || view === "trips" || view === "spots"
   );
 }
 
@@ -150,7 +170,7 @@ function updateSidebar(view) {
   document.querySelectorAll(".side .sb-item[data-nav]").forEach((el) => {
     el.classList.toggle("on", el.dataset.nav === view);
   });
-  document.querySelectorAll(".app-quick-nav[data-nav], .profile-nav-item[data-nav]").forEach((el) => {
+  document.querySelectorAll(".app-tab[data-nav]").forEach((el) => {
     el.classList.toggle("on", el.dataset.nav === view);
   });
 }
@@ -174,6 +194,12 @@ function toggleProfileMenu() {
 }
 
 function show(view) {
+  const special = SPECIAL_NAV[view];
+  if (special) {
+    show("explore");
+    submitAgentPrompt(special.prompt);
+    return;
+  }
   if (view === "planner" && !state.steps.length && !isLoggedIn()) {
     toast("일정은 AI 코스를 먼저 만들거나, 로그인 후 저장함에서 열 수 있어요.");
     view = "explore";
@@ -189,6 +215,7 @@ function show(view) {
   closeProfileMenu();
   syncBodyMode(view);
   $("view-explore")?.classList.toggle("hidden", view !== "explore");
+  $("view-spots")?.classList.toggle("hidden", view !== "spots");
   $("view-planner")?.classList.toggle("hidden", view !== "planner");
   $("view-community")?.classList.toggle("hidden", view !== "community");
   $("view-trips")?.classList.toggle("hidden", view !== "trips");
@@ -200,6 +227,9 @@ function show(view) {
     $("agent-input")?.focus();
     initLandingMap();
     setTimeout(() => landingMap?.invalidateSize(), 80);
+  } else if (view === "spots") {
+    pauseLandingMap();
+    renderSpots();
   } else if (view === "planner") {
     pauseLandingMap();
     if (state.steps.length) renderPlanner();
@@ -247,6 +277,25 @@ document.addEventListener("click", (e) => {
     e.preventDefault();
     state.communityFilter = filterBtn.dataset.communityFilter || "all";
     renderCommunity();
+    return;
+  }
+
+  const spotsFilterBtn = e.target.closest("[data-spots-filter]");
+  if (spotsFilterBtn) {
+    e.preventDefault();
+    state.spotsFilter = spotsFilterBtn.dataset.spotsFilter || "all";
+    renderSpots();
+    return;
+  }
+
+  const spotCard = e.target.closest("[data-spot-prompt]");
+  if (spotCard) {
+    e.preventDefault();
+    const prompt = decodeURIComponent(spotCard.dataset.spotPrompt || "");
+    if (prompt) {
+      show("explore");
+      submitAgentPrompt(prompt);
+    }
     return;
   }
 
@@ -1752,6 +1801,62 @@ function resetSession() {
   toast("처음 화면으로 돌아왔어요.");
 }
 
+/* ==================== Spots catalog ==================== */
+function spotThemeKey(theme) {
+  return String(theme || "").toLowerCase();
+}
+
+function renderSpotsFilters() {
+  const el = $("spots-filters");
+  if (!el) return;
+  const themes = ["all", ...new Set(ENRICHED_SPOTS.map((s) => spotThemeKey(s.theme)).filter(Boolean))];
+  el.innerHTML = themes
+    .map(
+      (t) =>
+        `<button type="button" class="spots-filter${state.spotsFilter === t ? " on" : ""}" data-spots-filter="${esc(t)}" role="tab" aria-selected="${state.spotsFilter === t}">${esc(SPOT_THEME_LABELS[t] || t)}</button>`
+    )
+    .join("");
+}
+
+function renderSpotsGrid() {
+  const grid = $("spots-grid");
+  if (!grid) return;
+  const filter = state.spotsFilter;
+  const spots = ENRICHED_SPOTS.filter((s) => filter === "all" || spotThemeKey(s.theme) === filter);
+  const totalEl = $("spots-total");
+  if (totalEl) totalEl.textContent = String(ENRICHED_SPOTS.length);
+
+  if (!spots.length) {
+    grid.innerHTML = `<p class="spots-empty">해당 테마의 명소가 없어요.</p>`;
+    return;
+  }
+
+  grid.innerHTML = spots
+    .map((s) => {
+      const prompt = pillPromptAttr(`${s.name}(${s.region}) 포함 강원 여행 코스 추천해줘`);
+      const theme = SPOT_THEME_LABELS[spotThemeKey(s.theme)] || s.theme;
+      return (
+        `<button type="button" class="spot-card" data-spot-prompt="${prompt}">` +
+        `<span class="spot-card-theme">${esc(theme)}</span>` +
+        `<strong>${esc(s.name)}</strong>` +
+        `<span class="spot-card-region">📍 ${esc(s.region)}</span>` +
+        `<span class="spot-card-tip">${esc(s.tip || s.description || "")}</span>` +
+        `<span class="spot-card-cta">✦ AI 코스 만들기</span>` +
+        `</button>`
+      );
+    })
+    .join("");
+}
+
+function renderSpots() {
+  renderSpotsFilters();
+  renderSpotsGrid();
+}
+
+function initSpots() {
+  renderSpots();
+}
+
 /* ==================== Community ==================== */
 const COMMUNITY_FILTERS = [
   { id: "all", label: "전체" },
@@ -2303,6 +2408,7 @@ function renderAuthUI() {
   const logoutBtn = $("auth-logout-btn");
   const label = $("auth-label");
   const avatar = $("auth-avatar");
+  const hint = $("profile-dropdown-hint");
   if (!loginBtn || !logoutBtn) return;
 
   if (auth.loggedIn && auth.name) {
@@ -2310,11 +2416,13 @@ function renderAuthUI() {
     logoutBtn.classList.remove("hidden");
     if (label) label.textContent = auth.name;
     if (avatar) avatar.textContent = authInitial(auth.name);
+    if (hint) hint.textContent = `${auth.name}님, 저장함·커뮤니티를 이용할 수 있어요.`;
   } else {
     loginBtn.classList.remove("hidden");
     logoutBtn.classList.add("hidden");
-    if (label) label.textContent = "메뉴";
+    if (label) label.textContent = "로그인";
     if (avatar) avatar.textContent = "Y";
+    if (hint) hint.textContent = "Google·카카오로 로그인하면 저장·커뮤니티 참여가 가능해요.";
   }
   if (state.view === "community") renderCommunity();
 }
@@ -2493,6 +2601,7 @@ function init() {
     const spotEl = $("spot-count");
     if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
     initSuggestions();
+    initSpots();
     initCommunity();
     initTrips();
     initAuth();

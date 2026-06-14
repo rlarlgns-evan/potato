@@ -23,31 +23,33 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=34" />
+  <link rel="stylesheet" href="style.css?v=35" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
   <div class="wrap">
     <header class="app-categories" id="app-categories">
-      <a class="app-logo" data-nav="explore">VoyageAI</a>
-      <div class="app-nav-right">
-        <a class="app-quick-nav" id="nav-explore" data-nav="explore">✦ AI 여행</a>
-        <div class="profile-menu" id="profile-menu">
-          <button type="button" class="profile-trigger" id="profile-trigger" aria-expanded="false" aria-controls="profile-dropdown" aria-label="프로필 메뉴">
-            <span class="auth-avatar" id="auth-avatar" aria-hidden="true">Y</span>
-            <span class="auth-label" id="auth-label">메뉴</span>
-            <span class="profile-chevron" aria-hidden="true">▾</span>
-          </button>
-          <div class="profile-dropdown hidden" id="profile-dropdown" role="menu">
-            <nav class="profile-nav" aria-label="내 메뉴">
-              <a class="profile-nav-item" data-nav="planner" role="menuitem">▤ 일정</a>
-              <a class="profile-nav-item" data-nav="community" role="menuitem">◇ 커뮤니티</a>
-              <a class="profile-nav-item" data-nav="trips" role="menuitem">♡ 저장</a>
-            </nav>
-            <div class="profile-dropdown-actions">
-              <button type="button" class="profile-action" id="auth-login-btn">로그인</button>
-              <button type="button" class="profile-action profile-action-logout hidden" id="auth-logout-btn">로그아웃</button>
-            </div>
+      <a class="app-logo" data-nav="explore" aria-label="VoyageAI 홈">VoyageAI</a>
+      <nav class="app-tabs" role="navigation" aria-label="카테고리">
+        <a class="app-tab" data-nav="explore" title="AI 여행"><span class="tab-ico" aria-hidden="true">✦</span><span class="tab-lbl">AI</span></a>
+        <a class="app-tab" data-nav="spots" title="명소"><span class="tab-ico" aria-hidden="true">🏔</span><span class="tab-lbl">명소</span></a>
+        <a class="app-tab" data-nav="planner" title="일정"><span class="tab-ico" aria-hidden="true">▤</span><span class="tab-lbl">일정</span></a>
+        <a class="app-tab" data-nav="community" title="커뮤니티"><span class="tab-ico" aria-hidden="true">◇</span><span class="tab-lbl">커뮤니티</span></a>
+        <a class="app-tab" data-nav="trips" title="저장"><span class="tab-ico" aria-hidden="true">♡</span><span class="tab-lbl">저장</span></a>
+        <a class="app-tab" data-nav="festivals" title="축제·행사"><span class="tab-ico" aria-hidden="true">🎪</span><span class="tab-lbl">축제</span></a>
+        <a class="app-tab" data-nav="weather" title="날씨·팁"><span class="tab-ico" aria-hidden="true">☀</span><span class="tab-lbl">날씨</span></a>
+      </nav>
+      <div class="profile-menu" id="profile-menu">
+        <button type="button" class="profile-trigger" id="profile-trigger" aria-expanded="false" aria-controls="profile-dropdown" aria-label="계정 메뉴">
+          <span class="auth-avatar" id="auth-avatar" aria-hidden="true">Y</span>
+          <span class="auth-label" id="auth-label">로그인</span>
+          <span class="profile-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="profile-dropdown hidden" id="profile-dropdown" role="menu">
+          <p class="profile-dropdown-hint" id="profile-dropdown-hint">Google·카카오로 로그인하면 저장·커뮤니티 참여가 가능해요.</p>
+          <div class="profile-dropdown-actions">
+            <button type="button" class="profile-action" id="auth-login-btn">로그인</button>
+            <button type="button" class="profile-action profile-action-logout hidden" id="auth-logout-btn">로그아웃</button>
           </div>
         </div>
       </div>
@@ -85,6 +87,21 @@
           </div>
         </div>
       </div>
+    </main>
+
+    <!-- ============ Spots catalog ============ -->
+    <main id="view-spots" class="hidden">
+      <section class="page-shell spots-main">
+        <div class="page-head">
+          <div>
+            <h1>강원 명소</h1>
+            <p>큐레이션 데이터 <strong id="spots-total">24</strong>곳 · 탭하면 AI 코스를 만들어요.</p>
+          </div>
+          <span class="chip">탐색</span>
+        </div>
+        <div class="spots-filters" id="spots-filters" role="tablist" aria-label="테마 필터"></div>
+        <div class="spots-grid" id="spots-grid" aria-live="polite"></div>
+      </section>
     </main>
 
     <!-- ============ Planner (after chat) ============ -->
@@ -237,7 +254,7 @@
 
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="data.js?v=34"></script>
-  <script src="app.js?v=34"></script>
+  <script src="data.js?v=35"></script>
+  <script src="app.js?v=35"></script>
 </body>
 </html>
