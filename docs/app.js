@@ -95,7 +95,14 @@ function renderAgentChat() {
   box.scrollTop = box.scrollHeight;
   const starters = $("agent-starters");
   if (starters) {
-    starters.classList.toggle("hidden", state.chat.some((m) => m.role === "user"));
+    let hasUser = false;
+    for (let i = 0; i < state.chat.length; i++) {
+      if (state.chat[i].role === "user") {
+        hasUser = true;
+        break;
+      }
+    }
+    starters.classList.toggle("hidden", hasUser);
   }
   if (state.steps.length && !state.chatTyping) appendPlannerOpenButton();
 }
@@ -434,9 +441,12 @@ function parseWeatherEntry(entry) {
 
 function mapWeatherChunk(cities, entries) {
   const list = Array.isArray(entries) ? entries : [entries];
-  const sorted = [...list].sort((a, b) => (a.location_id ?? 0) - (b.location_id ?? 0));
+  const ordered =
+    list.length === cities.length
+      ? list
+      : [...list].sort((a, b) => (a.location_id ?? 0) - (b.location_id ?? 0));
   return cities.map((c, i) => {
-    const parsed = parseWeatherEntry(sorted[i]);
+    const parsed = parseWeatherEntry(ordered[i]);
     if (!Number.isFinite(parsed.temp)) throw new Error(`weather missing ${c.city}`);
     return { city: c.city, ...parsed, temp: parsed.temp };
   });
@@ -725,7 +735,110 @@ function routeSummary(steps, legs) {
 }
 
 const SPOT_BY_NAME = Object.fromEntries(ENRICHED_SPOTS.map((s) => [s.name, s]));
+const SPOT_SEARCH_BLOBS = ENRICHED_SPOTS.map(
+  (s) => `${s.name} ${s.region} ${s.theme} ${s.description || ""}`
+);
+const SPOT_FUZZY_LIST = ENRICHED_SPOTS.slice().sort((a, b) => b.name.length - a.name.length);
+const TRANSIT_ORIGIN_MATCHES = (() => {
+  const origins = typeof TRANSIT_ORIGINS !== "undefined" ? TRANSIT_ORIGINS : {};
+  return Object.keys(origins)
+    .sort((a, b) => b.length - a.length)
+    .map((name) => ({ name, short: name.replace(/[시군구]/g, "") }));
+})();
 const MAX_SPOTS_IN_PROMPT = 12;
+const PROMPT_SCORE_CACHE_MAX = 48;
+const promptSpotScoreCache = new Map();
+
+function tokenizeSearchKeywords(prompt) {
+  return String(prompt).replace(/,/g, " ").split(/\s+/).filter((w) => w.length >= 2);
+}
+
+function expandThemeSearchTerms(themes) {
+  const terms = themes.slice();
+  if (themes.includes("바다")) terms.push("해변", "해수욕", "서핑", "바다");
+  return terms;
+}
+
+function computeSpotScores(keywords, themeTerms = [], themeWeight = 2) {
+  const scores = new Array(ENRICHED_SPOTS.length);
+  for (let i = 0; i < ENRICHED_SPOTS.length; i++) {
+    const blob = SPOT_SEARCH_BLOBS[i];
+    let score = 0;
+    for (let k = 0; k < keywords.length; k++) {
+      if (blob.includes(keywords[k])) score++;
+    }
+    for (let t = 0; t < themeTerms.length; t++) {
+      if (blob.includes(themeTerms[t])) score += themeWeight;
+    }
+    scores[i] = score;
+  }
+  return scores;
+}
+
+function getPromptSpotContext(prompt) {
+  const key = normalizePromptKey(prompt);
+  let ctx = promptSpotScoreCache.get(key);
+  if (ctx) return ctx;
+  const keywords = tokenizeSearchKeywords(prompt);
+  const themes = detectThemes(prompt);
+  const themeTerms = expandThemeSearchTerms(themes);
+  ctx = { keywords, themes, themeTerms, scores: computeSpotScores(keywords, themeTerms) };
+  if (promptSpotScoreCache.size >= PROMPT_SCORE_CACHE_MAX) promptSpotScoreCache.clear();
+  promptSpotScoreCache.set(key, ctx);
+  return ctx;
+}
+
+/** O(N) — full sort 없이 상위 점수 요약 */
+function summarizeSpotScores(scores) {
+  let top = 0;
+  let second = 0;
+  let third = 0;
+  let strongHits = 0;
+  for (let i = 0; i < scores.length; i++) {
+    const s = scores[i];
+    if (s >= 2) strongHits++;
+    if (s > top) {
+      third = second;
+      second = top;
+      top = s;
+    } else if (s > second) {
+      third = second;
+      second = s;
+    } else if (s > third) {
+      third = s;
+    }
+  }
+  return { topScore: top, strongHits, top3Sum: top + second + third };
+}
+
+function rankSpotIndices(scores, limit = ENRICHED_SPOTS.length, regionTieBreak = false) {
+  const ranked = [];
+  for (let i = 0; i < scores.length; i++) {
+    ranked.push({ score: scores[i], index: i });
+  }
+  ranked.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const spotA = ENRICHED_SPOTS[a.index];
+    const spotB = ENRICHED_SPOTS[b.index];
+    if (regionTieBreak) return spotA.region.localeCompare(spotB.region);
+    return spotA.name.localeCompare(spotB.name);
+  });
+  return ranked.slice(0, limit);
+}
+
+function matchTransitOrigin(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return null;
+  const origins = typeof TRANSIT_ORIGINS !== "undefined" ? TRANSIT_ORIGINS : {};
+  if (origins[raw]) return { label: raw, data: origins[raw] };
+  for (let i = 0; i < TRANSIT_ORIGIN_MATCHES.length; i++) {
+    const { name, short } = TRANSIT_ORIGIN_MATCHES[i];
+    if (raw.includes(name) || (short.length >= 2 && raw.includes(short))) {
+      return { label: name, data: origins[name] };
+    }
+  }
+  return null;
+}
 const GEMINI_MIN_GAP_MS = 8000;
 const CACHE_STORAGE_KEY = "voyage_curation_v2";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -772,17 +885,9 @@ function saveCurationCache(prompt, result) {
 }
 
 function scoreLocalMatch(prompt) {
-  const kws = prompt.replace(/,/g, " ").split(/\s+/).filter((w) => w.length >= 2);
-  if (!kws.length) return { topScore: 0, strongHits: 0, top3Sum: 0 };
-  const scores = ENRICHED_SPOTS.map((s) => {
-    const blob = `${s.name} ${s.region} ${s.theme} ${s.description}`;
-    return kws.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0);
-  }).sort((a, b) => b - a);
-  return {
-    topScore: scores[0] || 0,
-    strongHits: scores.filter((s) => s >= 2).length,
-    top3Sum: scores.slice(0, 3).reduce((a, b) => a + b, 0),
-  };
+  const { keywords, scores } = getPromptSpotContext(prompt);
+  if (!keywords.length) return { topScore: 0, strongHits: 0, top3Sum: 0 };
+  return summarizeSpotScores(scores);
 }
 
 const COMPLEX_PROMPT_RE = [
@@ -809,11 +914,8 @@ function detectThemes(prompt) {
 }
 
 function detectOrigin(prompt) {
-  const origins = typeof TRANSIT_ORIGINS !== "undefined" ? TRANSIT_ORIGINS : {};
-  for (const name of Object.keys(origins).sort((a, b) => b.length - a.length)) {
-    const short = name.replace(/[시군구]/g, "");
-    if (prompt.includes(name) || (short.length >= 2 && prompt.includes(short))) return name;
-  }
+  const hit = matchTransitOrigin(prompt);
+  if (hit) return hit.label;
   const m = prompt.match(/(\S+(?:시|구|군))/);
   return m ? m[1] : "";
 }
@@ -846,17 +948,7 @@ function buildTripHints(prompt) {
 }
 
 function resolveOriginEntry(originText) {
-  const raw = String(originText || "").trim();
-  if (!raw) return null;
-  const origins = typeof TRANSIT_ORIGINS !== "undefined" ? TRANSIT_ORIGINS : {};
-  if (origins[raw]) return { label: raw, data: origins[raw] };
-  for (const name of Object.keys(origins).sort((a, b) => b.length - a.length)) {
-    const short = name.replace(/[시군구]/g, "");
-    if (raw.includes(name) || (short.length >= 2 && raw.includes(short))) {
-      return { label: name, data: origins[name] };
-    }
-  }
-  return null;
+  return matchTransitOrigin(originText);
 }
 
 function pickOriginCoords(data, transport) {
@@ -950,20 +1042,18 @@ function geminiAvailable() {
 }
 
 function compactSpotCatalog(prompt) {
-  const kws = prompt.replace(/,/g, " ").split(/\s+/).filter((w) => w.length >= 2);
-  const themes = detectThemes(prompt);
-  const themeKws = [...themes];
-  if (themes.includes("바다")) themeKws.push("해변", "해수욕", "서핑", "바다");
-  let pool = ENRICHED_SPOTS;
-  if (kws.length || themeKws.length) {
-    const ranked = ENRICHED_SPOTS.map((s) => {
-      const blob = `${s.name} ${s.region} ${s.theme} ${s.description || ""}`;
-      let score = kws.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0);
-      score += themeKws.reduce((acc, kw) => acc + (blob.includes(kw) ? 2 : 0), 0);
-      return { score, s };
-    }).sort((a, b) => b.score - a.score || a.s.name.localeCompare(b.s.name));
-    const matched = ranked.filter((r) => r.score > 0).slice(0, MAX_SPOTS_IN_PROMPT).map((r) => r.s);
-    pool = matched.length >= 6 ? matched : ranked.slice(0, MAX_SPOTS_IN_PROMPT).map((r) => r.s);
+  const { keywords, themeTerms, scores } = getPromptSpotContext(prompt);
+  let pool;
+  if (keywords.length || themeTerms.length) {
+    const ranked = rankSpotIndices(scores);
+    const matched = [];
+    for (let i = 0; i < ranked.length && matched.length < MAX_SPOTS_IN_PROMPT; i++) {
+      if (ranked[i].score > 0) matched.push(ENRICHED_SPOTS[ranked[i].index]);
+    }
+    pool =
+      matched.length >= 6
+        ? matched
+        : ranked.slice(0, MAX_SPOTS_IN_PROMPT).map((r) => ENRICHED_SPOTS[r.index]);
   } else {
     pool = ENRICHED_SPOTS.slice(0, MAX_SPOTS_IN_PROMPT);
   }
@@ -1096,11 +1186,13 @@ function parseJsonFromGemini(raw) {
 function resolveSpotByName(name) {
   const raw = String(name ?? "").trim();
   if (!raw) return null;
-  if (SPOT_BY_NAME[raw]) return SPOT_BY_NAME[raw];
-  const hit = ENRICHED_SPOTS.find(
-    (s) => s.name.includes(raw) || raw.includes(s.name)
-  );
-  return hit || null;
+  const exact = SPOT_BY_NAME[raw];
+  if (exact) return exact;
+  for (let i = 0; i < SPOT_FUZZY_LIST.length; i++) {
+    const spot = SPOT_FUZZY_LIST[i];
+    if (spot.name.includes(raw) || raw.includes(spot.name)) return spot;
+  }
+  return null;
 }
 
 function parseGeminiCuration(raw, prompt) {
@@ -1135,13 +1227,9 @@ function parseGeminiCuration(raw, prompt) {
   };
 }
 function localCuration(prompt, source = "local") {
-  const kws = prompt.replace(/,/g, " ").split(/\s+/).filter((w) => w.length >= 2);
-  const ranked = ENRICHED_SPOTS.map((s) => {
-    const blob = `${s.name} ${s.region} ${s.theme} ${s.description}`;
-    const score = kws.reduce((acc, kw) => acc + (blob.includes(kw) ? 1 : 0), 0);
-    return { score, s };
-  }).sort((a, b) => b.score - a.score || a.s.region.localeCompare(b.s.region));
-  const picks = ranked.slice(0, 3).map((r) => r.s);
+  const { scores } = getPromptSpotContext(prompt);
+  const ranked = rankSpotIndices(scores, 3, true);
+  const picks = ranked.map((r) => ENRICHED_SPOTS[r.index]);
   const steps = picks.map((s, i) => ({
     order: i + 1,
     spot: s,
@@ -1257,6 +1345,26 @@ function appendPlannerOpenButton() {
   );
 }
 
+function saveCurationAndApply(prompt, result) {
+  saveCurationCache(prompt, result);
+  applyCurationResult(prompt, result);
+}
+
+async function tryGeminiCurationWithFallback(prompt, key, complex) {
+  try {
+    const result = await geminiCuration(prompt, key);
+    saveCurationAndApply(prompt, result);
+  } catch (e) {
+    console.warn("Gemini 실패:", e);
+    geminiFailToast(e);
+    if (complex) {
+      pushAgentFailure(buildComplexFailReply(e));
+      return;
+    }
+    saveCurationAndApply(prompt, localCuration(prompt, "local_api_fail"));
+  }
+}
+
 async function runCuration(prompt) {
   state.chat.push({ role: "user", text: prompt });
   state.chatTyping = true;
@@ -1264,18 +1372,16 @@ async function runCuration(prompt) {
   setAgentBusy(true);
   try {
     const cacheKey = normalizePromptKey(prompt);
-    const complex = needsComplexAi(prompt);
-    const key = getGeminiKey();
-
     if (curationCache.has(cacheKey)) {
       applyCurationResult(prompt, curationCache.get(cacheKey));
       return;
     }
 
+    const complex = needsComplexAi(prompt);
+    const key = getGeminiKey();
+
     if (!shouldCallGemini(prompt)) {
-      const result = localCuration(prompt, "local_skip");
-      saveCurationCache(prompt, result);
-      applyCurationResult(prompt, result);
+      saveCurationAndApply(prompt, localCuration(prompt, "local_skip"));
       return;
     }
 
@@ -1287,27 +1393,11 @@ async function runCuration(prompt) {
         );
         return;
       }
-      const result = localCuration(prompt, "local");
-      saveCurationCache(prompt, result);
-      applyCurationResult(prompt, result);
+      saveCurationAndApply(prompt, localCuration(prompt, "local"));
       return;
     }
 
-    try {
-      const result = await geminiCuration(prompt, key);
-      saveCurationCache(prompt, result);
-      applyCurationResult(prompt, result);
-    } catch (e) {
-      console.warn("Gemini 실패:", e);
-      geminiFailToast(e);
-      if (complex) {
-        pushAgentFailure(buildComplexFailReply(e));
-        return;
-      }
-      const result = localCuration(prompt, "local_api_fail");
-      saveCurationCache(prompt, result);
-      applyCurationResult(prompt, result);
-    }
+    await tryGeminiCurationWithFallback(prompt, key, complex);
   } finally {
     state.chatTyping = false;
     setAgentBusy(false);
@@ -1376,8 +1466,7 @@ function legHtml(leg) {
   return `<div class="course-leg${transit ? " transit-leg" : ""}">${icon} ${esc(text)}</div>`;
 }
 
-function renderRouteSummary() {
-  const legs = computeLegs(state.steps);
+function renderRouteSummary(legs) {
   const sum = routeSummary(state.steps, legs);
   $("route-summary").innerHTML = `
     <div class="route-stat"><strong>${sum.stops}</strong><span>정거장</span></div>
@@ -1445,8 +1534,7 @@ function renderSpotDetail() {
     </div>`;
 }
 
-function renderCourses() {
-  const legs = computeLegs(state.steps);
+function renderCourses(legs) {
   const parts = [];
   state.steps.forEach((step, i) => {
     parts.push(courseCardHtml(step, step.order === state.focusOrder, state.meta.source));
@@ -1525,9 +1613,10 @@ function renderPlanner() {
   $("chip-source").textContent = sourceLabel(meta.source);
   $("chip-stops").textContent =
     `${destinationSteps(steps).length}곳` + (steps.some((s) => s.kind === "origin") ? " + 출발" : "");
+  const legs = computeLegs(steps);
   renderTripPlan(meta);
-  renderRouteSummary();
-  renderCourses();
+  renderRouteSummary(legs);
+  renderCourses(legs);
   $("kakao-link").href = kakaoRouteUrl(steps);
   updateMapChrome();
   renderSpotDetail();
