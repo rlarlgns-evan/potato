@@ -806,6 +806,50 @@ a { color: inherit; }
   font-size: 1rem;
   line-height: 1;
 }
+.vico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--primary);
+}
+.vico svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tab-ico.vico {
+  width: 1.55rem;
+  height: 1.55rem;
+  padding: 0.22rem;
+  border-radius: 0.45rem;
+  background: rgba(0, 106, 97, 0.08);
+}
+.app-tab.on .tab-ico.vico {
+  color: var(--primary-dark);
+  background: rgba(0, 106, 97, 0.16);
+}
+.page-logo.vico {
+  width: 2rem;
+  height: 2rem;
+  padding: 0.35rem;
+  border-radius: 0.65rem;
+  background: linear-gradient(135deg, rgba(0, 106, 97, 0.12), rgba(136, 214, 253, 0.14));
+}
+.page-head h1:has(.page-logo) {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.vico-action {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.35rem;
+}
 .tab-lbl {
   font-size: 0.58rem;
   font-weight: 800;
@@ -859,7 +903,7 @@ a { color: inherit; }
   position: absolute;
   top: calc(100% + 0.45rem);
   right: 0;
-  min-width: 188px;
+  min-width: 210px;
   padding: 0.45rem;
   border-radius: 16px;
   border: 1px solid rgba(102, 188, 176, 0.22);
@@ -867,6 +911,53 @@ a { color: inherit; }
   box-shadow: 0 12px 36px rgba(0, 60, 54, 0.14);
   z-index: 60;
 }
+.profile-dropdown-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.4rem 0.5rem;
+  margin-bottom: 0.15rem;
+}
+.profile-dropdown-avatar {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-container), var(--secondary-container));
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.profile-dropdown-meta strong {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--primary-dark);
+  letter-spacing: -0.02em;
+}
+.profile-dropdown-meta span {
+  font-size: 0.68rem;
+  color: var(--on-surface-variant);
+}
+.profile-dropdown-section {
+  margin: 0.35rem 0 0.25rem;
+  padding: 0 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  opacity: 0.85;
+}
+.profile-dropdown-manage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.profile-dropdown-section.hidden,
+.profile-dropdown-manage.hidden { display: none; }
 .profile-dropdown.hidden { display: none; }
 .profile-dropdown-hint {
   margin: 0 0 0.5rem;
@@ -887,6 +978,9 @@ a { color: inherit; }
   background: rgba(102, 188, 176, 0.24);
 }
 .profile-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
   width: 100%;
   font-family: inherit;
   font-size: 0.78rem;
@@ -914,8 +1008,93 @@ a { color: inherit; }
   border-color: rgba(0, 106, 97, 0.2);
 }
 .profile-action.hidden { display: none; }
-.tab-ico-community {
-  font-size: 0.92rem;
+
+.profile-modal .profile-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  margin-bottom: 0.85rem;
+  border-radius: 14px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+}
+.profile-card-avatar {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-container));
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.profile-card-provider {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--primary);
+  font-weight: 700;
+}
+.profile-card-email {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  color: var(--on-surface-variant);
+}
+.profile-card-email.hidden { display: none; }
+.profile-modal-local {
+  margin-bottom: 0.85rem;
+}
+.profile-modal-local.hidden { display: none; }
+.profile-modal-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--on-surface-variant);
+}
+.profile-modal-local input {
+  width: 100%;
+  margin-bottom: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant);
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+.profile-modal-save {
+  width: 100%;
+}
+.profile-modal-list {
+  list-style: none;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.profile-modal-list li + li {
+  border-top: 1px solid var(--outline-variant);
+}
+.profile-modal-link {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.65rem 0.85rem;
+  border: none;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--on-surface);
+  cursor: pointer;
+  text-align: left;
+}
+.profile-modal-link:hover {
+  background: rgba(102, 188, 176, 0.1);
+  color: var(--primary-dark);
 }
 .profile-action-logout {
   background: rgba(186, 26, 26, 0.06);
@@ -1123,20 +1302,7 @@ body.mode-planner .wrap {
   line-height: 1;
 }
 .weather-logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.65rem;
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(56, 189, 248, 0.2));
-  font-size: 1.05rem;
-  flex-shrink: 0;
-}
-.page-head h1:has(.weather-logo) {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
+  display: none;
 }
 .weather-grid {
   display: grid;
@@ -1550,18 +1716,7 @@ body.mode-planner .planner-grid {
   color: var(--primary);
   letter-spacing: -0.03em;
 }
-.community-logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.65rem;
-  background: linear-gradient(135deg, rgba(0, 106, 97, 0.14), rgba(136, 214, 253, 0.2));
-  font-size: 1.05rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
+.community-logo { display: none; }
 .community-head p {
   margin: 0;
   font-size: 0.84rem;

@@ -235,6 +235,7 @@ function show(view, opts = {}) {
   sessionStorage.removeItem(PENDING_VIEW_LS);
   state.view = view;
   closeProfileMenu();
+  closeProfileModal();
   syncBodyMode(view);
   $("view-explore")?.classList.toggle("hidden", view !== "explore");
   $("view-spots")?.classList.toggle("hidden", view !== "spots");
@@ -2490,9 +2491,16 @@ function appRedirectUrl() {
 function loadAuth() {
   try {
     const raw = localStorage.getItem(AUTH_LS);
-    if (raw) return JSON.parse(raw);
+    if (raw) return { email: "", ...JSON.parse(raw) };
   } catch { /* ignore */ }
-  return { loggedIn: false, name: "", userId: "", provider: "" };
+  return { loggedIn: false, name: "", userId: "", provider: "", email: "" };
+}
+
+function providerLabel(provider) {
+  if (provider === "google") return "Google 연동";
+  if (provider === "kakao") return "카카오 연동";
+  if (provider === "local") return "체험 계정";
+  return "로그인 전";
 }
 
 function saveAuth(auth) {
@@ -2522,14 +2530,14 @@ function applySupabaseUser(user) {
   )
     .trim()
     .slice(0, 12);
-  saveAuth({ loggedIn: true, name, userId: user.id, provider });
+  saveAuth({ loggedIn: true, name, userId: user.id, provider, email: user.email || "" });
   localStorage.setItem(COMMUNITY_LS.nick, name);
 }
 
 function clearStaleOAuthAuth() {
   const auth = loadAuth();
   if (isOAuthProvider(auth.provider)) {
-    saveAuth({ loggedIn: false, name: "", userId: "", provider: "" });
+    saveAuth({ loggedIn: false, name: "", userId: "", provider: "", email: "" });
   }
 }
 
@@ -2540,6 +2548,11 @@ function renderAuthUI() {
   const label = $("auth-label");
   const avatar = $("auth-avatar");
   const hint = $("profile-dropdown-hint");
+  const ddName = $("profile-dropdown-name");
+  const ddProvider = $("profile-dropdown-provider");
+  const ddAvatar = $("profile-dropdown-avatar");
+  const manageLabel = $("profile-manage-label");
+  const manageBlock = $("profile-dropdown-manage");
   if (!loginBtn || !logoutBtn) return;
 
   if (auth.loggedIn && auth.name) {
@@ -2547,15 +2560,94 @@ function renderAuthUI() {
     logoutBtn.classList.remove("hidden");
     if (label) label.textContent = auth.name;
     if (avatar) avatar.textContent = authInitial(auth.name);
+    if (ddName) ddName.textContent = auth.name;
+    if (ddProvider) ddProvider.textContent = providerLabel(auth.provider);
+    if (ddAvatar) ddAvatar.textContent = authInitial(auth.name);
+    manageLabel?.classList.remove("hidden");
+    manageBlock?.classList.remove("hidden");
     if (hint) hint.textContent = `${auth.name}님, 내 일정·찜 목록·커뮤니티를 이용할 수 있어요.`;
   } else {
     loginBtn.classList.remove("hidden");
     logoutBtn.classList.add("hidden");
     if (label) label.textContent = "로그인";
     if (avatar) avatar.textContent = "Y";
+    if (ddName) ddName.textContent = "게스트";
+    if (ddProvider) ddProvider.textContent = "로그인 전";
+    if (ddAvatar) ddAvatar.textContent = "Y";
+    manageLabel?.classList.add("hidden");
+    manageBlock?.classList.add("hidden");
     if (hint) hint.textContent = "Google·카카오로 로그인하면 내 일정·찜 목록·커뮤니티를 이용할 수 있어요.";
   }
   if (state.view === "community") renderCommunity();
+}
+
+function renderProfileModal() {
+  const auth = loadAuth();
+  const cardAvatar = $("profile-card-avatar");
+  const cardName = $("profile-card-name");
+  const cardProvider = $("profile-card-provider");
+  const emailEl = $("profile-card-email");
+  const localBlock = $("profile-modal-local");
+  const nickInput = $("profile-nick-edit");
+  const logoutModal = $("profile-modal-logout");
+  if (cardAvatar) cardAvatar.textContent = authInitial(auth.name || "Y");
+  if (cardName) cardName.textContent = auth.name || "게스트";
+  if (cardProvider) cardProvider.textContent = providerLabel(auth.provider);
+  if (emailEl) {
+    if (auth.email) {
+      emailEl.textContent = auth.email;
+      emailEl.classList.remove("hidden");
+    } else {
+      emailEl.textContent = "";
+      emailEl.classList.add("hidden");
+    }
+  }
+  if (localBlock && nickInput) {
+    if (auth.loggedIn && auth.provider === "local") {
+      localBlock.classList.remove("hidden");
+      nickInput.value = auth.name || "";
+    } else {
+      localBlock.classList.add("hidden");
+    }
+  }
+  logoutModal?.classList.toggle("hidden", !auth.loggedIn);
+}
+
+function openProfileModal() {
+  if (!isLoggedIn()) {
+    openLoginModal();
+    return;
+  }
+  closeProfileMenu();
+  renderProfileModal();
+  const modal = $("profile-modal");
+  if (!modal) return;
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  initIcons();
+}
+
+function closeProfileModal() {
+  const modal = $("profile-modal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function saveProfileNick() {
+  const auth = loadAuth();
+  if (!auth.loggedIn || auth.provider !== "local") return;
+  const nick = String($("profile-nick-edit")?.value || "").trim().slice(0, 12);
+  if (nick.length < 2) {
+    toast("닉네임은 2자 이상 입력해 주세요.");
+    $("profile-nick-edit")?.focus();
+    return;
+  }
+  saveAuth({ ...auth, name: nick, userId: `local:${nick}` });
+  localStorage.setItem(COMMUNITY_LS.nick, nick);
+  renderAuthUI();
+  renderProfileModal();
+  toast("프로필 이름을 저장했어요.");
 }
 
 const OAUTH_PROVIDERS = {
@@ -2668,7 +2760,7 @@ function submitLogin() {
     input?.focus();
     return;
   }
-  saveAuth({ loggedIn: true, name: nick, userId: `local:${nick}`, provider: "local" });
+  saveAuth({ loggedIn: true, name: nick, userId: `local:${nick}`, provider: "local", email: "" });
   localStorage.setItem(COMMUNITY_LS.nick, nick);
   closeLoginModal();
   renderAuthUI();
@@ -2681,7 +2773,7 @@ async function logoutAuth() {
   if (sb && isOAuthProvider(auth.provider)) {
     await sb.auth.signOut();
   }
-  saveAuth({ loggedIn: false, name: "", userId: "", provider: "" });
+  saveAuth({ loggedIn: false, name: "", userId: "", provider: "", email: "" });
   state.pendingView = null;
   sessionStorage.removeItem(PENDING_VIEW_LS);
   renderAuthUI();
@@ -2692,6 +2784,24 @@ function initAuth() {
   $("profile-trigger")?.addEventListener("click", (e) => {
     e.stopPropagation();
     toggleProfileMenu();
+  });
+  $("profile-account-btn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!isLoggedIn()) {
+      closeProfileMenu();
+      openLoginModal();
+      return;
+    }
+    openProfileModal();
+  });
+  $("profile-modal-close")?.addEventListener("click", closeProfileModal);
+  $("profile-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "profile-modal") closeProfileModal();
+  });
+  $("profile-nick-save")?.addEventListener("click", saveProfileNick);
+  $("profile-modal-logout")?.addEventListener("click", () => {
+    closeProfileModal();
+    logoutAuth().catch((err) => console.warn("logout:", err));
   });
   $("auth-login-btn")?.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -2742,6 +2852,7 @@ function initSuggestions() {
 /* ==================== Init ==================== */
 function init() {
   try {
+    initIcons();
     const spotEl = $("spot-count");
     if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
     initSuggestions();

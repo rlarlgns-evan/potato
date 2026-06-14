@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=42" />
+  <link rel="stylesheet" href="style.css?v=43" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
@@ -31,12 +31,12 @@
     <header class="app-categories" id="app-categories">
       <a class="app-logo" data-nav="explore" aria-label="VoyageAI 홈">VoyageAI</a>
       <nav class="app-tabs" role="navigation" aria-label="카테고리">
-        <a class="app-tab" data-nav="explore" title="AI 여행"><span class="tab-ico" aria-hidden="true">✦</span><span class="tab-lbl">AI</span></a>
-        <a class="app-tab" data-nav="spots" title="관광지"><span class="tab-ico" aria-hidden="true">🏔</span><span class="tab-lbl">관광지</span></a>
-        <a class="app-tab" data-nav="festivals" title="축제·행사"><span class="tab-ico" aria-hidden="true">🎪</span><span class="tab-lbl">축제</span></a>
-        <a class="app-tab" data-nav="weather" title="날씨"><span class="tab-ico" aria-hidden="true">🌤</span><span class="tab-lbl">날씨</span></a>
+        <a class="app-tab" data-nav="explore" title="AI 여행"><span class="tab-ico vico" data-vico="ai"></span><span class="tab-lbl">AI</span></a>
+        <a class="app-tab" data-nav="spots" title="관광지"><span class="tab-ico vico" data-vico="spots"></span><span class="tab-lbl">관광지</span></a>
+        <a class="app-tab" data-nav="festivals" title="축제·행사"><span class="tab-ico vico" data-vico="festivals"></span><span class="tab-lbl">축제</span></a>
+        <a class="app-tab" data-nav="weather" title="날씨"><span class="tab-ico vico" data-vico="weather"></span><span class="tab-lbl">날씨</span></a>
         <span class="app-tab-divider" aria-hidden="true">|</span>
-        <a class="app-tab" data-nav="community" title="커뮤니티"><span class="tab-ico tab-ico-community" aria-hidden="true">💬</span><span class="tab-lbl">커뮤니티</span></a>
+        <a class="app-tab" data-nav="community" title="커뮤니티"><span class="tab-ico vico" data-vico="community"></span><span class="tab-lbl">커뮤니티</span></a>
       </nav>
       <div class="profile-menu" id="profile-menu">
         <button type="button" class="profile-trigger" id="profile-trigger" aria-expanded="false" aria-controls="profile-dropdown" aria-label="계정 메뉴">
@@ -45,15 +45,28 @@
           <span class="profile-chevron" aria-hidden="true">▾</span>
         </button>
         <div class="profile-dropdown hidden" id="profile-dropdown" role="menu">
+          <div class="profile-dropdown-head" id="profile-dropdown-head">
+            <span class="profile-dropdown-avatar vico-wrap" id="profile-dropdown-avatar">Y</span>
+            <div class="profile-dropdown-meta">
+              <strong id="profile-dropdown-name">게스트</strong>
+              <span id="profile-dropdown-provider">로그인 전</span>
+            </div>
+          </div>
           <p class="profile-dropdown-hint" id="profile-dropdown-hint">Google·카카오로 로그인하면 내 일정·찜 목록·커뮤니티를 이용할 수 있어요.</p>
+          <p class="profile-dropdown-section">내 여행</p>
           <div class="profile-dropdown-nav">
-            <button type="button" class="profile-action profile-action-nav" data-nav="planner" id="profile-planner-btn">▤ 내 일정</button>
-            <button type="button" class="profile-action profile-action-nav" data-nav="trips" id="profile-trips-btn">♡ 찜 목록</button>
+            <button type="button" class="profile-action profile-action-nav" data-nav="planner" id="profile-planner-btn"><span class="vico vico-action" data-vico="planner"></span>내 일정</button>
+            <button type="button" class="profile-action profile-action-nav" data-nav="trips" id="profile-trips-btn"><span class="vico vico-action" data-vico="trips"></span>찜 목록</button>
+          </div>
+          <p class="profile-dropdown-section hidden" id="profile-manage-label">프로필 관리</p>
+          <div class="profile-dropdown-manage hidden" id="profile-dropdown-manage">
+            <button type="button" class="profile-action profile-action-nav" id="profile-account-btn"><span class="vico vico-action" data-vico="profile"></span>계정 정보</button>
+            <button type="button" class="profile-action profile-action-nav" data-nav="community" id="profile-community-btn"><span class="vico vico-action" data-vico="community"></span>커뮤니티 활동</button>
           </div>
           <div class="profile-dropdown-divider" role="separator" aria-hidden="true"></div>
           <div class="profile-dropdown-auth">
-            <button type="button" class="profile-action" id="auth-login-btn">로그인</button>
-            <button type="button" class="profile-action profile-action-logout hidden" id="auth-logout-btn">로그아웃</button>
+            <button type="button" class="profile-action" id="auth-login-btn"><span class="vico vico-action" data-vico="login"></span>로그인</button>
+            <button type="button" class="profile-action profile-action-logout hidden" id="auth-logout-btn"><span class="vico vico-action" data-vico="logout"></span>로그아웃</button>
           </div>
         </div>
       </div>
@@ -98,7 +111,7 @@
       <section class="page-shell spots-main">
         <div class="page-head">
           <div>
-            <h1>강원 관광지</h1>
+            <h1><span class="page-logo vico" data-vico="spots"></span> 강원 관광지</h1>
             <p>큐레이션 데이터 <strong id="spots-total">24</strong>곳 · 탭하면 AI 코스를 만들어요.</p>
           </div>
           <span class="chip">탐색</span>
@@ -113,7 +126,7 @@
       <section class="page-shell weather-main">
         <div class="page-head">
           <div>
-            <h1><span class="weather-logo" aria-hidden="true">🌤</span> 강원 날씨</h1>
+            <h1><span class="page-logo vico" data-vico="weather"></span> 강원 날씨</h1>
             <p>강원도 <strong>18</strong>개 시·군 전역 · 실시간 기온·일교차·여행 팁</p>
           </div>
           <div class="weather-head-actions">
@@ -193,7 +206,7 @@
         <section class="planner-main community-main">
           <div class="community-head">
             <div>
-              <h1><span class="community-logo" aria-hidden="true">💬</span> 강원 여행 커뮤니티</h1>
+              <h1><span class="page-logo vico" data-vico="community"></span> 강원 여행 커뮤니티</h1>
               <p>후기·질문·팁을 나누고, AI로 비슷한 코스를 바로 만들어 보세요.</p>
             </div>
             <span class="chip">실시간 피드</span>
@@ -247,6 +260,34 @@
     </main>
   </div>
 
+  <div class="modal-bg" id="profile-modal" aria-hidden="true">
+    <div class="modal profile-modal" role="dialog" aria-labelledby="profile-modal-title">
+      <h3 id="profile-modal-title">프로필 관리</h3>
+      <div class="profile-card">
+        <span class="profile-card-avatar" id="profile-card-avatar">Y</span>
+        <div>
+          <strong id="profile-card-name">—</strong>
+          <p class="profile-card-provider" id="profile-card-provider">—</p>
+          <p class="profile-card-email hidden" id="profile-card-email"></p>
+        </div>
+      </div>
+      <div class="profile-modal-local hidden" id="profile-modal-local">
+        <label class="profile-modal-label" for="profile-nick-edit">표시 이름</label>
+        <input type="text" id="profile-nick-edit" maxlength="12" placeholder="닉네임 (2~12자)" autocomplete="username" />
+        <button type="button" class="btn-secondary profile-modal-save" id="profile-nick-save">이름 저장</button>
+      </div>
+      <ul class="profile-modal-list">
+        <li><button type="button" class="profile-modal-link" data-nav="planner"><span class="vico vico-action" data-vico="planner"></span>내 일정</button></li>
+        <li><button type="button" class="profile-modal-link" data-nav="trips"><span class="vico vico-action" data-vico="trips"></span>찜 목록</button></li>
+        <li><button type="button" class="profile-modal-link" data-nav="community"><span class="vico vico-action" data-vico="community"></span>커뮤니티</button></li>
+      </ul>
+      <div class="modal-row">
+        <button type="button" class="btn-secondary" id="profile-modal-close">닫기</button>
+        <button type="button" class="profile-action profile-action-logout hidden" id="profile-modal-logout"><span class="vico vico-action" data-vico="logout"></span>로그아웃</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-bg" id="login-modal" aria-hidden="true">
     <div class="modal" role="dialog" aria-labelledby="login-modal-title">
       <h3 id="login-modal-title">로그인</h3>
@@ -276,7 +317,8 @@
 
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="data.js?v=42"></script>
-  <script src="app.js?v=42"></script>
+  <script src="data.js?v=43"></script>
+  <script src="icons.js?v=43"></script>
+  <script src="app.js?v=43"></script>
 </body>
 </html>
