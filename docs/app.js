@@ -40,13 +40,7 @@ const state = {
   pendingView: null,
 };
 
-const SPECIAL_NAV = {
-  festivals: {
-    prompt: "강원도 축제·계절 행사가 포함된 여행 코스 추천해줘",
-  },
-};
-
-const VIEW_IDS = new Set(["explore", "spots", "community", "weather", "planner", "trips", "festivals"]);
+const VIEW_IDS = new Set(["explore", "spots", "community", "weather", "festivals", "planner", "trips"]);
 const VIEW_LS = "voyageai_last_view";
 const PENDING_VIEW_LS = "voyageai_pending_view";
 
@@ -103,6 +97,7 @@ function renderAgentChat() {
   if (starters) {
     starters.classList.toggle("hidden", state.chat.some((m) => m.role === "user"));
   }
+  if (state.steps.length && !state.chatTyping) appendPlannerOpenButton();
 }
 
 function pillPromptAttr(prompt) {
@@ -129,7 +124,7 @@ function buildAgentReply(result) {
   if (result.accommodation?.area) {
     lines.push(`숙소: ${result.accommodation.area} ${result.accommodation.type || ""}`.trim());
   }
-  lines.push("일정·지도 화면으로 이동합니다 →");
+  lines.push("아래 **일정·지도 열기** 버튼으로 확인하세요.");
   return lines.join("\n");
 }
 
@@ -181,7 +176,7 @@ function syncBodyMode(view) {
   document.body.classList.toggle("mode-landing", view === "explore");
   document.body.classList.toggle(
     "mode-planner",
-    view === "planner" || view === "community" || view === "trips" || view === "spots" || view === "weather"
+    view === "planner" || view === "community" || view === "trips" || view === "spots" || view === "weather" || view === "festivals"
   );
 }
 
@@ -213,12 +208,6 @@ function toggleProfileMenu() {
 }
 
 function show(view, opts = {}) {
-  const special = SPECIAL_NAV[view];
-  if (special) {
-    show("explore", opts);
-    submitAgentPrompt(special.prompt);
-    return;
-  }
   if (view === "planner" && !state.steps.length && !isLoggedIn()) {
     toast("내 일정은 로그인 후 이용할 수 있어요.");
     state.pendingView = "planner";
@@ -240,6 +229,7 @@ function show(view, opts = {}) {
   $("view-explore")?.classList.toggle("hidden", view !== "explore");
   $("view-spots")?.classList.toggle("hidden", view !== "spots");
   $("view-weather")?.classList.toggle("hidden", view !== "weather");
+  $("view-festivals")?.classList.toggle("hidden", view !== "festivals");
   $("view-planner")?.classList.toggle("hidden", view !== "planner");
   $("view-community")?.classList.toggle("hidden", view !== "community");
   $("view-trips")?.classList.toggle("hidden", view !== "trips");
@@ -257,6 +247,9 @@ function show(view, opts = {}) {
   } else if (view === "weather") {
     pauseLandingMap();
     renderWeather().catch((err) => console.warn("renderWeather:", err));
+  } else if (view === "festivals") {
+    pauseLandingMap();
+    renderFestivals();
   } else if (view === "planner") {
     pauseLandingMap();
     if (state.steps.length) renderPlanner();
@@ -319,6 +312,27 @@ document.addEventListener("click", (e) => {
   if (spotCard) {
     e.preventDefault();
     const prompt = decodeURIComponent(spotCard.dataset.spotPrompt || "");
+    if (prompt) {
+      show("explore");
+      submitAgentPrompt(prompt);
+    }
+    return;
+  }
+
+  const openPlannerBtn = e.target.closest("#chat-open-planner, .chat-open-planner");
+  if (openPlannerBtn) {
+    e.preventDefault();
+    if (state.steps.length) {
+      show("planner");
+      renderPlanner();
+    }
+    return;
+  }
+
+  const festCard = e.target.closest("[data-fest-prompt]");
+  if (festCard) {
+    e.preventDefault();
+    const prompt = decodeURIComponent(festCard.dataset.festPrompt || "");
     if (prompt) {
       show("explore");
       submitAgentPrompt(prompt);
@@ -551,7 +565,34 @@ async function renderWeather(force) {
   }
 }
 
-/* ==================== Festival marquee ==================== */
+/* ==================== Festivals catalog ==================== */
+function renderFestivals() {
+  const grid = $("festivals-grid");
+  if (!grid) return;
+  const totalEl = $("festivals-total");
+  if (totalEl) totalEl.textContent = String(FESTIVALS.length);
+  const grads = [
+    "linear-gradient(135deg,#006a61,#66bcb0)",
+    "linear-gradient(135deg,#38bdf8,#7dd3fc)",
+    "linear-gradient(135deg,#a78bfa,#ddd6fe)",
+    "linear-gradient(135deg,#fb923c,#fed7aa)",
+  ];
+  grid.innerHTML = FESTIVALS.map((f, i) => {
+    const prompt = pillPromptAttr(`${f.title}(${f.place}) 포함 강원 여행 코스 추천해줘`);
+    return (
+      `<button type="button" class="fest-card" data-fest-prompt="${prompt}">` +
+      `<span class="fest-card-icon" style="background:${grads[i % 4]}">${FESTIVAL_ICONS[i % FESTIVAL_ICONS.length]}</span>` +
+      `<strong>${esc(f.title)}</strong>` +
+      `<span class="fest-card-meta">${esc(f.place)} · ${esc(f.period)}</span>` +
+      (f.desc ? `<span class="fest-card-desc">${esc(f.desc)}</span>` : "") +
+      `<span class="fest-card-cta"><span class="vico vico-action" data-vico="ai"></span> AI 코스 만들기</span>` +
+      `</button>`
+    );
+  }).join("");
+  initIcons();
+}
+
+/* ==================== Festival marquee (legacy) ==================== */
 function initFestivals() {
   const grads = [
     "linear-gradient(135deg,#006a61,#66bcb0)",
@@ -1209,10 +1250,19 @@ function applyCurationResult(prompt, result) {
   state.steps = attachOriginStep(result.steps, state.meta, prompt);
   state.focusOrder = 1;
   resetMapState();
-  setTimeout(() => {
-    show("planner");
-    renderPlanner();
-  }, 500);
+  appendPlannerOpenButton();
+}
+
+function appendPlannerOpenButton() {
+  const box = $("agent-messages");
+  if (!box || !state.steps.length) return;
+  if (box.querySelector(".chat-open-planner")) return;
+  box.insertAdjacentHTML(
+    "beforeend",
+    `<div class="chat-open-planner-wrap">` +
+      `<button type="button" class="btn-primary chat-open-planner" id="chat-open-planner">▤ 일정·지도 열기</button>` +
+      `</div>`
+  );
 }
 
 async function runCuration(prompt) {

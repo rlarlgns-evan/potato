@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=44" />
+  <link rel="stylesheet" href="style.css?v=45" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
@@ -146,6 +146,20 @@
           데이터: Open-Meteo ·
           <button type="button" class="weather-ai-link" data-ai-prompt="강원도 여행 날씨·옷차림·준비물 팁 알려줘">✦ AI에게 옷차림·준비물 물어보기</button>
         </p>
+      </section>
+    </main>
+
+    <!-- ============ Festivals ============ -->
+    <main id="view-festivals" class="hidden">
+      <section class="page-shell festivals-main">
+        <div class="page-head">
+          <div>
+            <h1><span class="page-logo vico vico-festivals" data-vico="festivals"></span> 강원 축제</h1>
+            <p>계절·지역 축제 <strong id="festivals-total">8</strong>곳 · 원하면 AI로 맞춤 코스를 만들어요.</p>
+          </div>
+          <span class="chip">행사</span>
+        </div>
+        <div class="festivals-grid" id="festivals-grid" aria-live="polite"></div>
       </section>
     </main>
 
@@ -324,8 +338,8 @@
 
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="data.js?v=44"></script>
-  <script src="icons.js?v=44"></script>
-  <script src="app.js?v=44"></script>
+  <script src="data.js?v=45"></script>
+  <script src="icons.js?v=45"></script>
+  <script src="app.js?v=45"></script>
 </body>
 </html>
