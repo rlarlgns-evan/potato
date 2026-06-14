@@ -107,13 +107,4 @@
       <text x="331" y="499" text-anchor="middle">횡성</text>
     </g>
   </g>
-  <g transform="translate(818, 42)">
-    <rect x="0" y="0" width="10" height="52" rx="1" fill="#f4d03f"/>
-    <rect x="14" y="0" width="10" height="52" rx="1" fill="#3498db"/>
-    <rect x="28" y="0" width="10" height="52" rx="1" fill="#2ecc71"/>
-    <rect x="42" y="0" width="10" height="52" rx="1" fill="#e74c3c"/>
-    <rect x="56" y="0" width="10" height="52" rx="1" fill="#1a2744"/>
-    <path d="M 78 8 L 92 8 L 92 44 L 78 44 Z M 81 11 L 89 11 L 89 18 L 81 18 Z M 81 22 L 89 22 L 89 41 L 81 41 Z" fill="#888" opacity="0.85"/>
-    <text x="78" y="72" font-family="Pretendard, Inter, sans-serif" font-size="22" font-weight="700" fill="#555" letter-spacing="-0.02em">강원도</text>
-  </g>
 </svg>

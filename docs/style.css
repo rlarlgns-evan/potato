@@ -1803,7 +1803,7 @@ body.mode-planner .wrap {
   z-index: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   background: #bdbdbd;
   padding:
     calc(var(--app-nav-h) + env(safe-area-inset-top, 0px) + 0.5rem)
@@ -1813,9 +1813,11 @@ body.mode-planner .wrap {
 }
 .landing-map-frame {
   position: relative;
-  width: min(960px, 100%);
+  width: min(960px, 108%);
   max-height: 100%;
   aspect-ratio: 960 / 820;
+  margin-left: clamp(-2.5rem, -6vw, -0.75rem);
+  transform: translateX(-4%);
 }
 .landing-map-art {
   display: block;
@@ -2162,6 +2164,10 @@ body.mode-planner .planner-grid {
     bottom: max(0.55rem, env(safe-area-inset-bottom));
     font-size: 0.66rem;
     padding: 0.38rem 0.7rem 0.38rem 0.55rem;
+  }
+  .landing-map-frame {
+    margin-left: 0;
+    transform: none;
   }
   .bubble-ai, .bubble-user {
     max-width: 92%;
