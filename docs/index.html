@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=43" />
+  <link rel="stylesheet" href="style.css?v=44" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
@@ -31,12 +31,19 @@
     <header class="app-categories" id="app-categories">
       <a class="app-logo" data-nav="explore" aria-label="VoyageAI 홈">VoyageAI</a>
       <nav class="app-tabs" role="navigation" aria-label="카테고리">
-        <a class="app-tab" data-nav="explore" title="AI 여행"><span class="tab-ico vico" data-vico="ai"></span><span class="tab-lbl">AI</span></a>
-        <a class="app-tab" data-nav="spots" title="관광지"><span class="tab-ico vico" data-vico="spots"></span><span class="tab-lbl">관광지</span></a>
-        <a class="app-tab" data-nav="festivals" title="축제·행사"><span class="tab-ico vico" data-vico="festivals"></span><span class="tab-lbl">축제</span></a>
-        <a class="app-tab" data-nav="weather" title="날씨"><span class="tab-ico vico" data-vico="weather"></span><span class="tab-lbl">날씨</span></a>
-        <span class="app-tab-divider" aria-hidden="true">|</span>
-        <a class="app-tab" data-nav="community" title="커뮤니티"><span class="tab-ico vico" data-vico="community"></span><span class="tab-lbl">커뮤니티</span></a>
+        <div class="app-tab-group">
+          <a class="app-tab" data-nav="explore" title="AI 여행"><span class="tab-ico vico vico-ai" data-vico="ai"></span><span class="tab-lbl">AI</span></a>
+        </div>
+        <span class="app-tab-divider" aria-hidden="true"></span>
+        <div class="app-tab-group app-tab-group-mid">
+          <a class="app-tab" data-nav="spots" title="관광지"><span class="tab-ico vico vico-spots" data-vico="spots"></span><span class="tab-lbl">관광지</span></a>
+          <a class="app-tab" data-nav="festivals" title="축제·행사"><span class="tab-ico vico vico-festivals" data-vico="festivals"></span><span class="tab-lbl">축제</span></a>
+          <a class="app-tab" data-nav="weather" title="날씨"><span class="tab-ico vico vico-weather" data-vico="weather"></span><span class="tab-lbl">날씨</span></a>
+        </div>
+        <span class="app-tab-divider" aria-hidden="true"></span>
+        <div class="app-tab-group">
+          <a class="app-tab" data-nav="community" title="커뮤니티"><span class="tab-ico vico vico-community" data-vico="community"></span><span class="tab-lbl">커뮤니티</span></a>
+        </div>
       </nav>
       <div class="profile-menu" id="profile-menu">
         <button type="button" class="profile-trigger" id="profile-trigger" aria-expanded="false" aria-controls="profile-dropdown" aria-label="계정 메뉴">
@@ -111,7 +118,7 @@
       <section class="page-shell spots-main">
         <div class="page-head">
           <div>
-            <h1><span class="page-logo vico" data-vico="spots"></span> 강원 관광지</h1>
+            <h1><span class="page-logo vico vico-spots" data-vico="spots"></span> 강원 관광지</h1>
             <p>큐레이션 데이터 <strong id="spots-total">24</strong>곳 · 탭하면 AI 코스를 만들어요.</p>
           </div>
           <span class="chip">탐색</span>
@@ -126,7 +133,7 @@
       <section class="page-shell weather-main">
         <div class="page-head">
           <div>
-            <h1><span class="page-logo vico" data-vico="weather"></span> 강원 날씨</h1>
+            <h1><span class="page-logo vico vico-weather" data-vico="weather"></span> 강원 날씨</h1>
             <p>강원도 <strong>18</strong>개 시·군 전역 · 실시간 기온·일교차·여행 팁</p>
           </div>
           <div class="weather-head-actions">
@@ -206,7 +213,7 @@
         <section class="planner-main community-main">
           <div class="community-head">
             <div>
-              <h1><span class="page-logo vico" data-vico="community"></span> 강원 여행 커뮤니티</h1>
+              <h1><span class="page-logo vico vico-community" data-vico="community"></span> 강원 여행 커뮤니티</h1>
               <p>후기·질문·팁을 나누고, AI로 비슷한 코스를 바로 만들어 보세요.</p>
             </div>
             <span class="chip">실시간 피드</span>
@@ -317,8 +324,8 @@
 
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="data.js?v=43"></script>
-  <script src="icons.js?v=43"></script>
-  <script src="app.js?v=43"></script>
+  <script src="data.js?v=44"></script>
+  <script src="icons.js?v=44"></script>
+  <script src="app.js?v=44"></script>
 </body>
 </html>
