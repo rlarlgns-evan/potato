@@ -46,11 +46,12 @@
 
   /* Typography */
   --font: "Pretendard", "Inter", system-ui, sans-serif;
-  --text-xs: 0.68rem;
-  --text-sm: 0.78rem;
-  --text-base: 0.875rem;
-  --text-lg: 1.05rem;
-  --text-xl: clamp(1.2rem, 2.8vw, 1.55rem);
+  --text-xs: 0.72rem;
+  --text-sm: 0.84rem;
+  --text-base: 0.9375rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: clamp(1.28rem, 2.9vw, 1.68rem);
   --leading: 1.58;
   --tracking: -0.03em;
 
