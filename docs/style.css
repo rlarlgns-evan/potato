@@ -935,11 +935,13 @@ button, input, textarea, select { font-family: inherit; }
   color: transparent;
 }
 .app-logo-mark {
-  width: 1.5rem;
-  height: 1.5rem;
-  padding: 0.28rem;
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: 0.5rem;
+  object-fit: contain;
   flex-shrink: 0;
+  display: block;
+  box-shadow: 0 2px 10px rgba(0, 60, 54, 0.1);
 }
 .app-tabs {
   display: flex;
