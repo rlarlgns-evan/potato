@@ -1956,6 +1956,120 @@ function landingRegionSpotCount(region) {
   return ENRICHED_SPOTS.filter((s) => s.region === region).length;
 }
 
+const REGION_BLURB = {
+  강릉시: "동해안·커피·해변, 대표 해양 관광 도시",
+  고성군: "설악산·DMZ·국립공원 북쪽 관문",
+  동해시: "해변·항구·Mural Village 드라이브",
+  삼척시: "동굴·해변·씨라인·해안 트레킹",
+  속초시: "설악산·아바이마을·해산물·단풍",
+  양구군: "DMZ·철원 평야·역사·생태 체험",
+  양양군: "낙산·하조대·서핑·해변 캠핑",
+  영월군: "단종면·패러글라이딩·동강·석벽",
+  원주시: "치악산·뮤지엄·도심·문화 공연",
+  인제군: "백두대간·원대리·스키·숲 트레킹",
+  정선군: "아리랑·레일바이크·폐광·산악 드라이브",
+  철원군: "한탄강·평야·DMZ·생태·역사",
+  춘천시: "남이섬·소양강·막국수·호수 힐링",
+  태백시: "탄광·눈꽃·고원 도시·겨울 축제",
+  평창군: "대관령·올림픽·스키·송어·고랭지",
+  홍천군: "강촌·패러글라이딩·온천·계곡",
+  화천군: "산천어·DMZ·청정·겨울 축제",
+  횡성군: "한우·둔내·계곡·힐링 드라이브",
+};
+
+function regionCityKey(region) {
+  return String(region ?? "").replace(/(시|군)$/, "");
+}
+
+function landingRegionWeather(region) {
+  if (!wxCache?.length) return null;
+  const key = regionCityKey(region);
+  return wxCache.find((w) => w.city === key) || null;
+}
+
+function landingRegionFestival(region) {
+  return FESTIVALS.find((f) => f.place === region) || null;
+}
+
+function landingRegionSpots(region) {
+  return ENRICHED_SPOTS.filter((s) => s.region === region);
+}
+
+function buildLandingRegionTipHtml(region) {
+  const spots = landingRegionSpots(region);
+  const blurb = REGION_BLURB[region] || "강원도의 매력 있는 여행지";
+  const wx = landingRegionWeather(region);
+  const fest = landingRegionFestival(region);
+  const themes = [...new Set(spots.map((s) => SPOT_THEME_LABELS[s.theme] || s.theme))].slice(0, 3);
+  const names = spots.slice(0, 3).map((s) => s.name);
+
+  const wxHtml = wx
+    ? `<span class="landing-region-tip-wx">${esc(wx.icon)} ${wx.temp}° · ${esc(wx.label)}</span>`
+    : "";
+
+  const tagsHtml = themes.length
+    ? `<div class="landing-region-tip-tags">${themes.map((t) => `<span class="landing-region-tip-tag">${esc(t)}</span>`).join("")}</div>`
+    : "";
+
+  let spotsLine = "";
+  if (names.length) {
+    const extra = spots.length > names.length ? ` 외 ${spots.length - names.length}곳` : "";
+    spotsLine = `<p class="landing-region-tip-spots"><span class="landing-region-tip-label">큐레이션</span> ${esc(names.join(" · "))}${esc(extra)}</p>`;
+  } else {
+    spotsLine = `<p class="landing-region-tip-spots muted">큐레이션 데이터 준비 중</p>`;
+  }
+
+  const festHtml = fest
+    ? `<p class="landing-region-tip-fest">🎉 ${esc(fest.title)} <span>· ${esc(fest.period)}</span></p>`
+    : "";
+
+  return (
+    `<div class="landing-region-tip-head">` +
+    `<strong>${esc(region)}</strong>${wxHtml}` +
+    `</div>` +
+    `<p class="landing-region-tip-blurb">${esc(blurb)}</p>` +
+    tagsHtml +
+    spotsLine +
+    festHtml +
+    `<span class="landing-region-tip-cta">클릭하면 AI 맞춤 코스 →</span>`
+  );
+}
+
+function positionLandingRegionTip(path, tip) {
+  const svg = path.ownerSVGElement;
+  const frame = path.closest(".landing-map-frame");
+  if (!svg || !frame || !tip) return;
+
+  const bb = path.getBBox();
+  const pt = svg.createSVGPoint();
+  pt.x = bb.x + bb.width / 2;
+  pt.y = bb.y + bb.height / 2;
+  const ctm = path.getCTM();
+  if (!ctm) return;
+
+  const abs = pt.matrixTransform(ctm);
+  const vb = svg.viewBox.baseVal;
+  const w = vb.width || 960;
+  const h = vb.height || 820;
+  let left = (abs.x / w) * 100;
+  let top = (abs.y / h) * 100;
+  left = Math.min(78, Math.max(14, left));
+  top = Math.min(72, Math.max(10, top));
+
+  tip.style.left = `${left}%`;
+  tip.style.top = `${top}%`;
+}
+
+function ensureLandingWeatherCache() {
+  if (isWeatherCacheFresh() || wxLoading) return;
+  fetchAllGangwonWeather()
+    .then((cities) => {
+      wxCache = cities;
+      wxCacheAt = Date.now();
+    })
+    .catch((err) => console.warn("landing weather prefetch:", err));
+}
+
 async function loadLandingHeroSvg() {
   const host = $("landing-map-svg");
   if (!host || landingSvgLoaded) return;
@@ -2012,8 +2126,8 @@ function initLandingDistrictHover(host) {
         el?.classList.toggle("muted", spot.region !== region);
       });
       if (tip) {
-        const n = landingRegionSpotCount(region);
-        tip.innerHTML = `<strong>${esc(region)}</strong><span>큐레이션 ${n}곳 · 클릭하면 AI 추천</span>`;
+        tip.innerHTML = buildLandingRegionTipHtml(region);
+        positionLandingRegionTip(path, tip);
         tip.classList.remove("hidden");
       }
     };
@@ -2124,6 +2238,7 @@ function buildLandingMap() {
 }
 
 function initLandingMap() {
+  ensureLandingWeatherCache();
   loadLandingHeroSvg()
     .then(() => buildLandingMap())
     .catch((err) => console.warn("loadLandingHeroSvg:", err));
