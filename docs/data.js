@@ -567,43 +567,43 @@ const FESTIVAL_ICONS = [
 
 const WEATHER_ICONS = {
   "sunny": {
-    "icon": "☀",
+    "icon": "☀️",
     "label": "맑음",
     "bg": "linear-gradient(135deg,#FDE68A,#FBBF24)",
     "thumb_bg": "linear-gradient(135deg,#FDE68A,#FBBF24)"
   },
   "partly_cloudy": {
-    "icon": "◐",
+    "icon": "⛅",
     "label": "구름 조금",
     "bg": "linear-gradient(135deg,#BAE6FD,#7DD3FC)",
     "thumb_bg": "linear-gradient(135deg,#BAE6FD,#7DD3FC)"
   },
   "cloudy": {
-    "icon": "☁",
+    "icon": "☁️",
     "label": "흐림",
     "bg": "linear-gradient(135deg,#E2E8F0,#94A3B8)",
     "thumb_bg": "linear-gradient(135deg,#E2E8F0,#94A3B8)"
   },
   "fog": {
-    "icon": "≡",
+    "icon": "🌫️",
     "label": "안개",
     "bg": "linear-gradient(135deg,#CBD5E1,#94A3B8)",
     "thumb_bg": "linear-gradient(135deg,#CBD5E1,#94A3B8)"
   },
   "rain": {
-    "icon": "☂",
+    "icon": "🌧️",
     "label": "비",
     "bg": "linear-gradient(135deg,#93C5FD,#3B82F6)",
     "thumb_bg": "linear-gradient(135deg,#93C5FD,#3B82F6)"
   },
   "snow": {
-    "icon": "❄",
+    "icon": "🌨️",
     "label": "눈",
     "bg": "linear-gradient(135deg,#E0F2FE,#BAE6FD)",
     "thumb_bg": "linear-gradient(135deg,#E0F2FE,#BAE6FD)"
   },
   "thunder": {
-    "icon": "⚡",
+    "icon": "⛈️",
     "label": "뇌우",
     "bg": "linear-gradient(135deg,#C4B5FD,#7C3AED)",
     "thumb_bg": "linear-gradient(135deg,#C4B5FD,#7C3AED)"

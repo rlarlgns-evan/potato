@@ -44,9 +44,6 @@ const SPECIAL_NAV = {
   festivals: {
     prompt: "강원도 축제·계절 행사가 포함된 여행 코스 추천해줘",
   },
-  weather: {
-    prompt: "강원도 여행 날씨·옷차림·준비물 팁 알려줘",
-  },
 };
 
 const SPOT_THEME_LABELS = {
@@ -162,7 +159,7 @@ function syncBodyMode(view) {
   document.body.classList.toggle("mode-landing", view === "explore");
   document.body.classList.toggle(
     "mode-planner",
-    view === "planner" || view === "community" || view === "trips" || view === "spots"
+    view === "planner" || view === "community" || view === "trips" || view === "spots" || view === "weather"
   );
 }
 
@@ -218,6 +215,7 @@ function show(view) {
   syncBodyMode(view);
   $("view-explore")?.classList.toggle("hidden", view !== "explore");
   $("view-spots")?.classList.toggle("hidden", view !== "spots");
+  $("view-weather")?.classList.toggle("hidden", view !== "weather");
   $("view-planner")?.classList.toggle("hidden", view !== "planner");
   $("view-community")?.classList.toggle("hidden", view !== "community");
   $("view-trips")?.classList.toggle("hidden", view !== "trips");
@@ -232,6 +230,9 @@ function show(view) {
   } else if (view === "spots") {
     pauseLandingMap();
     renderSpots();
+  } else if (view === "weather") {
+    pauseLandingMap();
+    renderWeather().catch((err) => console.warn("renderWeather:", err));
   } else if (view === "planner") {
     pauseLandingMap();
     if (state.steps.length) renderPlanner();
@@ -353,9 +354,8 @@ function weatherTip(temp, cond, hi, lo) {
   return tips.slice(0, 2).join(" · ");
 }
 
-let wxCities = [];
-let wxIdx = 0;
-let wxTimer = null;
+let wxCache = null;
+let wxLoading = false;
 
 async function fetchCityWeather(c) {
   const url =
@@ -371,56 +371,88 @@ async function fetchCityWeather(c) {
   const lo = d.daily?.temperature_2m_min?.[0];
   const meta = WEATHER_ICONS[cond];
   return {
-    city: c.city, temp, cond,
-    icon: meta.icon, bg: meta.bg, label: meta.label,
+    city: c.city,
+    temp,
+    cond,
+    icon: meta.icon,
+    bg: meta.bg,
+    label: meta.label,
     range: hi != null && lo != null ? `${Math.round(lo)}° ~ ${Math.round(hi)}°` : "",
     tip: weatherTip(temp, cond, hi, lo),
   };
 }
 
-function renderWeatherAt(i) {
-  const c = wxCities[i];
-  if (!c) return;
-  $("wx-body").innerHTML =
-    `<div class="w-row">
-       <div class="w-thumb" style="background:${c.bg}">${c.icon}</div>
-       <div>
-         <p class="w-city">${esc(c.city)}</p>
-         <p class="w-temp">${c.temp}°C</p>
-         <p class="w-meta">${esc(c.label)}${c.range ? " · " + esc(c.range) : ""}</p>
-       </div>
-     </div>
-     <p class="sub">${esc(c.tip)}</p>`;
-  $("wx-dots").innerHTML = wxCities
-    .map((_, j) => `<i class="${j === i ? "on" : ""}" data-i="${j}" title="${esc(wxCities[j].city)}"></i>`)
+function weatherSkeletonHtml() {
+  return GANGWON_CITIES.map(
+    (c) =>
+      `<article class="weather-card weather-skeleton" aria-hidden="true">` +
+      `<div class="weather-card-icon"></div>` +
+      `<div class="weather-card-body">` +
+      `<h3>${esc(c.city)}</h3>` +
+      `<p class="weather-card-temp">--°</p>` +
+      `<p class="weather-card-label">불러오는 중…</p>` +
+      `</div></article>`
+  ).join("");
+}
+
+function renderWeatherGrid(cities) {
+  const grid = $("weather-grid");
+  if (!grid) return;
+  grid.innerHTML = cities
+    .map(
+      (c) =>
+        `<article class="weather-card weather-card-${esc(c.cond)}">` +
+        `<div class="weather-card-icon" style="background:${c.bg}">${c.icon}</div>` +
+        `<div class="weather-card-body">` +
+        `<h3>${esc(c.city)}</h3>` +
+        `<p class="weather-card-temp">${c.temp}<span>°C</span></p>` +
+        `<p class="weather-card-label">${esc(c.label)}</p>` +
+        (c.range ? `<p class="weather-card-range">${esc(c.range)}</p>` : "") +
+        `<p class="weather-card-tip">${esc(c.tip)}</p>` +
+        `</div></article>`
+    )
     .join("");
-  $("wx-dots").querySelectorAll("i").forEach((dot) => {
-    dot.addEventListener("click", () => {
-      wxIdx = Number(dot.dataset.i);
-      renderWeatherAt(wxIdx);
-      resetWxTimer();
-    });
-  });
 }
 
-function resetWxTimer() {
-  clearInterval(wxTimer);
-  wxTimer = setInterval(() => {
-    wxIdx = (wxIdx + 1) % wxCities.length;
-    renderWeatherAt(wxIdx);
-  }, 3000);
-}
+async function renderWeather(force) {
+  const grid = $("weather-grid");
+  const updated = $("weather-updated");
+  if (!grid) return;
 
-async function initWeather() {
-  $("wx-body").innerHTML = `<p class="sub">날씨 불러오는 중…</p>`;
-  const results = await Promise.allSettled(GANGWON_CITIES.map(fetchCityWeather));
-  wxCities = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
-  if (!wxCities.length) {
-    $("wx-body").innerHTML = `<p class="sub">날씨를 불러오지 못했습니다.</p>`;
+  if (wxCache && !force) {
+    renderWeatherGrid(wxCache);
     return;
   }
-  renderWeatherAt(0);
-  resetWxTimer();
+  if (wxLoading) return;
+  wxLoading = true;
+
+  grid.innerHTML = weatherSkeletonHtml();
+  if (updated) updated.textContent = "불러오는 중…";
+
+  try {
+    const results = await Promise.allSettled(GANGWON_CITIES.map(fetchCityWeather));
+    wxCache = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
+    if (!wxCache.length) throw new Error("no weather data");
+    const now = new Date();
+    if (updated) {
+      updated.textContent = `${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")} 갱신`;
+    }
+    renderWeatherGrid(wxCache);
+  } catch (err) {
+    console.warn("renderWeather:", err);
+    grid.innerHTML =
+      `<div class="weather-empty">` +
+      `<p>날씨를 불러오지 못했어요.</p>` +
+      `<button type="button" class="btn-secondary" id="weather-retry">다시 시도</button>` +
+      `</div>`;
+    if (updated) updated.textContent = "오류";
+    $("weather-retry")?.addEventListener("click", () => {
+      wxCache = null;
+      renderWeather(true).catch((e) => console.warn("renderWeather retry:", e));
+    });
+  } finally {
+    wxLoading = false;
+  }
 }
 
 /* ==================== Festival marquee ==================== */
@@ -2603,7 +2635,11 @@ function init() {
     const spotEl = $("spot-count");
     if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
     initSuggestions();
-    initSpots();
+    $("weather-refresh")?.addEventListener("click", () => {
+    wxCache = null;
+    renderWeather(true).catch((err) => console.warn("renderWeather refresh:", err));
+  });
+  initSpots();
     initCommunity();
     initTrips();
     initAuth();
