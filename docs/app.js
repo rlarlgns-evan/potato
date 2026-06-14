@@ -46,6 +46,28 @@ const SPECIAL_NAV = {
   },
 };
 
+const VIEW_IDS = new Set(["explore", "spots", "community", "weather", "planner", "trips", "festivals"]);
+const VIEW_LS = "voyageai_last_view";
+const PENDING_VIEW_LS = "voyageai_pending_view";
+
+function parseViewFromLocation() {
+  const hash = window.location.hash.replace(/^#/, "").trim();
+  if (VIEW_IDS.has(hash)) return hash;
+  const saved = sessionStorage.getItem(VIEW_LS);
+  if (saved && VIEW_IDS.has(saved)) return saved;
+  return "explore";
+}
+
+function updateViewHash(view) {
+  const base = window.location.pathname + window.location.search;
+  const nextHash = view === "explore" ? "" : `#${view}`;
+  const nextUrl = nextHash ? base + nextHash : base;
+  if (window.location.pathname + window.location.search + window.location.hash !== nextUrl) {
+    history.replaceState({ view }, "", nextUrl);
+  }
+  sessionStorage.setItem(VIEW_LS, view);
+}
+
 const SPOT_THEME_LABELS = {
   all: "전체",
   nature: "자연",
@@ -190,10 +212,10 @@ function toggleProfileMenu() {
   }
 }
 
-function show(view) {
+function show(view, opts = {}) {
   const special = SPECIAL_NAV[view];
   if (special) {
-    show("explore");
+    show("explore", opts);
     submitAgentPrompt(special.prompt);
     return;
   }
@@ -210,6 +232,7 @@ function show(view) {
     return;
   }
   state.pendingView = null;
+  sessionStorage.removeItem(PENDING_VIEW_LS);
   state.view = view;
   closeProfileMenu();
   syncBodyMode(view);
@@ -220,11 +243,11 @@ function show(view) {
   $("view-community")?.classList.toggle("hidden", view !== "community");
   $("view-trips")?.classList.toggle("hidden", view !== "trips");
   updateSidebar(view);
+  if (!opts.skipHash) updateViewHash(view);
 
   if (view === "explore") {
     ensureAgentWelcome();
     renderAgentChat();
-    $("agent-input")?.focus();
     initLandingMap();
     setTimeout(() => landingMap?.invalidateSize(), 80);
   } else if (view === "spots") {
@@ -244,7 +267,7 @@ function show(view) {
     pauseLandingMap();
     renderTrips().catch((err) => console.warn("renderTrips:", err));
   }
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo(0, 0);
 }
 
 document.addEventListener("click", (e) => {
@@ -357,29 +380,41 @@ function weatherTip(temp, cond, hi, lo) {
 let wxCache = null;
 let wxLoading = false;
 
-async function fetchCityWeather(c) {
+function wxAt(arr, i) {
+  return Array.isArray(arr) ? arr[i] : arr;
+}
+
+async function fetchAllGangwonWeather() {
+  const lats = GANGWON_CITIES.map((c) => c.lat).join(",");
+  const lngs = GANGWON_CITIES.map((c) => c.lng).join(",");
   const url =
-    `https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lng}` +
+    `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}` +
     `&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min` +
     `&timezone=Asia%2FSeoul&forecast_days=1`;
   const r = await fetch(url);
   if (!r.ok) throw new Error("weather http " + r.status);
   const d = await r.json();
-  const temp = Math.round(d.current?.temperature_2m ?? 0);
-  const cond = wmoToCondition(Number(d.current?.weather_code ?? 3));
-  const hi = d.daily?.temperature_2m_max?.[0];
-  const lo = d.daily?.temperature_2m_min?.[0];
-  const meta = WEATHER_ICONS[cond];
-  return {
-    city: c.city,
-    temp,
-    cond,
-    icon: meta.icon,
-    bg: meta.bg,
-    label: meta.label,
-    range: hi != null && lo != null ? `${Math.round(lo)}° ~ ${Math.round(hi)}°` : "",
-    tip: weatherTip(temp, cond, hi, lo),
-  };
+  const temps = d.current?.temperature_2m;
+  const codes = d.current?.weather_code;
+  const hiArr = d.daily?.temperature_2m_max;
+  const loArr = d.daily?.temperature_2m_min;
+  return GANGWON_CITIES.map((c, i) => {
+    const temp = Math.round(Number(wxAt(temps, i) ?? 0));
+    const cond = wmoToCondition(Number(wxAt(codes, i) ?? 3));
+    const hi = wxAt(hiArr, i);
+    const lo = wxAt(loArr, i);
+    const meta = WEATHER_ICONS[cond];
+    return {
+      city: c.city,
+      temp,
+      cond,
+      icon: meta.icon,
+      bg: meta.bg,
+      label: meta.label,
+      range: hi != null && lo != null ? `${Math.round(lo)}° ~ ${Math.round(hi)}°` : "",
+      tip: weatherTip(temp, cond, hi, lo),
+    };
+  });
 }
 
 function weatherSkeletonHtml() {
@@ -430,8 +465,8 @@ async function renderWeather(force) {
   if (updated) updated.textContent = "불러오는 중…";
 
   try {
-    const results = await Promise.allSettled(GANGWON_CITIES.map(fetchCityWeather));
-    wxCache = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
+    const results = await fetchAllGangwonWeather();
+    wxCache = results;
     if (!wxCache.length) throw new Error("no weather data");
     const now = new Date();
     if (updated) {
@@ -2131,7 +2166,6 @@ function initCommunity() {
 
 /* ==================== Saved trips (login required) ==================== */
 const TRIPS_LS = "voyageai_saved_trips";
-const PENDING_VIEW_LS = "voyageai_pending_view";
 
 function tripsStoreKey() {
   const auth = loadAuth();
@@ -2385,8 +2419,11 @@ function hasSupabase() {
 
 function appRedirectUrl() {
   const u = new URL(window.location.href);
-  u.hash = "";
   u.search = "";
+  if (u.hash.includes("access_token")) {
+    const saved = sessionStorage.getItem(VIEW_LS);
+    u.hash = saved && saved !== "explore" ? `#${saved}` : "";
+  }
   return u.toString();
 }
 
@@ -2498,10 +2535,16 @@ function closeLoginModal() {
   modal.setAttribute("aria-hidden", "true");
 }
 
+function cancelLoginModal() {
+  state.pendingView = null;
+  sessionStorage.removeItem(PENDING_VIEW_LS);
+  closeLoginModal();
+}
+
 function resumePendingViewAfterAuth() {
   if (!isLoggedIn()) return;
-  const pending = sessionStorage.getItem(PENDING_VIEW_LS) || state.pendingView;
-  if (!pending) return;
+  const pending = sessionStorage.getItem(PENDING_VIEW_LS);
+  if (!pending || !VIEW_IDS.has(pending)) return;
   sessionStorage.removeItem(PENDING_VIEW_LS);
   state.pendingView = null;
   show(pending);
@@ -2523,9 +2566,14 @@ async function initSupabaseAuth() {
   });
 
   if (window.location.hash.includes("access_token") || window.location.search.includes("code=")) {
-    window.history.replaceState({}, document.title, appRedirectUrl());
+    const saved = sessionStorage.getItem(VIEW_LS);
+    const clean = window.location.pathname + window.location.search;
+    const hash = saved && saved !== "explore" ? `#${saved}` : "";
+    window.history.replaceState({ view: saved || "explore" }, document.title, clean + hash);
   }
-  resumePendingViewAfterAuth();
+  if (sessionStorage.getItem(PENDING_VIEW_LS)) {
+    resumePendingViewAfterAuth();
+  }
 }
 
 async function loginWithOAuth(provider) {
@@ -2540,6 +2588,7 @@ async function loginWithOAuth(provider) {
     return;
   }
   if (state.pendingView) sessionStorage.setItem(PENDING_VIEW_LS, state.pendingView);
+  sessionStorage.setItem(VIEW_LS, state.view || "explore");
   closeLoginModal();
   const { error } = await sb.auth.signInWithOAuth({
     provider,
@@ -2573,6 +2622,8 @@ async function logoutAuth() {
     await sb.auth.signOut();
   }
   saveAuth({ loggedIn: false, name: "", userId: "", provider: "" });
+  state.pendingView = null;
+  sessionStorage.removeItem(PENDING_VIEW_LS);
   renderAuthUI();
   toast("로그아웃했어요.");
 }
@@ -2599,9 +2650,9 @@ function initAuth() {
     loginWithOAuth("kakao").catch((err) => console.warn("loginWithOAuth(kakao):", err));
   });
   $("login-submit")?.addEventListener("click", submitLogin);
-  $("login-cancel")?.addEventListener("click", closeLoginModal);
+  $("login-cancel")?.addEventListener("click", cancelLoginModal);
   $("login-modal")?.addEventListener("click", (e) => {
-    if (e.target.id === "login-modal") closeLoginModal();
+    if (e.target.id === "login-modal") cancelLoginModal();
   });
   $("login-nick")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -2631,27 +2682,27 @@ function initSuggestions() {
 /* ==================== Init ==================== */
 function init() {
   try {
-    syncBodyMode("explore");
     const spotEl = $("spot-count");
     if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
     initSuggestions();
     $("weather-refresh")?.addEventListener("click", () => {
-    wxCache = null;
-    renderWeather(true).catch((err) => console.warn("renderWeather refresh:", err));
-  });
-  initSpots();
+      wxCache = null;
+      renderWeather(true).catch((err) => console.warn("renderWeather refresh:", err));
+    });
+    initSpots();
     initCommunity();
     initTrips();
     initAuth();
-    updateSidebar("explore");
-    ensureAgentWelcome();
-    renderAgentChat();
     if ($("agent-spin")) $("agent-spin").style.display = "none";
-    initLandingMap();
     window.addEventListener("resize", () => {
       landingMap?.invalidateSize();
       state.map?.invalidateSize();
     }, { passive: true });
+    window.addEventListener("hashchange", () => {
+      const next = parseViewFromLocation();
+      if (next !== state.view) show(next, { skipHash: true });
+    });
+    show(parseViewFromLocation());
   } catch (err) {
     console.error("init failed:", err);
     toast("화면 로딩 오류 — 새로고침(Ctrl+Shift+R) 해 주세요.");

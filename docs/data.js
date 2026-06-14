@@ -199,66 +199,24 @@ const SPOTS = [
 ];
 
 const GANGWON_CITIES = [
-  {
-    "city": "원주",
-    "lat": 37.3422,
-    "lng": 127.9202,
-    "pop_rank": 1
-  },
-  {
-    "city": "춘천",
-    "lat": 37.8747,
-    "lng": 127.7342,
-    "pop_rank": 2
-  },
-  {
-    "city": "강릉",
-    "lat": 37.7519,
-    "lng": 129.2022,
-    "pop_rank": 3
-  },
-  {
-    "city": "동해",
-    "lat": 37.5247,
-    "lng": 129.1144,
-    "pop_rank": 4
-  },
-  {
-    "city": "속초",
-    "lat": 38.207,
-    "lng": 128.5918,
-    "pop_rank": 5
-  },
-  {
-    "city": "삼척",
-    "lat": 37.4498,
-    "lng": 129.1652,
-    "pop_rank": 6
-  },
-  {
-    "city": "홍천",
-    "lat": 37.697,
-    "lng": 127.8887,
-    "pop_rank": 7
-  },
-  {
-    "city": "태백",
-    "lat": 37.1641,
-    "lng": 128.9856,
-    "pop_rank": 8
-  },
-  {
-    "city": "정선",
-    "lat": 37.3807,
-    "lng": 128.6608,
-    "pop_rank": 9
-  },
-  {
-    "city": "평창",
-    "lat": 37.3705,
-    "lng": 128.39,
-    "pop_rank": 10
-  }
+  { "city": "춘천", "lat": 37.8813, "lng": 127.73, "pop_rank": 1 },
+  { "city": "원주", "lat": 37.3422, "lng": 127.9202, "pop_rank": 2 },
+  { "city": "강릉", "lat": 37.7519, "lng": 129.2022, "pop_rank": 3 },
+  { "city": "동해", "lat": 37.5247, "lng": 129.1144, "pop_rank": 4 },
+  { "city": "태백", "lat": 37.1641, "lng": 128.9856, "pop_rank": 5 },
+  { "city": "속초", "lat": 38.207, "lng": 128.5918, "pop_rank": 6 },
+  { "city": "삼척", "lat": 37.4498, "lng": 129.1652, "pop_rank": 7 },
+  { "city": "홍천", "lat": 37.697, "lng": 127.8887, "pop_rank": 8 },
+  { "city": "횡성", "lat": 37.4918, "lng": 127.9852, "pop_rank": 9 },
+  { "city": "영월", "lat": 37.1838, "lng": 128.4617, "pop_rank": 10 },
+  { "city": "평창", "lat": 37.3705, "lng": 128.39, "pop_rank": 11 },
+  { "city": "정선", "lat": 37.3807, "lng": 128.6608, "pop_rank": 12 },
+  { "city": "철원", "lat": 38.1465, "lng": 127.3132, "pop_rank": 13 },
+  { "city": "화천", "lat": 38.1064, "lng": 127.7082, "pop_rank": 14 },
+  { "city": "양구", "lat": 38.1097, "lng": 127.9892, "pop_rank": 15 },
+  { "city": "인제", "lat": 38.0697, "lng": 128.1706, "pop_rank": 16 },
+  { "city": "고성", "lat": 38.3779, "lng": 128.4675, "pop_rank": 17 },
+  { "city": "양양", "lat": 38.0754, "lng": 128.6191, "pop_rank": 18 }
 ];
 
 const FESTIVALS = [
