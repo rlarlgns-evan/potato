@@ -1994,6 +1994,7 @@ body.mode-planner .wrap {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  overflow: visible;
   background:
     radial-gradient(ellipse 72% 68% at 34% 48%, rgba(102, 188, 176, 0.14) 0%, transparent 62%),
     linear-gradient(155deg, #e4f0ee 0%, #eef6f5 45%, #f5faf9 100%);
@@ -2085,10 +2086,12 @@ body.mode-planner .wrap {
 }
 .landing-region-tip {
   position: absolute;
-  top: 30%;
-  left: 30%;
-  z-index: 4;
+  top: 0;
+  left: 0;
+  z-index: 5;
   width: min(18.5rem, 46vw);
+  max-height: min(70vh, 22rem);
+  overflow-y: auto;
   padding: 0.65rem 0.85rem 0.55rem;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.96);
@@ -2098,8 +2101,11 @@ body.mode-planner .wrap {
     0 14px 36px rgba(0, 40, 36, 0.14),
     0 0 0 1px rgba(255, 255, 255, 0.65) inset;
   pointer-events: none;
-  transform: translate(-50%, calc(-100% - 10px));
+  transform: none;
   animation: landing-badge-in 0.18s var(--ease) both;
+}
+.landing-region-tip[data-placement^="below"] {
+  animation-name: landing-badge-in-below;
 }
 .landing-region-tip-head {
   display: flex;
@@ -2311,6 +2317,10 @@ body.mode-planner .wrap {
 }
 @keyframes landing-badge-in {
   from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes landing-badge-in-below {
+  from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -2541,8 +2551,8 @@ body.mode-planner .planner-grid {
   }
   .landing-region-tip {
     width: min(15.5rem, 78vw);
+    max-height: min(62vh, 20rem);
     padding: 0.55rem 0.72rem 0.48rem;
-    transform: translate(-50%, calc(-100% - 6px));
   }
   .landing-map-frame {
     margin-left: 0;

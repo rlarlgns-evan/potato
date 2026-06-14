@@ -2147,10 +2147,21 @@ function buildLandingRegionTipHtml(region) {
   );
 }
 
+function placementOverflow(x, y, tipW, tipH, maxW, maxH, pad) {
+  return (
+    Math.max(0, pad - x) +
+    Math.max(0, pad - y) +
+    Math.max(0, x + tipW - (maxW - pad)) +
+    Math.max(0, y + tipH - (maxH - pad))
+  );
+}
+
+let landingRegionTipPath = null;
+
 function positionLandingRegionTip(path, tip) {
   const svg = path.ownerSVGElement;
-  const frame = path.closest(".landing-map-frame");
-  if (!svg || !frame || !tip) return;
+  const stage = $("landing-map");
+  if (!svg || !stage || !tip) return;
 
   const bb = path.getBBox();
   const pt = svg.createSVGPoint();
@@ -2160,16 +2171,63 @@ function positionLandingRegionTip(path, tip) {
   if (!ctm) return;
 
   const abs = pt.matrixTransform(ctm);
+  const svgRect = svg.getBoundingClientRect();
+  const stageRect = stage.getBoundingClientRect();
   const vb = svg.viewBox.baseVal;
   const w = vb.width || 960;
   const h = vb.height || 820;
-  let left = (abs.x / w) * 100;
-  let top = (abs.y / h) * 100;
-  left = Math.min(78, Math.max(14, left));
-  top = Math.min(72, Math.max(10, top));
 
-  tip.style.left = `${left}%`;
-  tip.style.top = `${top}%`;
+  const anchorX = svgRect.left - stageRect.left + (abs.x / w) * svgRect.width;
+  const anchorY = svgRect.top - stageRect.top + (abs.y / h) * svgRect.height;
+
+  tip.classList.remove("hidden");
+  tip.style.visibility = "hidden";
+  tip.style.left = "0px";
+  tip.style.top = "0px";
+
+  const tipW = tip.offsetWidth;
+  const tipH = tip.offsetHeight;
+  tip.style.visibility = "";
+
+  const pad = 12;
+  const gap = 12;
+  const maxW = stageRect.width;
+  const maxH = stageRect.height;
+
+  const candidates = [
+    { placement: "above", x: anchorX - tipW / 2, y: anchorY - tipH - gap },
+    { placement: "below", x: anchorX - tipW / 2, y: anchorY + gap },
+    { placement: "above-left", x: anchorX - tipW - gap, y: anchorY - tipH - gap },
+    { placement: "above-right", x: anchorX + gap, y: anchorY - tipH - gap },
+    { placement: "below-left", x: anchorX - tipW - gap, y: anchorY + gap },
+    { placement: "below-right", x: anchorX + gap, y: anchorY + gap },
+    { placement: "right", x: anchorX + gap, y: anchorY - tipH / 2 },
+    { placement: "left", x: anchorX - tipW - gap, y: anchorY - tipH / 2 },
+  ];
+
+  let best = candidates[0];
+  let bestScore = Infinity;
+  for (const c of candidates) {
+    const score = placementOverflow(c.x, c.y, tipW, tipH, maxW, maxH, pad);
+    if (score < bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+
+  const x = Math.min(Math.max(best.x, pad), Math.max(pad, maxW - tipW - pad));
+  const y = Math.min(Math.max(best.y, pad), Math.max(pad, maxH - tipH - pad));
+
+  tip.style.left = `${x}px`;
+  tip.style.top = `${y}px`;
+  tip.dataset.placement = best.placement;
+  landingRegionTipPath = path;
+}
+
+function refreshLandingRegionTipPosition() {
+  const tip = $("landing-region-tip");
+  if (!landingRegionTipPath || !tip || tip.classList.contains("hidden")) return;
+  positionLandingRegionTip(landingRegionTipPath, tip);
 }
 
 function ensureLandingWeatherCache() {
@@ -2216,7 +2274,15 @@ function setupLandingMapFocus(host) {
 }
 
 function hideLandingRegionTip() {
-  $("landing-region-tip")?.classList.add("hidden");
+  const tip = $("landing-region-tip");
+  tip?.classList.add("hidden");
+  if (tip) {
+    tip.style.left = "";
+    tip.style.top = "";
+    tip.style.visibility = "";
+    delete tip.dataset.placement;
+  }
+  landingRegionTipPath = null;
   $("landing-map-svg")?.classList.remove("has-district-hover");
   $("landing-map-svg")?.querySelectorAll(".gw-district.on").forEach((el) => el.classList.remove("on"));
   landingMarkers.forEach(({ el }) => el?.classList.remove("muted"));
@@ -3371,6 +3437,7 @@ function init() {
     if ($("agent-spin")) $("agent-spin").style.display = "none";
     window.addEventListener("resize", () => {
       state.map?.invalidateSize();
+      refreshLandingRegionTipPosition();
     }, { passive: true });
     window.addEventListener("hashchange", () => {
       const next = parseViewFromLocation();
