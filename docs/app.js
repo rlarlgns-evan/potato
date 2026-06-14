@@ -1946,7 +1946,74 @@ const LANDING_MAP = {
 };
 
 let landingBuilt = false;
+let landingSvgLoaded = false;
 let landingMarkers = [];
+
+function landingRegionSpotCount(region) {
+  return ENRICHED_SPOTS.filter((s) => s.region === region).length;
+}
+
+async function loadLandingHeroSvg() {
+  const host = $("landing-map-svg");
+  if (!host || landingSvgLoaded) return;
+  const res = await fetch(`assets/gangwon-hero.svg?v=60`);
+  if (!res.ok) throw new Error(`gangwon-hero.svg ${res.status}`);
+  host.innerHTML = await res.text();
+  const svg = host.querySelector("svg");
+  if (svg) {
+    svg.classList.add("landing-hero-svg");
+    svg.setAttribute("aria-label", "강원도 행정구역 지도");
+  }
+  initLandingDistrictHover(host);
+  landingSvgLoaded = true;
+}
+
+function hideLandingRegionTip() {
+  $("landing-region-tip")?.classList.add("hidden");
+  $("landing-map-svg")?.classList.remove("has-district-hover");
+  $("landing-map-svg")?.querySelectorAll(".gw-district.on").forEach((el) => el.classList.remove("on"));
+}
+
+function initLandingDistrictHover(host) {
+  const tip = $("landing-region-tip");
+  const paths = host.querySelectorAll(".gw-surface path[data-region]");
+  paths.forEach((path) => {
+    path.classList.add("gw-district");
+    const region = path.getAttribute("data-region") || "";
+    path.setAttribute("role", "button");
+    path.setAttribute("tabindex", "0");
+    path.setAttribute("aria-label", region);
+
+    const activate = () => {
+      host.classList.add("has-district-hover");
+      paths.forEach((p) => p.classList.toggle("on", p === path));
+      if (tip) {
+        const n = landingRegionSpotCount(region);
+        tip.innerHTML = `<strong>${esc(region)}</strong><span>큐레이션 ${n}곳 · 클릭하면 AI 추천</span>`;
+        tip.classList.remove("hidden");
+      }
+    };
+
+    path.addEventListener("mouseenter", activate);
+    path.addEventListener("focus", activate);
+    path.addEventListener("mouseleave", hideLandingRegionTip);
+    path.addEventListener("blur", hideLandingRegionTip);
+    path.addEventListener("click", () => {
+      const input = $("agent-input");
+      if (input && region) {
+        input.value = `${region} 여행 코스 추천해줘`;
+        autoResizeAgentInput();
+        input.focus();
+      }
+    });
+    path.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        path.click();
+      }
+    });
+  });
+}
 
 function latLngToLandingMap(spot) {
   const x = LANDING_MAP.offsetX + LANDING_MAP.ax * spot.lng + LANDING_MAP.bx * spot.lat + LANDING_MAP.cx;
@@ -2028,22 +2095,29 @@ function buildLandingMap() {
 
   $("landing-map")?.addEventListener("click", (e) => {
     if (!e.target.closest(".landing-pin") && !e.target.closest(".landing-tip")) hideLandingTip();
+    if (!e.target.closest(".gw-district") && !e.target.closest(".landing-region-tip")) hideLandingRegionTip();
   });
 }
 
 function initLandingMap() {
-  buildLandingMap();
+  loadLandingHeroSvg()
+    .then(() => buildLandingMap())
+    .catch((err) => console.warn("loadLandingHeroSvg:", err));
 }
 
 function pauseLandingMap() {
   hideLandingTip();
+  hideLandingRegionTip();
 }
 
 function resetLandingMap() {
   landingBuilt = false;
+  landingSvgLoaded = false;
   landingMarkers = [];
   $("landing-pins")?.replaceChildren();
+  $("landing-map-svg")?.replaceChildren("");
   hideLandingTip();
+  hideLandingRegionTip();
 }
 
 function resetSession() {
