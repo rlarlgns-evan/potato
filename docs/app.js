@@ -2267,8 +2267,42 @@ function initLandingDistrictHover(host) {
 }
 
 function latLngToLandingMap(spot) {
-  const x = LANDING_MAP.offsetX + LANDING_MAP.ax * spot.lng + LANDING_MAP.bx * spot.lat + LANDING_MAP.cx;
-  const y = LANDING_MAP.offsetY + LANDING_MAP.ay * spot.lng + LANDING_MAP.by * spot.lat + LANDING_MAP.cy;
+  const x = LANDING_MAP.ax * spot.lng + LANDING_MAP.bx * spot.lat + LANDING_MAP.cx;
+  const y = LANDING_MAP.ay * spot.lng + LANDING_MAP.by * spot.lat + LANDING_MAP.cy;
+  return { x, y };
+}
+
+function landingSpotPinPosition(spot, host) {
+  const path = host?.querySelector(`.gw-surface path[data-region="${spot.region}"]`);
+  if (!path) return latLngToLandingMap(spot);
+
+  const svg = path.ownerSVGElement;
+  const ctm = path.getCTM();
+  if (!svg || !ctm) return latLngToLandingMap(spot);
+
+  const bb = path.getBBox();
+  const pt = svg.createSVGPoint();
+  pt.x = bb.x + bb.width / 2;
+  pt.y = bb.y + bb.height / 2;
+  const center = pt.matrixTransform(ctm);
+
+  const city = GANGWON_CITIES.find((c) => c.city === regionCityKey(spot.region));
+  const dLat = spot.lat - (city?.lat ?? spot.lat);
+  const dLng = spot.lng - (city?.lng ?? spot.lng);
+
+  let x = center.x + (dLng / 0.32) * bb.width * 0.36;
+  let y = center.y - (dLat / 0.24) * bb.height * 0.36;
+
+  const siblings = ENRICHED_SPOTS.filter((s) => s.region === spot.region);
+  if (siblings.length > 1) {
+    const idx = siblings.findIndex((s) => s.name === spot.name);
+    const spread = Math.min(bb.width, bb.height) * 0.07;
+    x += Math.cos((idx / siblings.length) * Math.PI * 2) * spread;
+    y += Math.sin((idx / siblings.length) * Math.PI * 2) * spread;
+  }
+
+  x = Math.min(LANDING_MAP.vbW - 10, Math.max(10, x));
+  y = Math.min(LANDING_MAP.vbH - 10, Math.max(10, y));
   return { x, y };
 }
 
@@ -2304,11 +2338,12 @@ function focusLandingSpot(spot) {
 
 function buildLandingMap() {
   const pinsG = $("landing-pins");
-  if (!pinsG || landingBuilt) return;
+  const host = $("landing-map-svg");
+  if (!pinsG || !host || landingBuilt) return;
   landingBuilt = true;
 
   ENRICHED_SPOTS.forEach((spot) => {
-    const { x, y } = latLngToLandingMap(spot);
+    const { x, y } = landingSpotPinPosition(spot, host);
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
     g.setAttribute("class", "landing-pin");
     g.setAttribute("transform", `translate(${x.toFixed(1)}, ${y.toFixed(1)})`);
