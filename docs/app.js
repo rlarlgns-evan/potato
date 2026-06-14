@@ -201,11 +201,11 @@ function show(view) {
     return;
   }
   if (view === "planner" && !state.steps.length && !isLoggedIn()) {
-    toast("일정은 AI 코스를 먼저 만들거나, 로그인 후 저장함에서 열 수 있어요.");
+    toast("내 일정은 AI 코스를 먼저 만들거나, 로그인 후 찜에서 열 수 있어요.");
     view = "explore";
   }
   if (view === "trips" && !isLoggedIn()) {
-    toast("저장함은 로그인 후 이용할 수 있어요.");
+    toast("찜은 로그인 후 이용할 수 있어요.");
     state.pendingView = "trips";
     openLoginModal();
     return;
@@ -1364,7 +1364,7 @@ function renderPlanner() {
 
 function renderPlannerEmpty() {
   $("plan-title").textContent = "내 여행 일정";
-  $("plan-summary").textContent = "저장한 코스를 열거나, AI로 새 일정을 만들어 보세요.";
+  $("plan-summary").textContent = "찜한 코스를 열거나, AI로 새 일정을 만들어 보세요.";
   $("plan-query").textContent = "";
   $("chip-duration").textContent = "⏱ —";
   $("chip-source").textContent = "◆ —";
@@ -1375,9 +1375,9 @@ function renderPlannerEmpty() {
   $("courses").innerHTML =
     `<div class="planner-empty">` +
     `<p>아직 표시할 일정이 없어요.</p>` +
-    `<p class="planner-empty-hint">저장함에 담아 둔 코스를 열거나, AI 여행에서 새 코스를 만들어 보세요.</p>` +
+    `<p class="planner-empty-hint">찜에 담아 둔 코스를 열거나, AI 여행에서 새 코스를 만들어 보세요.</p>` +
     `<div class="planner-empty-actions">` +
-    `<button type="button" class="btn-primary" data-nav="trips">♡ 저장함 보기</button>` +
+    `<button type="button" class="btn-primary" data-nav="trips">♡ 찜 보기</button>` +
     `<button type="button" class="btn-secondary" data-nav="explore">✦ AI 여행 시작</button>` +
     `</div></div>`;
   $("btn-save-trip")?.classList.add("hidden");
@@ -1385,7 +1385,7 @@ function renderPlannerEmpty() {
   $("map-q").textContent = "🔍 강원 여행";
   $("map-f").textContent = "📍 일정 없음";
   $("kakao-link").href = "#";
-  mapNote("코스를 만들거나 저장함에서 열면 지도가 표시됩니다.");
+  mapNote("코스를 만들거나 찜에서 열면 지도가 표시됩니다.");
 }
 
 function updateMapChrome() {
@@ -2179,18 +2179,18 @@ function formatSavedWhen(iso) {
 
 function saveCurrentTrip() {
   if (!isLoggedIn()) {
-    toast("저장하려면 로그인해 주세요.");
+    toast("찜하려면 로그인해 주세요.");
     state.pendingView = null;
     openLoginModal();
     return;
   }
   if (!state.steps.length) {
-    toast("저장할 코스가 없어요.");
+    toast("찜할 코스가 없어요.");
     return;
   }
   saveCurrentTripAsync().catch((err) => {
     console.warn("saveCurrentTrip:", err);
-    toast("저장에 실패했어요.");
+    toast("찜하기에 실패했어요.");
   });
 }
 
@@ -2217,15 +2217,15 @@ async function saveCurrentTripAsync() {
     if (error) {
       console.warn("Supabase saved_trips insert:", error);
       if (error.code === "42P01" || String(error.message || "").includes("saved_trips")) {
-        toast("저장 테이블이 없어요. Supabase SQL Editor에서 supabase_schema.sql을 실행해 주세요.");
+        toast("찜 테이블이 없어요. Supabase SQL Editor에서 supabase_schema.sql을 실행해 주세요.");
       } else if (error.code === "42501" || String(error.message || "").includes("row-level security")) {
-        toast("저장 권한 오류예요. 다시 로그인하거나 Supabase RLS 정책을 확인해 주세요.");
+        toast("찜 권한 오류예요. 다시 로그인하거나 Supabase RLS 정책을 확인해 주세요.");
       } else {
-        toast(`저장에 실패했어요. (${error.message || error.code || "unknown"})`);
+        toast(`찜하기에 실패했어요. (${error.message || error.code || "unknown"})`);
       }
       throw error;
     }
-    toast("저장함에 담았어요.");
+    toast("찜에 담았어요.");
     return;
   }
 
@@ -2241,12 +2241,12 @@ async function saveCurrentTripAsync() {
   const trips = loadSavedTripsLocal();
   trips.unshift(trip);
   persistSavedTripsLocal(trips);
-  toast("저장함에 담았어요.");
+  toast("찜에 담았어요.");
 }
 
 function deleteSavedTrip(id) {
   if (!isLoggedIn()) return;
-  if (!confirm("저장한 코스를 삭제할까요?")) return;
+  if (!confirm("찜한 코스를 삭제할까요?")) return;
   deleteSavedTripAsync(id).catch((err) => {
     console.warn("deleteSavedTrip:", err);
     toast("삭제에 실패했어요.");
@@ -2260,7 +2260,7 @@ async function deleteSavedTripAsync(id) {
   } else {
     persistSavedTripsLocal(loadSavedTripsLocal().filter((t) => t.id !== id));
   }
-  toast("저장함에서 삭제했어요.");
+  toast("찜에서 삭제했어요.");
   await renderTrips();
 }
 
@@ -2269,7 +2269,7 @@ async function openSavedTrip(id) {
   const trips = await loadSavedTripsForUser();
   const trip = trips.find((t) => t.id === id);
   if (!trip) {
-    toast("저장한 코스를 찾지 못했어요.");
+    toast("찜한 코스를 찾지 못했어요.");
     return;
   }
   state.query = trip.query || "";
@@ -2287,18 +2287,18 @@ async function renderTrips() {
   if (!list) return;
   const auth = loadAuth();
   const trips = await loadSavedTripsForUser();
-  if (chip) chip.textContent = `${trips.length}개 저장`;
+  if (chip) chip.textContent = `${trips.length}개 찜`;
 
   if (!auth.loggedIn) {
-    list.innerHTML = `<p class="trips-empty">로그인하면 저장함을 사용할 수 있어요.</p>`;
+    list.innerHTML = `<p class="trips-empty">로그인하면 찜을 사용할 수 있어요.</p>`;
     return;
   }
 
   if (!trips.length) {
     list.innerHTML =
       `<div class="trips-empty">` +
-      `<p>아직 저장한 코스가 없어요.</p>` +
-      `<p class="trips-empty-hint">AI로 코스를 만든 뒤 <strong>♡ 저장함에 저장</strong>을 눌러 보세요.</p>` +
+      `<p>아직 찜한 코스가 없어요.</p>` +
+      `<p class="trips-empty-hint">AI로 코스를 만든 뒤 <strong>♡ 찜하기</strong>를 눌러 보세요.</p>` +
       `<button type="button" class="btn-primary" data-nav="explore">✦ AI 여행 시작</button>` +
       `</div>`;
     return;
@@ -2416,13 +2416,13 @@ function renderAuthUI() {
     logoutBtn.classList.remove("hidden");
     if (label) label.textContent = auth.name;
     if (avatar) avatar.textContent = authInitial(auth.name);
-    if (hint) hint.textContent = `${auth.name}님, 저장함·커뮤니티를 이용할 수 있어요.`;
+    if (hint) hint.textContent = `${auth.name}님, 찜·커뮤니티를 이용할 수 있어요.`;
   } else {
     loginBtn.classList.remove("hidden");
     logoutBtn.classList.add("hidden");
     if (label) label.textContent = "로그인";
     if (avatar) avatar.textContent = "Y";
-    if (hint) hint.textContent = "Google·카카오로 로그인하면 저장·커뮤니티 참여가 가능해요.";
+    if (hint) hint.textContent = "Google·카카오로 로그인하면 찜·커뮤니티 참여가 가능해요.";
   }
   if (state.view === "community") renderCommunity();
 }
@@ -2436,7 +2436,7 @@ function syncLoginModalMode() {
   const desc = $("login-modal-desc");
   if (desc) {
     desc.textContent = hasSupabase()
-      ? "Google·카카오로 로그인하면 저장함이 기기 간에 동기화됩니다."
+      ? "Google·카카오로 로그인하면 찜 목록이 기기 간에 동기화됩니다."
       : "Google·카카오로 로그인하거나, 닉네임으로 체험해 보세요. (클라우드 동기화는 Supabase 연결 후)";
   }
 }

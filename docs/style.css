@@ -887,7 +887,19 @@ a { color: inherit; }
   color: #fff;
   border-color: var(--primary);
 }
+.profile-action-nav {
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+.profile-action-nav:hover {
+  background: rgba(0, 106, 97, 0.08);
+  color: var(--primary-dark);
+  border-color: rgba(0, 106, 97, 0.2);
+}
 .profile-action.hidden { display: none; }
+.tab-ico-community {
+  font-size: 0.92rem;
+}
 .profile-action-logout {
   background: rgba(186, 26, 26, 0.06);
   border-color: rgba(186, 26, 26, 0.18);
@@ -1373,11 +1385,26 @@ body.mode-planner .planner-grid {
   margin-bottom: 1rem;
 }
 .community-head h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   margin: 0 0 0.35rem;
   font-size: 1.45rem;
   font-weight: 800;
   color: var(--primary);
   letter-spacing: -0.03em;
+}
+.community-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.65rem;
+  background: linear-gradient(135deg, rgba(0, 106, 97, 0.14), rgba(136, 214, 253, 0.2));
+  font-size: 1.05rem;
+  line-height: 1;
+  flex-shrink: 0;
 }
 .community-head p {
   margin: 0;
