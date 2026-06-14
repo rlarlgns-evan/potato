@@ -1787,11 +1787,12 @@ body.mode-planner .wrap {
   height: 100svh;
   height: 100dvh;
   min-height: 100svh;
-  display: grid;
-  place-items: center;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
   padding:
     calc(var(--app-nav-h) + env(safe-area-inset-top, 0px) + 0.75rem)
-    max(0.75rem, env(safe-area-inset-right))
+    clamp(1rem, 4vw, 2.75rem)
     max(0.75rem, env(safe-area-inset-bottom))
     max(0.75rem, env(safe-area-inset-left));
   overflow: hidden;
@@ -1900,7 +1901,7 @@ body.mode-planner .wrap {
   z-index: 1;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 55% 48% at 50% 42%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 42%, transparent 68%),
+    radial-gradient(ellipse 48% 52% at 78% 44%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 42%, transparent 68%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, transparent 35%, rgba(0, 0, 0, 0.06) 100%);
 }
 
