@@ -378,7 +378,33 @@ function weatherTip(temp, cond, hi, lo) {
 }
 
 let wxCache = null;
+let wxCacheAt = 0;
 let wxLoading = false;
+const WX_TTL_MS = 10 * 60 * 1000;
+const WX_CHUNK_SIZE = 6;
+
+function isWeatherCacheFresh() {
+  if (!wxCache || wxCache.length !== GANGWON_CITIES.length) return false;
+  if (!wxCacheAt || Date.now() - wxCacheAt > WX_TTL_MS) return false;
+  return wxCache.every((c) => c.updatedAt && Number.isFinite(c.temp));
+}
+
+function formatWeatherUpdated(cities) {
+  const stamp = cities.find((c) => c.updatedAt)?.updatedAt;
+  const now = new Date();
+  const refreshed = `${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`;
+  if (stamp) {
+    const observed = stamp.slice(11, 16);
+    return `${observed} 관측 · ${refreshed} 갱신`;
+  }
+  return `${refreshed} 갱신`;
+}
+
+async function fetchOpenMeteo(url) {
+  const r = await fetch(`${url}&_=${Date.now()}`, { cache: "no-store" });
+  if (!r.ok) throw new Error("weather http " + r.status);
+  return r.json();
+}
 
 function parseWeatherEntry(entry) {
   const temp = Math.round(Number(entry?.current?.temperature_2m ?? NaN));
@@ -386,7 +412,7 @@ function parseWeatherEntry(entry) {
   const hi = entry?.daily?.temperature_2m_max?.[0];
   const lo = entry?.daily?.temperature_2m_min?.[0];
   const cond = wmoToCondition(code);
-  const meta = WEATHER_ICONS[cond];
+  const meta = WEATHER_ICONS[cond] || WEATHER_ICONS.cloudy;
   return {
     temp: Number.isFinite(temp) ? temp : null,
     cond,
@@ -399,45 +425,57 @@ function parseWeatherEntry(entry) {
   };
 }
 
+function mapWeatherChunk(cities, entries) {
+  const list = Array.isArray(entries) ? entries : [entries];
+  const sorted = [...list].sort((a, b) => (a.location_id ?? 0) - (b.location_id ?? 0));
+  return cities.map((c, i) => {
+    const parsed = parseWeatherEntry(sorted[i]);
+    if (!Number.isFinite(parsed.temp)) throw new Error(`weather missing ${c.city}`);
+    return { city: c.city, ...parsed, temp: parsed.temp };
+  });
+}
+
+async function fetchWeatherChunk(cities) {
+  const lats = cities.map((c) => c.lat).join(",");
+  const lngs = cities.map((c) => c.lng).join(",");
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}` +
+    `&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min` +
+    `&timezone=Asia%2FSeoul&forecast_days=1`;
+  const payload = await fetchOpenMeteo(url);
+  return mapWeatherChunk(cities, payload);
+}
+
 async function fetchCityWeather(c) {
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lng}` +
     `&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min` +
     `&timezone=Asia%2FSeoul&forecast_days=1`;
-  const r = await fetch(url);
-  if (!r.ok) throw new Error("weather http " + r.status);
-  const d = await r.json();
+  const d = await fetchOpenMeteo(url);
   const parsed = parseWeatherEntry(d);
-  return { city: c.city, ...parsed, temp: parsed.temp ?? 0 };
+  if (!Number.isFinite(parsed.temp)) throw new Error(`weather missing ${c.city}`);
+  return { city: c.city, ...parsed, temp: parsed.temp };
 }
 
 async function fetchAllGangwonWeather() {
-  const lats = GANGWON_CITIES.map((c) => c.lat).join(",");
-  const lngs = GANGWON_CITIES.map((c) => c.lng).join(",");
-  const url =
-    `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}` +
-    `&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min` +
-    `&timezone=Asia%2FSeoul&forecast_days=1`;
-  const r = await fetch(url);
-  if (!r.ok) throw new Error("weather http " + r.status);
-  const payload = await r.json();
-  const entries = Array.isArray(payload) ? payload : [payload];
-
-  if (entries.length !== GANGWON_CITIES.length) {
-    const results = await Promise.allSettled(GANGWON_CITIES.map(fetchCityWeather));
-    const cities = results.filter((x) => x.status === "fulfilled").map((x) => x.value);
-    if (!cities.length) throw new Error("no weather data");
-    return cities;
+  const chunks = [];
+  for (let i = 0; i < GANGWON_CITIES.length; i += WX_CHUNK_SIZE) {
+    chunks.push(GANGWON_CITIES.slice(i, i + WX_CHUNK_SIZE));
   }
 
-  return GANGWON_CITIES.map((c, i) => {
-    const parsed = parseWeatherEntry(entries[i]);
-    return {
-      city: c.city,
-      ...parsed,
-      temp: parsed.temp ?? 0,
-    };
-  });
+  try {
+    const parts = await Promise.all(chunks.map((group) => fetchWeatherChunk(group)));
+    return parts.flat();
+  } catch (err) {
+    console.warn("weather chunk fetch:", err);
+  }
+
+  const results = await Promise.allSettled(GANGWON_CITIES.map(fetchCityWeather));
+  const cities = results.filter((x) => x.status === "fulfilled").map((x) => x.value);
+  if (cities.length !== GANGWON_CITIES.length) {
+    throw new Error(`weather partial ${cities.length}/${GANGWON_CITIES.length}`);
+  }
+  return cities;
 }
 
 function weatherSkeletonHtml() {
@@ -477,35 +515,34 @@ async function renderWeather(force) {
   const updated = $("weather-updated");
   if (!grid) return;
 
-  if (wxCache && !force) {
+  if (!force && isWeatherCacheFresh()) {
     renderWeatherGrid(wxCache);
+    if (updated) updated.textContent = formatWeatherUpdated(wxCache);
     return;
   }
-  if (wxLoading) return;
+  if (wxLoading && !force) return;
   wxLoading = true;
 
   grid.innerHTML = weatherSkeletonHtml();
-  if (updated) updated.textContent = "불러오는 중…";
+  if (updated) updated.textContent = "동기화 중…";
 
   try {
     const results = await fetchAllGangwonWeather();
     wxCache = results;
-    if (!wxCache.length) throw new Error("no weather data");
-    const now = new Date();
-    if (updated) {
-      updated.textContent = `${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")} 갱신`;
-    }
+    wxCacheAt = Date.now();
+    if (updated) updated.textContent = formatWeatherUpdated(wxCache);
     renderWeatherGrid(wxCache);
   } catch (err) {
     console.warn("renderWeather:", err);
+    wxCache = null;
+    wxCacheAt = 0;
     grid.innerHTML =
       `<div class="weather-empty">` +
-      `<p>날씨를 불러오지 못했어요.</p>` +
-      `<button type="button" class="btn-secondary" id="weather-retry">다시 시도</button>` +
+      `<p>날씨 정보를 불러오지 못했어요.<br>네트워크 연결 후 다시 시도해 주세요.</p>` +
+      `<button type="button" class="btn-secondary" id="weather-retry">다시 동기화</button>` +
       `</div>`;
-    if (updated) updated.textContent = "오류";
+    if (updated) updated.textContent = "동기화 실패";
     $("weather-retry")?.addEventListener("click", () => {
-      wxCache = null;
       renderWeather(true).catch((e) => console.warn("renderWeather retry:", e));
     });
   } finally {
@@ -2710,7 +2747,13 @@ function init() {
     initSuggestions();
     $("weather-refresh")?.addEventListener("click", () => {
       wxCache = null;
+      wxCacheAt = 0;
       renderWeather(true).catch((err) => console.warn("renderWeather refresh:", err));
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && state.view === "weather" && !isWeatherCacheFresh()) {
+        renderWeather(true).catch((err) => console.warn("renderWeather visibility:", err));
+      }
     });
     initSpots();
     initCommunity();

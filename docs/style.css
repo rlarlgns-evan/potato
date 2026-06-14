@@ -812,6 +812,17 @@ a { color: inherit; }
   letter-spacing: -0.03em;
   white-space: nowrap;
 }
+.app-tab-divider {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 0 0.1rem;
+  font-size: 0.72rem;
+  font-weight: 300;
+  line-height: 1;
+  color: rgba(0, 106, 97, 0.22);
+  user-select: none;
+  pointer-events: none;
+}
 .profile-menu {
   position: relative;
   flex-shrink: 0;
