@@ -22,8 +22,9 @@ function insightLabel(src) {
 }
 
 const AGENT_WELCOME =
-  "✦ 안녕하세요! **강원 온도(ON道)**입니다.\n" +
-  "강원도 여행의 무엇이든 물어보세요. 출발지·교통·일정·동행·테마를 알려주시면 맞춤 동선과 지도를 만들어 드릴게요.";
+  "**강원의 길을 켜다, 지역의 온도를 높이다.**\n" +
+  "AI 기반 교통 소외 지역 인터랙티브 맵, **강원 온도(ON道)**\n\n" +
+  "클릭 한 번으로 끊어진 길을 잇고, 소외된 지역에 다시 사람의 발길을 머물게 합니다. ON道와 함께 강원도의 새로운 내일을 그려보세요.";
 
 const state = {
   view: "explore",
@@ -1956,26 +1957,125 @@ function landingRegionSpotCount(region) {
   return ENRICHED_SPOTS.filter((s) => s.region === region).length;
 }
 
-const REGION_BLURB = {
-  강릉시: "동해안·커피·해변, 대표 해양 관광 도시",
-  고성군: "설악산·DMZ·국립공원 북쪽 관문",
-  동해시: "해변·항구·Mural Village 드라이브",
-  삼척시: "동굴·해변·씨라인·해안 트레킹",
-  속초시: "설악산·아바이마을·해산물·단풍",
-  양구군: "DMZ·철원 평야·역사·생태 체험",
-  양양군: "낙산·하조대·서핑·해변 캠핑",
-  영월군: "단종면·패러글라이딩·동강·석벽",
-  원주시: "치악산·뮤지엄·도심·문화 공연",
-  인제군: "백두대간·원대리·스키·숲 트레킹",
-  정선군: "아리랑·레일바이크·폐광·산악 드라이브",
-  철원군: "한탄강·평야·DMZ·생태·역사",
-  춘천시: "남이섬·소양강·막국수·호수 힐링",
-  태백시: "탄광·눈꽃·고원 도시·겨울 축제",
-  평창군: "대관령·올림픽·스키·송어·고랭지",
-  홍천군: "강촌·패러글라이딩·온천·계곡",
-  화천군: "산천어·DMZ·청정·겨울 축제",
-  횡성군: "한우·둔내·계곡·힐링 드라이브",
+const REGION_PROFILE = {
+  강릉시: {
+    tagline: "동해안·커피·해변, 강원 대표 해양 관광 도시",
+    pop: "약 21.3만",
+    specialty: "커피·초당순두부·오징어순대",
+    highlight: "경포·안목·주문진",
+  },
+  고성군: {
+    tagline: "설악산·DMZ·국립공원 북쪽 관문",
+    pop: "약 2.7만",
+    specialty: "수산물·잣·DMZ 기념품",
+    highlight: "속초·고성 해안·천학동굴",
+  },
+  동해시: {
+    tagline: "해변·항구·Mural Village 드라이브",
+    pop: "약 9.1만",
+    specialty: "묵호회·맥주·멸치",
+    highlight: "추암·망상·Mural Village",
+  },
+  삼척시: {
+    tagline: "동굴·해변·씨라인·해안 트레킹",
+    pop: "약 6.5만",
+    specialty: "대게·오징어·동굴 관광",
+    highlight: "환선굴·덕풍계곡·씨라인",
+  },
+  속초시: {
+    tagline: "설악산·아바이마을·해산물·단풍",
+    pop: "약 8.4만",
+    specialty: "오징어·닭강정·홍게",
+    highlight: "설악산·아바이·영금정",
+  },
+  양구군: {
+    tagline: "DMZ·철원 평야·역사·생태 체험",
+    pop: "약 2.4만",
+    specialty: "한우·오디·DMZ 체험",
+    highlight: "파로호·DMZ·펀치볼",
+  },
+  양양군: {
+    tagline: "낙산·하조대·서핑·해변 캠핑",
+    pop: "약 2.7만",
+    specialty: "송이·송어·서핑",
+    highlight: "낙산·하조대·죽도",
+  },
+  영월군: {
+    tagline: "단종·패러글라이딩·동강·석벽",
+    pop: "약 3.7만",
+    specialty: "와인·메밀·단종 유적",
+    highlight: "동강·청령포·패러글라이딩",
+  },
+  원주시: {
+    tagline: "치악산·뮤지엄·도심·문화 공연",
+    pop: "약 35.1만",
+    specialty: "치악산 떡·한우·문화예술",
+    highlight: "치악산·뮤지엄·댄싱카니발",
+  },
+  인제군: {
+    tagline: "백두대간·원대리·스키·숲 트레킹",
+    pop: "약 3.2만",
+    specialty: "메밀·버섯·산나물",
+    highlight: "원대리·방태산·백두대간",
+  },
+  정선군: {
+    tagline: "아리랑·레일바이크·폐광·산악 드라이브",
+    pop: "약 3.5만",
+    specialty: "곤드레밥·아리랑·사과",
+    highlight: "레일바이크·아리랑·화암동굴",
+  },
+  철원군: {
+    tagline: "한탄강 주상절리·평야·DMZ·평화 레일",
+    pop: "약 4.8만",
+    specialty: "오디·한탄강 메기·평야 쌀",
+    highlight: "한탄강·고석정·평화레일",
+  },
+  춘천시: {
+    tagline: "남이섬·소양강·막국수·호수 힐링",
+    pop: "약 28.2만",
+    specialty: "막국수·닭갈비·닭강정",
+    highlight: "남이섬·소양강·춘천호",
+  },
+  태백시: {
+    tagline: "탄광·눈꽃·고원 도시·겨울 축제",
+    pop: "약 4.2만",
+    specialty: "황기·마늘·탄광 문화",
+    highlight: "태백산·황기·탄광박물관",
+  },
+  평창군: {
+    tagline: "대관령·올림픽·스키·송어·고랭지",
+    pop: "약 4.3만",
+    specialty: "송어·한우·감자",
+    highlight: "대관령·알펜시아·송어축제",
+  },
+  홍천군: {
+    tagline: "강촌·패러글라이딩·온천·계곡",
+    pop: "약 7.0만",
+    specialty: "감·송어·온천",
+    highlight: "강촌·비발디·팔봉산",
+  },
+  화천군: {
+    tagline: "산천어·DMZ·청정·겨울 축제",
+    pop: "약 2.6만",
+    specialty: "산천어·콩·DMZ 생태",
+    highlight: "산천어축제·파로호·DMZ",
+  },
+  횡성군: {
+    tagline: "한우·둔내·계곡·힐링 드라이브",
+    pop: "약 4.6만",
+    specialty: "횡성한우·송이·잣",
+    highlight: "둔내·횡성한우·안흥",
+  },
 };
+
+function landingRegionProfile(region) {
+  return REGION_PROFILE[region] || {
+    tagline: "강원도의 매력 있는 여행지",
+    pop: "—",
+    specialty: "지역 먹거리·자연",
+    highlight: "AI 맞춤 코스 추천",
+  };
+}
 
 function regionCityKey(region) {
   return String(region ?? "").replace(/(시|군)$/, "");
@@ -1997,7 +2097,7 @@ function landingRegionSpots(region) {
 
 function buildLandingRegionTipHtml(region) {
   const spots = landingRegionSpots(region);
-  const blurb = REGION_BLURB[region] || "강원도의 매력 있는 여행지";
+  const profile = landingRegionProfile(region);
   const wx = landingRegionWeather(region);
   const fest = landingRegionFestival(region);
   const themes = [...new Set(spots.map((s) => SPOT_THEME_LABELS[s.theme] || s.theme))].slice(0, 3);
@@ -2005,6 +2105,16 @@ function buildLandingRegionTipHtml(region) {
 
   const wxHtml = wx
     ? `<span class="landing-region-tip-wx">${esc(wx.icon)} ${wx.temp}° · ${esc(wx.label)}</span>`
+    : "";
+
+  const metaHtml =
+    `<div class="landing-region-tip-meta">` +
+    `<span class="landing-region-tip-meta-item"><span class="landing-region-tip-label">인구</span> ${esc(profile.pop)}</span>` +
+    `<span class="landing-region-tip-meta-item"><span class="landing-region-tip-label">특산</span> ${esc(profile.specialty)}</span>` +
+    `</div>`;
+
+  const highlightHtml = profile.highlight
+    ? `<p class="landing-region-tip-highlight"><span class="landing-region-tip-label">대표</span> ${esc(profile.highlight)}</p>`
     : "";
 
   const tagsHtml = themes.length
@@ -2016,7 +2126,7 @@ function buildLandingRegionTipHtml(region) {
     const extra = spots.length > names.length ? ` 외 ${spots.length - names.length}곳` : "";
     spotsLine = `<p class="landing-region-tip-spots"><span class="landing-region-tip-label">큐레이션</span> ${esc(names.join(" · "))}${esc(extra)}</p>`;
   } else {
-    spotsLine = `<p class="landing-region-tip-spots muted">큐레이션 데이터 준비 중</p>`;
+    spotsLine = `<p class="landing-region-tip-spots muted">큐레이션 준비 중 · AI로 맞춤 코스를 만들어 보세요</p>`;
   }
 
   const festHtml = fest
@@ -2027,7 +2137,9 @@ function buildLandingRegionTipHtml(region) {
     `<div class="landing-region-tip-head">` +
     `<strong>${esc(region)}</strong>${wxHtml}` +
     `</div>` +
-    `<p class="landing-region-tip-blurb">${esc(blurb)}</p>` +
+    metaHtml +
+    `<p class="landing-region-tip-blurb">${esc(profile.tagline)}</p>` +
+    highlightHtml +
     tagsHtml +
     spotsLine +
     festHtml +
@@ -2073,7 +2185,7 @@ function ensureLandingWeatherCache() {
 async function loadLandingHeroSvg() {
   const host = $("landing-map-svg");
   if (!host || landingSvgLoaded) return;
-  const res = await fetch(`assets/gangwon-hero.svg?v=63`);
+  const res = await fetch(`assets/gangwon-hero.svg?v=67`);
   if (!res.ok) throw new Error(`gangwon-hero.svg ${res.status}`);
   host.innerHTML = await res.text();
   const svg = host.querySelector("svg");
@@ -2097,8 +2209,9 @@ function setupLandingMapFocus(host) {
 
   host.querySelectorAll(".gw-surface path[data-region]").forEach((path) => {
     const region = path.getAttribute("data-region") || "";
-    path.classList.toggle("gw-curated", landingRegionSpotCount(region) > 0);
-    path.classList.toggle("gw-muted", landingRegionSpotCount(region) === 0);
+    const curated = landingRegionSpotCount(region) > 0;
+    path.classList.toggle("gw-curated", curated);
+    path.classList.remove("gw-muted");
   });
 }
 

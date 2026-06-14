@@ -1625,10 +1625,13 @@ body.mode-planner .wrap {
 /* ---------- About page ---------- */
 .about-hero {
   padding: 1.1rem 1.15rem;
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-4);
   border-radius: var(--radius-sm);
   border: 1px solid rgba(102, 188, 176, 0.16);
   background: linear-gradient(135deg, rgba(102, 188, 176, 0.08), rgba(255, 255, 255, 0.45));
+}
+.about-lead + .about-lead {
+  margin-top: 0.85rem;
 }
 .about-lead {
   margin: 0;
@@ -1640,6 +1643,66 @@ body.mode-planner .wrap {
   font-style: normal;
   color: var(--primary);
   font-weight: 600;
+}
+.about-story {
+  margin-bottom: var(--space-5);
+}
+.about-block {
+  padding: 1.1rem 1.15rem;
+  margin-bottom: var(--space-5);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(10px);
+}
+.about-block p {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.75;
+  color: var(--on-surface);
+}
+.about-block p + p {
+  margin-top: 0.85rem;
+}
+.about-closing {
+  font-weight: 700;
+  color: var(--primary-dark) !important;
+}
+.about-team {
+  margin-bottom: var(--space-5);
+}
+.about-team-card {
+  padding: 1.15rem 1.2rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(102, 188, 176, 0.2);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.62), rgba(102, 188, 176, 0.07));
+}
+.about-team-name {
+  margin: 0 0 0.65rem;
+  font-size: var(--text-md);
+  font-weight: 800;
+  color: var(--primary-dark);
+}
+.about-team-quote {
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.85rem;
+  border-left: 3px solid var(--primary);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  background: rgba(102, 188, 176, 0.1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.55;
+  color: var(--primary-dark);
+}
+.about-team-card p {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.72;
+  color: var(--on-surface);
+}
+.about-team-card p + p {
+  margin-top: 0.75rem;
 }
 .about-section-title {
   margin: 0 0 0.85rem;
@@ -1937,9 +2000,9 @@ body.mode-planner .wrap {
   max-height: 100%;
   aspect-ratio: 960 / 820;
   margin-left: clamp(-2.5rem, -6vw, -0.75rem);
-  transform: translateX(-4%);
-  -webkit-mask-image: radial-gradient(ellipse 92% 88% at 46% 50%, #000 58%, transparent 100%);
-  mask-image: radial-gradient(ellipse 92% 88% at 46% 50%, #000 58%, transparent 100%);
+  transform: translateX(-2%);
+  -webkit-mask-image: radial-gradient(ellipse 96% 90% at 36% 50%, #000 68%, transparent 100%);
+  mask-image: radial-gradient(ellipse 96% 90% at 36% 50%, #000 68%, transparent 100%);
   filter: drop-shadow(0 28px 48px rgba(0, 60, 54, 0.1));
 }
 .landing-map-art {
@@ -1965,14 +2028,18 @@ body.mode-planner .wrap {
   opacity: 0.72;
 }
 .landing-map-art .gw-muted {
-  opacity: 0.34;
-  fill: #ececea;
-  stroke: #d4d4d4;
+  opacity: 0.72;
+  fill: #f2f2f0;
+  stroke: #c8c8c8;
 }
 .landing-map-art .gw-curated {
   fill: #f8f8f6;
   stroke: #b8c8c6;
   filter: drop-shadow(0 3px 10px rgba(0, 106, 97, 0.1));
+}
+.landing-map-art:not(.has-district-hover) .gw-surface path[data-region]:not(.gw-curated) {
+  fill: #f4f4f2;
+  stroke: #c4ccc8;
 }
 .landing-map-art.has-district-hover .gw-district:not(.on) {
   opacity: 0.18;
@@ -2012,7 +2079,7 @@ body.mode-planner .wrap {
   top: 30%;
   left: 30%;
   z-index: 4;
-  width: min(17rem, 44vw);
+  width: min(18.5rem, 46vw);
   padding: 0.65rem 0.85rem 0.55rem;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.96);
@@ -2043,11 +2110,30 @@ body.mode-planner .wrap {
   color: var(--primary);
   white-space: nowrap;
 }
+.landing-region-tip-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.32rem;
+  border-bottom: 1px solid rgba(102, 188, 176, 0.16);
+}
+.landing-region-tip-meta-item {
+  font-size: 0.64rem;
+  line-height: 1.42;
+  color: var(--on-surface-variant);
+}
 .landing-region-tip-blurb {
-  margin: 0 0 0.4rem;
+  margin: 0 0 0.32rem;
   font-size: 0.72rem;
   line-height: 1.48;
   color: var(--on-surface);
+}
+.landing-region-tip-highlight {
+  margin: 0 0 0.35rem;
+  font-size: 0.65rem;
+  line-height: 1.42;
+  color: var(--on-surface-variant);
 }
 .landing-region-tip-tags {
   display: flex;

@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=65" />
+  <link rel="stylesheet" href="style.css?v=69" />
   <link rel="icon" type="image/png" href="assets/mascot-icon.png" />
   <link rel="apple-touch-icon" href="assets/mascot-icon.png" />
 </head>
@@ -46,8 +46,8 @@
         </div>
         <span class="app-tab-divider" aria-hidden="true"></span>
         <div class="app-tab-group">
-          <a class="app-tab" data-nav="about" title="소개"><span class="tab-ico vico vico-info" data-vico="info"></span><span class="tab-lbl">소개</span></a>
           <a class="app-tab" data-nav="community" title="커뮤니티"><span class="tab-ico vico vico-community" data-vico="community"></span><span class="tab-lbl">커뮤니티</span></a>
+          <a class="app-tab" data-nav="about" title="소개"><span class="tab-ico vico vico-info" data-vico="info"></span><span class="tab-lbl">소개</span></a>
         </div>
       </nav>
       <div class="profile-menu" id="profile-menu">
@@ -68,15 +68,12 @@
             </div>
           </div>
           <p class="profile-dropdown-hint" id="profile-dropdown-hint">Google·카카오로 로그인하면 아래 목록을 이용할 수 있어요.</p>
-          <p class="profile-dropdown-section">탐색</p>
-          <div class="profile-dropdown-nav">
-            <button type="button" class="profile-action profile-action-nav" data-nav="about" id="profile-about-btn"><span class="vico vico-action" data-vico="info"></span>서비스 소개</button>
-          </div>
           <p class="profile-dropdown-section" id="profile-list-label">목록</p>
           <div class="profile-dropdown-nav">
             <button type="button" class="profile-action profile-action-nav" data-nav="planner" id="profile-planner-btn"><span class="vico vico-action" data-vico="planner"></span>내 일정</button>
             <button type="button" class="profile-action profile-action-nav" data-nav="trips" id="profile-trips-btn"><span class="vico vico-action" data-vico="trips"></span>찜 목록</button>
             <button type="button" class="profile-action profile-action-nav" data-nav="community" id="profile-community-btn"><span class="vico vico-action" data-vico="community"></span>커뮤니티 활동</button>
+            <button type="button" class="profile-action profile-action-nav" data-nav="about" id="profile-about-btn"><span class="vico vico-action" data-vico="info"></span>서비스 소개</button>
           </div>
           <div class="profile-dropdown-divider" role="separator" aria-hidden="true"></div>
           <div class="profile-dropdown-auth">
@@ -154,65 +151,50 @@
       <section class="page-shell about-main">
         <div class="page-head">
           <div>
-            <h1><span class="page-logo vico vico-info" data-vico="info"></span> 강원 온도(ON道)</h1>
-            <p>강원도 여행을 <strong>온도</strong>에 맞게 — AI가 동선·지도·팁까지 한 번에 짜 드립니다.</p>
+            <h1><span class="page-logo vico vico-info" data-vico="info"></span> 서비스 소개</h1>
+            <p>온도의 기획 의도와 기술적 원리를 감성적으로 풀어낸 메인 소개글입니다.</p>
           </div>
           <span class="chip">소개</span>
         </div>
 
-        <div class="about-hero">
-          <p class="about-lead">
-            <strong>강원 온도(ON道)</strong>는 강원도 18개 시·군과 엄선한 <strong>24곳</strong> 관광 데이터를 바탕으로,
-            당일·반나절 여행 코스를 AI와 함께 설계하는 웹 서비스입니다.
-            「온도」는 여행의 <em>분위기·계절·동행</em>에 맞는 리듬을, 「ON道」는 강원의 길(道) 위에서의 여정을 뜻합니다.
-          </p>
-        </div>
+        <section class="about-story" aria-labelledby="about-story-title">
+          <h2 class="about-section-title" id="about-story-title">켜지는 지도, 이어지는 발걸음</h2>
+          <div class="about-hero">
+            <p class="about-lead">
+              인구 감소로 인해 멈춰버린 버스, 닿지 않는 발길. 점차 차갑게 식어가는 지역들에 우리는 어떻게 다시 생기를 불어넣을 수 있을까요?
+            </p>
+            <p class="about-lead">
+              <strong>강원 온도</strong>는 이 질문에서 출발했습니다.
+              소외된 지역에 사람의 온기를 다시 채워 넣겠다는 따뜻한 포부를 바탕으로, 우리는 기술이 만들어낼 수 있는 가장 다정한 변화를 꿈꿉니다.
+            </p>
+          </div>
 
-        <h2 class="about-section-title">이런 기능을 제공해요</h2>
-        <ul class="about-features">
-          <li class="about-feature">
-            <span class="about-feature-ico vico" data-vico="ai"></span>
-            <div>
-              <strong>AI 여행 큐레이션</strong>
-              <p>출발지·교통·일정·테마를 말하면 맞춤 동선과 지도를 만들어 드려요.</p>
-            </div>
-          </li>
-          <li class="about-feature">
-            <span class="about-feature-ico vico" data-vico="spots"></span>
-            <div>
-              <strong>24곳 관광지 탐색</strong>
-              <p>자연·문화·힐링 등 테마별로 골라 AI 코스로 이어갈 수 있어요.</p>
-            </div>
-          </li>
-          <li class="about-feature">
-            <span class="about-feature-ico vico" data-vico="weather"></span>
-            <div>
-              <strong>전역 날씨·여행 팁</strong>
-              <p>18개 시·군 실시간 기온과 일교차, AI 옷차림·준비물 조언.</p>
-            </div>
-          </li>
-          <li class="about-feature">
-            <span class="about-feature-ico vico" data-vico="festivals"></span>
-            <div>
-              <strong>축제·행사</strong>
-              <p>계절별 축제 정보와 AI 맞춤 코스 연결.</p>
-            </div>
-          </li>
-          <li class="about-feature">
-            <span class="about-feature-ico vico" data-vico="community"></span>
-            <div>
-              <strong>커뮤니티</strong>
-              <p>후기·질문·팁을 나누고 비슷한 여행을 AI로 다시 설계해 보세요.</p>
-            </div>
-          </li>
-          <li class="about-feature">
-            <span class="about-feature-ico vico" data-vico="planner"></span>
-            <div>
-              <strong>일정·찜 저장</strong>
-              <p>로그인하면 만든 코스를 저장하고 언제든 다시 열 수 있어요.</p>
-            </div>
-          </li>
-        </ul>
+          <h2 class="about-section-title">지도를 ON 하는 순간, 강원도의 길(道)이 깨어납니다</h2>
+          <div class="about-block">
+            <p>
+              온도는 단순한 지도가 아닙니다. 사용자가 인터랙티브 맵의 스위치를 켜는 순간, 보이지 않던 교통 취약점들이 드러납니다.
+              AI 기술과 데이터 분석을 통해 강원도 구석구석의 끊어진 길들을 실시간으로 파악하고, 가장 최적화된 새로운 연결망을 제안합니다.
+            </p>
+            <p class="about-closing">
+              차가운 데이터에 숨결을 불어넣어, 도민들의 일상을 더 따뜻하게 연결하겠습니다.
+            </p>
+          </div>
+        </section>
+
+        <section class="about-team" aria-labelledby="about-team-title">
+          <h2 class="about-section-title" id="about-team-title">팀 소개</h2>
+          <div class="about-team-card">
+            <p class="about-team-name">Team. 샤이한 열정 감자 🥔</p>
+            <blockquote class="about-team-quote">조금 수줍지만, 우리가 만드는 변화만큼은 누구보다 뜨겁게!</blockquote>
+            <p>
+              우리는 강원도의 내일을 고민하는 <strong>샤이한 열정 감자</strong>입니다.
+              겉보기엔 둥글둥글하고 수줍음 많아 보일지 몰라도, 지역 소멸이라는 차가운 현실을 해결하겠다는 마음속 <em>온도</em>만큼은 그 누구보다 뜨겁게 타오르고 있습니다.
+            </p>
+            <p>
+              우리가 사랑하는 강원도의 모든 지역이 소외됨 없이 촘촘하게 이어질 수 있도록, 데이터와 AI 기술을 엮어 가장 따뜻한 지도를 만들어갑니다.
+            </p>
+          </div>
+        </section>
 
         <div class="about-cta">
           <p>지도에서 시·군을 눌러 보거나, AI에게 바로 여행을 물어보세요.</p>
@@ -262,9 +244,9 @@
         <aside class="side">
           <div class="sb-logo">강원 온도<small>ON道</small></div>
           <a class="sb-item" data-nav="explore">✦ AI 여행</a>
-          <a class="sb-item" data-nav="about">ℹ 소개</a>
           <a class="sb-item" data-nav="planner">▤ 내 일정</a>
           <a class="sb-item" data-nav="community">💬 커뮤니티</a>
+          <a class="sb-item" data-nav="about">ℹ 소개</a>
           <a class="sb-foot" id="btn-logout">↪ 처음으로</a>
         </aside>
         <section class="planner-main">
@@ -314,9 +296,9 @@
         <aside class="side">
           <div class="sb-logo">강원 온도<small>ON道</small></div>
           <a class="sb-item" data-nav="explore">✦ AI 여행</a>
-          <a class="sb-item" data-nav="about">ℹ 소개</a>
           <a class="sb-item" data-nav="planner">▤ 내 일정</a>
           <a class="sb-item" data-nav="community">💬 커뮤니티</a>
+          <a class="sb-item" data-nav="about">ℹ 소개</a>
           <a class="sb-foot" id="btn-logout-community">↪ 처음으로</a>
         </aside>
         <section class="planner-main community-main">
@@ -358,9 +340,9 @@
         <aside class="side">
           <div class="sb-logo">강원 온도<small>ON道</small></div>
           <a class="sb-item" data-nav="explore">✦ AI 여행</a>
-          <a class="sb-item" data-nav="about">ℹ 소개</a>
           <a class="sb-item" data-nav="planner">▤ 내 일정</a>
           <a class="sb-item" data-nav="community">💬 커뮤니티</a>
+          <a class="sb-item" data-nav="about">ℹ 소개</a>
           <a class="sb-foot" id="btn-logout-trips">↪ 처음으로</a>
         </aside>
         <section class="planner-main trips-main">
@@ -394,10 +376,10 @@
         <button type="button" class="btn-secondary profile-modal-save" id="profile-nick-save">이름 저장</button>
       </div>
       <ul class="profile-modal-list">
-        <li><button type="button" class="profile-modal-link" data-nav="about"><span class="vico vico-action" data-vico="info"></span>서비스 소개</button></li>
         <li><button type="button" class="profile-modal-link" data-nav="planner"><span class="vico vico-action" data-vico="planner"></span>내 일정</button></li>
         <li><button type="button" class="profile-modal-link" data-nav="trips"><span class="vico vico-action" data-vico="trips"></span>찜 목록</button></li>
         <li><button type="button" class="profile-modal-link" data-nav="community"><span class="vico vico-action" data-vico="community"></span>커뮤니티 활동</button></li>
+        <li><button type="button" class="profile-modal-link" data-nav="about"><span class="vico vico-action" data-vico="info"></span>서비스 소개</button></li>
       </ul>
       <div class="modal-row">
         <button type="button" class="btn-secondary" id="profile-modal-close">닫기</button>
@@ -437,6 +419,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="data.js?v=53"></script>
   <script src="icons.js?v=53"></script>
-  <script src="app.js?v=65"></script>
+  <script src="app.js?v=68"></script>
 </body>
 </html>
