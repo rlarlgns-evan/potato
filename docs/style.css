@@ -864,10 +864,16 @@ a { color: inherit; }
   line-height: 1.5;
   color: var(--on-surface-variant);
 }
-.profile-dropdown-actions {
-  margin-top: 0.35rem;
-  padding-top: 0.35rem;
-  border-top: 1px solid rgba(102, 188, 176, 0.18);
+.profile-dropdown-nav,
+.profile-dropdown-auth {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.profile-dropdown-divider {
+  height: 1px;
+  margin: 0.5rem 0.35rem;
+  background: rgba(102, 188, 176, 0.24);
 }
 .profile-action {
   width: 100%;

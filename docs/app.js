@@ -201,8 +201,10 @@ function show(view) {
     return;
   }
   if (view === "planner" && !state.steps.length && !isLoggedIn()) {
-    toast("내 일정은 AI 코스를 먼저 만들거나, 로그인 후 찜에서 열 수 있어요.");
-    view = "explore";
+    toast("내 일정은 로그인 후 이용할 수 있어요.");
+    state.pendingView = "planner";
+    openLoginModal();
+    return;
   }
   if (view === "trips" && !isLoggedIn()) {
     toast("찜은 로그인 후 이용할 수 있어요.");
@@ -2241,7 +2243,7 @@ async function saveCurrentTripAsync() {
   const trips = loadSavedTripsLocal();
   trips.unshift(trip);
   persistSavedTripsLocal(trips);
-  toast("찜에 담았어요.");
+  toast("찜 했어요!");
 }
 
 function deleteSavedTrip(id) {
@@ -2416,13 +2418,13 @@ function renderAuthUI() {
     logoutBtn.classList.remove("hidden");
     if (label) label.textContent = auth.name;
     if (avatar) avatar.textContent = authInitial(auth.name);
-    if (hint) hint.textContent = `${auth.name}님, 찜·커뮤니티를 이용할 수 있어요.`;
+    if (hint) hint.textContent = `${auth.name}님, 내 일정·찜·커뮤니티를 이용할 수 있어요.`;
   } else {
     loginBtn.classList.remove("hidden");
     logoutBtn.classList.add("hidden");
     if (label) label.textContent = "로그인";
     if (avatar) avatar.textContent = "Y";
-    if (hint) hint.textContent = "Google·카카오로 로그인하면 찜·커뮤니티 참여가 가능해요.";
+    if (hint) hint.textContent = "Google·카카오로 로그인하면 내 일정·찜·커뮤니티를 이용할 수 있어요.";
   }
   if (state.view === "community") renderCommunity();
 }
