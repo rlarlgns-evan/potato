@@ -2580,7 +2580,7 @@ function renderAuthUI() {
     if (ddName) ddName.textContent = auth.name;
     if (ddProvider) ddProvider.textContent = providerLabel(auth.provider);
     if (ddAvatar) ddAvatar.textContent = authInitial(auth.name);
-    if (hint) hint.textContent = `${auth.name}님, 내 일정·찜 목록·커뮤니티를 이용할 수 있어요.`;
+    if (hint) hint.textContent = `${auth.name}님, 아래 목록을 이용할 수 있어요.`;
   } else {
     loginBtn.classList.remove("hidden");
     logoutBtn.classList.add("hidden");
@@ -2590,7 +2590,7 @@ function renderAuthUI() {
     if (ddName) ddName.textContent = "게스트";
     if (ddProvider) ddProvider.textContent = "로그인 전";
     if (ddAvatar) ddAvatar.textContent = "Y";
-    if (hint) hint.textContent = "Google·카카오로 로그인하면 내 일정·찜 목록·커뮤니티를 이용할 수 있어요.";
+    if (hint) hint.textContent = "Google·카카오로 로그인하면 아래 목록을 이용할 수 있어요.";
   }
   if (state.view === "community") renderCommunity();
 }

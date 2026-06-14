@@ -1229,7 +1229,6 @@ button, input, textarea, select { font-family: inherit; }
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--on-surface-variant);
   opacity: 0.85;
 }
