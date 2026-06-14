@@ -17,22 +17,22 @@
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="referrer" content="origin" />
-  <title>VoyageAI · 강원 — AI Journey Curator</title>
-  <meta name="description" content="강원도 당일·반나절 여행 코스를 AI가 큐레이션합니다." />
+  <title>강원 온도(ON道) · 강원 AI 여행 큐레이터</title>
+  <meta name="description" content="강원 온도(ON道) — 강원도 맞춤 여행 코스, 24곳 큐레이션, AI 일정·지도·날씨·축제를 한곳에서." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=60" />
+  <link rel="stylesheet" href="style.css?v=63" />
   <link rel="icon" type="image/png" href="assets/mascot-icon.png" />
   <link rel="apple-touch-icon" href="assets/mascot-icon.png" />
 </head>
 <body class="mode-landing">
   <div class="wrap">
     <header class="app-categories" id="app-categories">
-      <a class="app-logo" data-nav="explore" aria-label="VoyageAI 홈">
+      <a class="app-logo" data-nav="explore" aria-label="강원 온도(ON道) 홈">
         <img class="app-logo-mark" src="assets/mascot-icon.png" alt="" width="32" height="32" decoding="async" />
-        <span class="app-logo-text">VoyageAI</span>
+        <span class="app-logo-text">강원 온도<span class="app-logo-sub">ON道</span></span>
       </a>
       <nav class="app-tabs" role="navigation" aria-label="카테고리">
         <div class="app-tab-group">
@@ -46,6 +46,7 @@
         </div>
         <span class="app-tab-divider" aria-hidden="true"></span>
         <div class="app-tab-group">
+          <a class="app-tab" data-nav="about" title="소개"><span class="tab-ico vico vico-info" data-vico="info"></span><span class="tab-lbl">소개</span></a>
           <a class="app-tab" data-nav="community" title="커뮤니티"><span class="tab-ico vico vico-community" data-vico="community"></span><span class="tab-lbl">커뮤니티</span></a>
         </div>
       </nav>
@@ -67,6 +68,10 @@
             </div>
           </div>
           <p class="profile-dropdown-hint" id="profile-dropdown-hint">Google·카카오로 로그인하면 아래 목록을 이용할 수 있어요.</p>
+          <p class="profile-dropdown-section">탐색</p>
+          <div class="profile-dropdown-nav">
+            <button type="button" class="profile-action profile-action-nav" data-nav="about" id="profile-about-btn"><span class="vico vico-action" data-vico="info"></span>서비스 소개</button>
+          </div>
           <p class="profile-dropdown-section" id="profile-list-label">목록</p>
           <div class="profile-dropdown-nav">
             <button type="button" class="profile-action profile-action-nav" data-nav="planner" id="profile-planner-btn"><span class="vico vico-action" data-vico="planner"></span>내 일정</button>
@@ -97,7 +102,7 @@
       <div class="landing-scrim" aria-hidden="true"></div>
       <div class="landing-map-badge" aria-hidden="true">
         <span class="landing-map-badge-pulse"></span>
-        <span>강원 큐레이션 <strong id="landing-spot-count">24</strong>곳</span>
+        <span>온도 큐레이션 <strong id="landing-spot-count">24</strong>곳</span>
       </div>
 
       <div class="landing-content">
@@ -105,8 +110,8 @@
           <div class="chat-shell-header">
             <span class="chat-dot"></span>
             <div class="chat-shell-title">
-              <strong>AI 여행 컨시어지</strong>
-              <span>강원 맞춤 코스 · <span id="spot-count">24</span>곳</span>
+              <strong>강원 온도 AI</strong>
+              <span>맞춤 코스 · <span id="spot-count">24</span>곳 큐레이션</span>
             </div>
           </div>
           <div class="chat-body" id="agent-messages" role="log" aria-live="polite"></div>
@@ -141,6 +146,78 @@
         </div>
         <div class="spots-filters" id="spots-filters" role="tablist" aria-label="테마 필터"></div>
         <div class="spots-grid" id="spots-grid" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <!-- ============ About ============ -->
+    <main id="view-about" class="hidden">
+      <section class="page-shell about-main">
+        <div class="page-head">
+          <div>
+            <h1><span class="page-logo vico vico-info" data-vico="info"></span> 강원 온도(ON道)</h1>
+            <p>강원도 여행을 <strong>온도</strong>에 맞게 — AI가 동선·지도·팁까지 한 번에 짜 드립니다.</p>
+          </div>
+          <span class="chip">소개</span>
+        </div>
+
+        <div class="about-hero">
+          <p class="about-lead">
+            <strong>강원 온도(ON道)</strong>는 강원도 18개 시·군과 엄선한 <strong>24곳</strong> 관광 데이터를 바탕으로,
+            당일·반나절 여행 코스를 AI와 함께 설계하는 웹 서비스입니다.
+            「온도」는 여행의 <em>분위기·계절·동행</em>에 맞는 리듬을, 「ON道」는 강원의 길(道) 위에서의 여정을 뜻합니다.
+          </p>
+        </div>
+
+        <h2 class="about-section-title">이런 기능을 제공해요</h2>
+        <ul class="about-features">
+          <li class="about-feature">
+            <span class="about-feature-ico vico" data-vico="ai"></span>
+            <div>
+              <strong>AI 여행 큐레이션</strong>
+              <p>출발지·교통·일정·테마를 말하면 맞춤 동선과 지도를 만들어 드려요.</p>
+            </div>
+          </li>
+          <li class="about-feature">
+            <span class="about-feature-ico vico" data-vico="spots"></span>
+            <div>
+              <strong>24곳 관광지 탐색</strong>
+              <p>자연·문화·힐링 등 테마별로 골라 AI 코스로 이어갈 수 있어요.</p>
+            </div>
+          </li>
+          <li class="about-feature">
+            <span class="about-feature-ico vico" data-vico="weather"></span>
+            <div>
+              <strong>전역 날씨·여행 팁</strong>
+              <p>18개 시·군 실시간 기온과 일교차, AI 옷차림·준비물 조언.</p>
+            </div>
+          </li>
+          <li class="about-feature">
+            <span class="about-feature-ico vico" data-vico="festivals"></span>
+            <div>
+              <strong>축제·행사</strong>
+              <p>계절별 축제 정보와 AI 맞춤 코스 연결.</p>
+            </div>
+          </li>
+          <li class="about-feature">
+            <span class="about-feature-ico vico" data-vico="community"></span>
+            <div>
+              <strong>커뮤니티</strong>
+              <p>후기·질문·팁을 나누고 비슷한 여행을 AI로 다시 설계해 보세요.</p>
+            </div>
+          </li>
+          <li class="about-feature">
+            <span class="about-feature-ico vico" data-vico="planner"></span>
+            <div>
+              <strong>일정·찜 저장</strong>
+              <p>로그인하면 만든 코스를 저장하고 언제든 다시 열 수 있어요.</p>
+            </div>
+          </li>
+        </ul>
+
+        <div class="about-cta">
+          <p>지도에서 시·군을 눌러 보거나, AI에게 바로 여행을 물어보세요.</p>
+          <button type="button" class="btn-primary" data-nav="explore">✦ AI 여행 시작하기</button>
+        </div>
       </section>
     </main>
 
@@ -183,8 +260,9 @@
     <main id="view-planner" class="hidden">
       <div class="planner-grid">
         <aside class="side">
-          <div class="sb-logo">VoyageAI</div>
-          <a class="sb-item" data-nav="explore">✦ 새 여행</a>
+          <div class="sb-logo">강원 온도<small>ON道</small></div>
+          <a class="sb-item" data-nav="explore">✦ AI 여행</a>
+          <a class="sb-item" data-nav="about">ℹ 소개</a>
           <a class="sb-item" data-nav="planner">▤ 내 일정</a>
           <a class="sb-item" data-nav="community">💬 커뮤니티</a>
           <a class="sb-foot" id="btn-logout">↪ 처음으로</a>
@@ -213,7 +291,7 @@
               <p class="panel-lbl">일정 타임라인</p>
               <p class="panel-hint">카드를 탭하면 지도·상세 정보가 갱신됩니다</p>
               <div class="courses" id="courses"></div>
-              <button class="btn-secondary" data-nav="explore">✦ 새 여행 설계하기</button>
+              <button class="btn-secondary" data-nav="explore">✦ AI 여행 시작하기</button>
             </div>
             <div class="map-stick">
               <div class="map-float">
@@ -234,8 +312,9 @@
     <main id="view-community" class="hidden">
       <div class="planner-grid">
         <aside class="side">
-          <div class="sb-logo">VoyageAI</div>
-          <a class="sb-item" data-nav="explore">✦ 새 여행</a>
+          <div class="sb-logo">강원 온도<small>ON道</small></div>
+          <a class="sb-item" data-nav="explore">✦ AI 여행</a>
+          <a class="sb-item" data-nav="about">ℹ 소개</a>
           <a class="sb-item" data-nav="planner">▤ 내 일정</a>
           <a class="sb-item" data-nav="community">💬 커뮤니티</a>
           <a class="sb-foot" id="btn-logout-community">↪ 처음으로</a>
@@ -277,8 +356,9 @@
     <main id="view-trips" class="hidden">
       <div class="planner-grid">
         <aside class="side">
-          <div class="sb-logo">VoyageAI</div>
-          <a class="sb-item" data-nav="explore">✦ 새 여행</a>
+          <div class="sb-logo">강원 온도<small>ON道</small></div>
+          <a class="sb-item" data-nav="explore">✦ AI 여행</a>
+          <a class="sb-item" data-nav="about">ℹ 소개</a>
           <a class="sb-item" data-nav="planner">▤ 내 일정</a>
           <a class="sb-item" data-nav="community">💬 커뮤니티</a>
           <a class="sb-foot" id="btn-logout-trips">↪ 처음으로</a>
@@ -314,6 +394,7 @@
         <button type="button" class="btn-secondary profile-modal-save" id="profile-nick-save">이름 저장</button>
       </div>
       <ul class="profile-modal-list">
+        <li><button type="button" class="profile-modal-link" data-nav="about"><span class="vico vico-action" data-vico="info"></span>서비스 소개</button></li>
         <li><button type="button" class="profile-modal-link" data-nav="planner"><span class="vico vico-action" data-vico="planner"></span>내 일정</button></li>
         <li><button type="button" class="profile-modal-link" data-nav="trips"><span class="vico vico-action" data-vico="trips"></span>찜 목록</button></li>
         <li><button type="button" class="profile-modal-link" data-nav="community"><span class="vico vico-action" data-vico="community"></span>커뮤니티 활동</button></li>
@@ -356,6 +437,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="data.js?v=53"></script>
   <script src="icons.js?v=53"></script>
-  <script src="app.js?v=60"></script>
+  <script src="app.js?v=63"></script>
 </body>
 </html>

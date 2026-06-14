@@ -1,4 +1,4 @@
-/* VoyageAI · Glass · Neon · Minimal */
+/* 강원 온도(ON道) · Glass · Neon · Minimal */
 :root {
   --primary: #006a61;
   --primary-dark: #003d38;
@@ -462,6 +462,15 @@ button, input, textarea, select { font-family: inherit; }
   .sb-foot { margin-top: 0 !important; border-top: none !important; padding-top: 0 !important; margin-left: auto; }
 }
 .side .sb-logo { font-size: 1.05rem; font-weight: 800; color: var(--primary); margin-bottom: 1.25rem; padding: 0 0.35rem; letter-spacing: -0.03em; }
+.side .sb-logo small {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+}
 .sb-item {
   display: flex; align-items: center; gap: 0.55rem; padding: 0.6rem 0.7rem; border-radius: 12px;
   font-size: 0.82rem; font-weight: 600; color: var(--on-surface-variant);
@@ -934,6 +943,13 @@ button, input, textarea, select { font-family: inherit; }
   background-clip: text;
   color: transparent;
 }
+.app-logo-sub {
+  margin-left: 0.12rem;
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0.92;
+}
 .app-logo-mark {
   width: 1.75rem;
   height: 1.75rem;
@@ -1054,6 +1070,10 @@ button, input, textarea, select { font-family: inherit; }
   color: #00564f;
   background: linear-gradient(155deg, rgba(0, 106, 97, 0.16) 0%, rgba(102, 188, 176, 0.2) 100%);
 }
+.vico-info {
+  color: #00564f;
+  background: linear-gradient(155deg, rgba(102, 188, 176, 0.24) 0%, rgba(0, 106, 97, 0.08) 100%);
+}
 .app-tab.on .tab-ico.vico {
   border-color: rgba(102, 188, 176, 0.45);
   box-shadow: var(--shadow-neon), inset 0 1px 0 rgba(255, 255, 255, 0.95);
@@ -1080,6 +1100,8 @@ button, input, textarea, select { font-family: inherit; }
 .page-logo.vico-community { color: #00564f; background: linear-gradient(155deg, rgba(0, 106, 97, 0.16) 0%, rgba(102, 188, 176, 0.2) 100%); }
 .page-head .page-logo[data-vico="festivals"],
 .page-logo.vico-festivals { color: #5b4a9e; background: linear-gradient(155deg, rgba(167, 139, 250, 0.22) 0%, rgba(102, 188, 176, 0.1) 100%); }
+.page-head .page-logo[data-vico="info"],
+.page-logo.vico-info { color: #00564f; background: linear-gradient(155deg, rgba(102, 188, 176, 0.22) 0%, rgba(0, 106, 97, 0.1) 100%); }
 .page-head h1:has(.page-logo) {
   display: flex;
   align-items: center;
@@ -1583,6 +1605,84 @@ body.mode-planner .wrap {
   color: var(--on-surface-variant);
 }
 
+/* ---------- About page ---------- */
+.about-hero {
+  padding: 1.1rem 1.15rem;
+  margin-bottom: var(--space-5);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(102, 188, 176, 0.16);
+  background: linear-gradient(135deg, rgba(102, 188, 176, 0.08), rgba(255, 255, 255, 0.45));
+}
+.about-lead {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.75;
+  color: var(--on-surface);
+}
+.about-lead em {
+  font-style: normal;
+  color: var(--primary);
+  font-weight: 600;
+}
+.about-section-title {
+  margin: 0 0 0.85rem;
+  font-size: var(--text-md);
+  font-weight: 800;
+  color: var(--primary-dark);
+}
+.about-features {
+  list-style: none;
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: var(--grid-gap);
+}
+.about-feature {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1rem 1.05rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(10px);
+}
+.about-feature-ico {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  color: var(--primary);
+}
+.about-feature strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: var(--text-sm);
+  color: var(--primary-dark);
+}
+.about-feature p {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  color: var(--on-surface-variant);
+}
+.about-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(102, 188, 176, 0.12);
+}
+.about-cta p {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--on-surface-variant);
+  max-width: 28rem;
+  line-height: var(--leading);
+}
+
 /* ---------- Weather page ---------- */
 .weather-head-actions {
   display: flex;
@@ -1805,7 +1905,9 @@ body.mode-planner .wrap {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  background: #bdbdbd;
+  background:
+    radial-gradient(ellipse 72% 68% at 34% 48%, rgba(102, 188, 176, 0.14) 0%, transparent 62%),
+    linear-gradient(155deg, #e4f0ee 0%, #eef6f5 45%, #f5faf9 100%);
   padding:
     calc(var(--app-nav-h) + env(safe-area-inset-top, 0px) + 0.5rem)
     max(0.5rem, env(safe-area-inset-right))
@@ -1819,6 +1921,9 @@ body.mode-planner .wrap {
   aspect-ratio: 960 / 820;
   margin-left: clamp(-2.5rem, -6vw, -0.75rem);
   transform: translateX(-4%);
+  -webkit-mask-image: radial-gradient(ellipse 92% 88% at 46% 50%, #000 58%, transparent 100%);
+  mask-image: radial-gradient(ellipse 92% 88% at 46% 50%, #000 58%, transparent 100%);
+  filter: drop-shadow(0 28px 48px rgba(0, 60, 54, 0.1));
 }
 .landing-map-art {
   position: relative;
@@ -1832,8 +1937,36 @@ body.mode-planner .wrap {
   width: 100%;
   height: 100%;
 }
+.landing-map-art .gw-extrude {
+  transition: opacity 0.28s var(--ease), filter 0.28s var(--ease);
+}
+.landing-map-art:not(.has-district-hover) .gw-extrude {
+  opacity: 0.38;
+}
+.landing-map-art:not(.has-district-hover) .gw-labels text {
+  fill: #888;
+  opacity: 0.72;
+}
+.landing-map-art .gw-muted {
+  opacity: 0.34;
+  fill: #ececea;
+  stroke: #d4d4d4;
+}
+.landing-map-art .gw-curated {
+  fill: #f8f8f6;
+  stroke: #b8c8c6;
+  filter: drop-shadow(0 3px 10px rgba(0, 106, 97, 0.1));
+}
 .landing-map-art.has-district-hover .gw-district:not(.on) {
-  opacity: 0.55;
+  opacity: 0.18;
+  filter: none;
+  transform: none;
+}
+.landing-map-art.has-district-hover .gw-extrude {
+  opacity: 0.1;
+}
+.landing-map-art.has-district-hover .gw-labels {
+  opacity: 0.22;
 }
 .landing-map-art .gw-district {
   cursor: pointer;
@@ -1849,6 +1982,7 @@ body.mode-planner .wrap {
 .landing-map-art .gw-district:hover,
 .landing-map-art .gw-district.on,
 .landing-map-art .gw-district:focus-visible {
+  opacity: 1 !important;
   fill: #e6faf6;
   stroke: #00a896;
   stroke-width: 1.15;
@@ -1920,6 +2054,13 @@ body.mode-planner .wrap {
   stroke: rgba(0, 106, 97, 0.65);
   animation-duration: 1.2s;
 }
+.landing-pins-svg .landing-pin.muted {
+  opacity: 0.2;
+  pointer-events: none;
+}
+.landing-pins-svg .landing-pin.muted .landing-pin-ring {
+  animation: none;
+}
 
 .landing-tip {
   position: absolute;
@@ -1956,8 +2097,8 @@ body.mode-planner .wrap {
   z-index: 1;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 48% 52% at 78% 44%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 42%, transparent 68%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, transparent 35%, rgba(0, 0, 0, 0.06) 100%);
+    radial-gradient(ellipse 42% 48% at 78% 46%, rgba(255, 255, 255, 0.58) 0%, rgba(255, 255, 255, 0.14) 40%, transparent 68%),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.08) 0%, transparent 42%, rgba(0, 0, 0, 0.04) 100%);
 }
 
 .landing-map-badge {
@@ -2156,11 +2297,20 @@ body.mode-planner .planner-grid {
     );
   }
   .app-logo-text {
-    font-size: 0.76rem;
-    max-width: 3.6rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.05;
+    font-size: 0.68rem;
+    max-width: none;
+    overflow: visible;
+    text-overflow: unset;
+    white-space: normal;
+  }
+  .app-logo-sub {
+    margin-left: 0;
+    font-size: 0.52rem;
+    letter-spacing: 0.14em;
   }
   .app-logo-mark {
     width: 1.5rem;
@@ -2239,8 +2389,17 @@ body.mode-planner .planner-grid {
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
   }
   .community-head h1,
-  .trips-head h1 {
+  .trips-head h1,
+  .page-head h1 {
     font-size: 1.25rem;
+  }
+  .about-cta {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  .about-cta .btn-primary {
+    width: 100%;
   }
   .community-compose-foot {
     flex-wrap: wrap;
@@ -2734,7 +2893,7 @@ body.mode-planner .planner-grid {
   background: rgba(186, 26, 26, 0.08);
 }
 
-/* ===== VoyageAI Design System v48 ===== */
+/* ===== 강원 온도 Design System ===== */
 .planner-grid {
   grid-template-columns: 1fr;
   max-width: var(--page-max);

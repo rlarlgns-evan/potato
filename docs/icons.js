@@ -1,4 +1,4 @@
-/* VoyageAI — brand icon set (teal identity, dual-tone) */
+/* 강원 온도(ON道) — brand icon set (teal identity, dual-tone) */
 const VICO_SVG = {
   ai: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle fill="currentColor" fill-opacity=".1" cx="12" cy="12" r="9"/><path fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" d="M12 7v2M12 15v2M9 9.5l1.2 1.2M13.8 13.8l1.2 1.2M7 12h2M15 12h2M9 14.5l1.2-1.2M13.8 10.2l1.2-1.2"/><circle fill="currentColor" cx="12" cy="12" r="1.75"/></svg>`,
   spots: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-opacity=".12" d="M4 19h16l-1.5-4.5-3.5 3-3-6-3 7.5z"/><path fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" d="M4 19h16M7.5 19l3.5-8 2.5 4.5L14.5 12l5.5 7"/><circle fill="currentColor" cx="12" cy="7.5" r="1.5"/></svg>`,

@@ -1,4 +1,4 @@
-// VoyageAI · 강원 — GitHub Pages 정적 앱 로직
+// 강원 온도(ON道) · GitHub Pages 정적 앱 로직
 "use strict";
 
 const $ = (id) => document.getElementById(id);
@@ -22,8 +22,8 @@ function insightLabel(src) {
 }
 
 const AGENT_WELCOME =
-  "✦ 안녕하세요! 강원도 여행의 무엇이든 물어보세요.\n" +
-  "출발지·교통·일정·동행·테마를 알려주시면 맞춤 동선과 지도를 만들어 드릴게요.";
+  "✦ 안녕하세요! **강원 온도(ON道)**입니다.\n" +
+  "강원도 여행의 무엇이든 물어보세요. 출발지·교통·일정·동행·테마를 알려주시면 맞춤 동선과 지도를 만들어 드릴게요.";
 
 const state = {
   view: "explore",
@@ -40,7 +40,7 @@ const state = {
   pendingView: null,
 };
 
-const VIEW_IDS = new Set(["explore", "spots", "community", "weather", "festivals", "planner", "trips"]);
+const VIEW_IDS = new Set(["explore", "spots", "community", "weather", "festivals", "about", "planner", "trips"]);
 const VIEW_LS = "voyageai_last_view";
 const PENDING_VIEW_LS = "voyageai_pending_view";
 
@@ -183,7 +183,7 @@ function syncBodyMode(view) {
   document.body.classList.toggle("mode-landing", view === "explore");
   document.body.classList.toggle(
     "mode-planner",
-    view === "planner" || view === "community" || view === "trips" || view === "spots" || view === "weather" || view === "festivals"
+    view === "planner" || view === "community" || view === "trips" || view === "spots" || view === "weather" || view === "festivals" || view === "about"
   );
 }
 
@@ -237,6 +237,7 @@ function show(view, opts = {}) {
   $("view-spots")?.classList.toggle("hidden", view !== "spots");
   $("view-weather")?.classList.toggle("hidden", view !== "weather");
   $("view-festivals")?.classList.toggle("hidden", view !== "festivals");
+  $("view-about")?.classList.toggle("hidden", view !== "about");
   $("view-planner")?.classList.toggle("hidden", view !== "planner");
   $("view-community")?.classList.toggle("hidden", view !== "community");
   $("view-trips")?.classList.toggle("hidden", view !== "trips");
@@ -256,6 +257,8 @@ function show(view, opts = {}) {
   } else if (view === "festivals") {
     pauseLandingMap();
     renderFestivals();
+  } else if (view === "about") {
+    pauseLandingMap();
   } else if (view === "planner") {
     pauseLandingMap();
     if (state.steps.length) renderPlanner();
@@ -1956,7 +1959,7 @@ function landingRegionSpotCount(region) {
 async function loadLandingHeroSvg() {
   const host = $("landing-map-svg");
   if (!host || landingSvgLoaded) return;
-  const res = await fetch(`assets/gangwon-hero.svg?v=60`);
+  const res = await fetch(`assets/gangwon-hero.svg?v=63`);
   if (!res.ok) throw new Error(`gangwon-hero.svg ${res.status}`);
   host.innerHTML = await res.text();
   const svg = host.querySelector("svg");
@@ -1964,14 +1967,32 @@ async function loadLandingHeroSvg() {
     svg.classList.add("landing-hero-svg");
     svg.setAttribute("aria-label", "강원도 행정구역 지도");
   }
+  setupLandingMapFocus(host);
   initLandingDistrictHover(host);
   landingSvgLoaded = true;
+}
+
+function setupLandingMapFocus(host) {
+  const svg = host.querySelector("svg");
+  if (!svg) return;
+
+  const mapRoot = svg.querySelector(":scope > g > g");
+  mapRoot?.querySelectorAll(":scope > g:not(.gw-surface):not(.gw-labels)").forEach((g) => {
+    g.classList.add("gw-extrude");
+  });
+
+  host.querySelectorAll(".gw-surface path[data-region]").forEach((path) => {
+    const region = path.getAttribute("data-region") || "";
+    path.classList.toggle("gw-curated", landingRegionSpotCount(region) > 0);
+    path.classList.toggle("gw-muted", landingRegionSpotCount(region) === 0);
+  });
 }
 
 function hideLandingRegionTip() {
   $("landing-region-tip")?.classList.add("hidden");
   $("landing-map-svg")?.classList.remove("has-district-hover");
   $("landing-map-svg")?.querySelectorAll(".gw-district.on").forEach((el) => el.classList.remove("on"));
+  landingMarkers.forEach(({ el }) => el?.classList.remove("muted"));
 }
 
 function initLandingDistrictHover(host) {
@@ -1987,6 +2008,9 @@ function initLandingDistrictHover(host) {
     const activate = () => {
       host.classList.add("has-district-hover");
       paths.forEach((p) => p.classList.toggle("on", p === path));
+      landingMarkers.forEach(({ spot, el }) => {
+        el?.classList.toggle("muted", spot.region !== region);
+      });
       if (tip) {
         const n = landingRegionSpotCount(region);
         tip.innerHTML = `<strong>${esc(region)}</strong><span>큐레이션 ${n}곳 · 클릭하면 AI 추천</span>`;

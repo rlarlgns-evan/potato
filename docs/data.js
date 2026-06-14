@@ -1,4 +1,4 @@
-// VoyageAI · 강원 — canonical data lives in data/*.json
+// 강원 온도(ON道) · canonical data lives in data/*.json
 // // === CANONICAL DATA (auto-generated from data/*.json) ===
 // Regenerate: python scripts/sync_content.py generate
 "use strict";
