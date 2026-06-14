@@ -380,8 +380,35 @@ function weatherTip(temp, cond, hi, lo) {
 let wxCache = null;
 let wxLoading = false;
 
-function wxAt(arr, i) {
-  return Array.isArray(arr) ? arr[i] : arr;
+function parseWeatherEntry(entry) {
+  const temp = Math.round(Number(entry?.current?.temperature_2m ?? NaN));
+  const code = Number(entry?.current?.weather_code ?? 3);
+  const hi = entry?.daily?.temperature_2m_max?.[0];
+  const lo = entry?.daily?.temperature_2m_min?.[0];
+  const cond = wmoToCondition(code);
+  const meta = WEATHER_ICONS[cond];
+  return {
+    temp: Number.isFinite(temp) ? temp : null,
+    cond,
+    icon: meta.icon,
+    bg: meta.bg,
+    label: meta.label,
+    range: hi != null && lo != null ? `${Math.round(lo)}° ~ ${Math.round(hi)}°` : "",
+    tip: weatherTip(Number.isFinite(temp) ? temp : 0, cond, hi, lo),
+    updatedAt: entry?.current?.time || "",
+  };
+}
+
+async function fetchCityWeather(c) {
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lng}` +
+    `&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min` +
+    `&timezone=Asia%2FSeoul&forecast_days=1`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("weather http " + r.status);
+  const d = await r.json();
+  const parsed = parseWeatherEntry(d);
+  return { city: c.city, ...parsed, temp: parsed.temp ?? 0 };
 }
 
 async function fetchAllGangwonWeather() {
@@ -393,26 +420,22 @@ async function fetchAllGangwonWeather() {
     `&timezone=Asia%2FSeoul&forecast_days=1`;
   const r = await fetch(url);
   if (!r.ok) throw new Error("weather http " + r.status);
-  const d = await r.json();
-  const temps = d.current?.temperature_2m;
-  const codes = d.current?.weather_code;
-  const hiArr = d.daily?.temperature_2m_max;
-  const loArr = d.daily?.temperature_2m_min;
+  const payload = await r.json();
+  const entries = Array.isArray(payload) ? payload : [payload];
+
+  if (entries.length !== GANGWON_CITIES.length) {
+    const results = await Promise.allSettled(GANGWON_CITIES.map(fetchCityWeather));
+    const cities = results.filter((x) => x.status === "fulfilled").map((x) => x.value);
+    if (!cities.length) throw new Error("no weather data");
+    return cities;
+  }
+
   return GANGWON_CITIES.map((c, i) => {
-    const temp = Math.round(Number(wxAt(temps, i) ?? 0));
-    const cond = wmoToCondition(Number(wxAt(codes, i) ?? 3));
-    const hi = wxAt(hiArr, i);
-    const lo = wxAt(loArr, i);
-    const meta = WEATHER_ICONS[cond];
+    const parsed = parseWeatherEntry(entries[i]);
     return {
       city: c.city,
-      temp,
-      cond,
-      icon: meta.icon,
-      bg: meta.bg,
-      label: meta.label,
-      range: hi != null && lo != null ? `${Math.round(lo)}° ~ ${Math.round(hi)}°` : "",
-      tip: weatherTip(temp, cond, hi, lo),
+      ...parsed,
+      temp: parsed.temp ?? 0,
     };
   });
 }
