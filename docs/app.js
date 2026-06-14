@@ -207,7 +207,7 @@ function show(view) {
     return;
   }
   if (view === "trips" && !isLoggedIn()) {
-    toast("찜은 로그인 후 이용할 수 있어요.");
+    toast("찜 목록은 로그인 후 이용할 수 있어요.");
     state.pendingView = "trips";
     openLoginModal();
     return;
@@ -1379,7 +1379,7 @@ function renderPlannerEmpty() {
     `<p>아직 표시할 일정이 없어요.</p>` +
     `<p class="planner-empty-hint">찜에 담아 둔 코스를 열거나, AI 여행에서 새 코스를 만들어 보세요.</p>` +
     `<div class="planner-empty-actions">` +
-    `<button type="button" class="btn-primary" data-nav="trips">♡ 찜 보기</button>` +
+    `<button type="button" class="btn-primary" data-nav="trips">♡ 찜 목록 보기</button>` +
     `<button type="button" class="btn-secondary" data-nav="explore">✦ AI 여행 시작</button>` +
     `</div></div>`;
   $("btn-save-trip")?.classList.add("hidden");
@@ -1387,7 +1387,7 @@ function renderPlannerEmpty() {
   $("map-q").textContent = "🔍 강원 여행";
   $("map-f").textContent = "📍 일정 없음";
   $("kakao-link").href = "#";
-  mapNote("코스를 만들거나 찜에서 열면 지도가 표시됩니다.");
+  mapNote("코스를 만들거나 찜 목록에서 열면 지도가 표시됩니다.");
 }
 
 function updateMapChrome() {
@@ -2289,10 +2289,10 @@ async function renderTrips() {
   if (!list) return;
   const auth = loadAuth();
   const trips = await loadSavedTripsForUser();
-  if (chip) chip.textContent = `${trips.length}개 찜`;
+  if (chip) chip.textContent = `${trips.length}개`;
 
   if (!auth.loggedIn) {
-    list.innerHTML = `<p class="trips-empty">로그인하면 찜을 사용할 수 있어요.</p>`;
+    list.innerHTML = `<p class="trips-empty">로그인하면 찜 목록을 사용할 수 있어요.</p>`;
     return;
   }
 
@@ -2418,13 +2418,13 @@ function renderAuthUI() {
     logoutBtn.classList.remove("hidden");
     if (label) label.textContent = auth.name;
     if (avatar) avatar.textContent = authInitial(auth.name);
-    if (hint) hint.textContent = `${auth.name}님, 내 일정·찜·커뮤니티를 이용할 수 있어요.`;
+    if (hint) hint.textContent = `${auth.name}님, 내 일정·찜 목록·커뮤니티를 이용할 수 있어요.`;
   } else {
     loginBtn.classList.remove("hidden");
     logoutBtn.classList.add("hidden");
     if (label) label.textContent = "로그인";
     if (avatar) avatar.textContent = "Y";
-    if (hint) hint.textContent = "Google·카카오로 로그인하면 내 일정·찜·커뮤니티를 이용할 수 있어요.";
+    if (hint) hint.textContent = "Google·카카오로 로그인하면 내 일정·찜 목록·커뮤니티를 이용할 수 있어요.";
   }
   if (state.view === "community") renderCommunity();
 }

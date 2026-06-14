@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=37" />
+  <link rel="stylesheet" href="style.css?v=38" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
 </head>
 <body class="mode-landing">
@@ -44,10 +44,10 @@
           <span class="profile-chevron" aria-hidden="true">▾</span>
         </button>
         <div class="profile-dropdown hidden" id="profile-dropdown" role="menu">
-          <p class="profile-dropdown-hint" id="profile-dropdown-hint">Google·카카오로 로그인하면 내 일정·찜·커뮤니티를 이용할 수 있어요.</p>
+          <p class="profile-dropdown-hint" id="profile-dropdown-hint">Google·카카오로 로그인하면 내 일정·찜 목록·커뮤니티를 이용할 수 있어요.</p>
           <div class="profile-dropdown-nav">
             <button type="button" class="profile-action profile-action-nav" data-nav="planner" id="profile-planner-btn">▤ 내 일정</button>
-            <button type="button" class="profile-action profile-action-nav" data-nav="trips" id="profile-trips-btn">♡ 찜</button>
+            <button type="button" class="profile-action profile-action-nav" data-nav="trips" id="profile-trips-btn">♡ 찜 목록</button>
           </div>
           <div class="profile-dropdown-divider" role="separator" aria-hidden="true"></div>
           <div class="profile-dropdown-auth">
@@ -214,10 +214,10 @@
         <section class="planner-main trips-main">
           <div class="trips-head">
             <div>
-              <h1>찜</h1>
+              <h1>찜 목록</h1>
               <p>로그인한 계정에 맞춤 코스를 찜해 두었다가 다시 열 수 있어요.</p>
             </div>
-            <span class="chip" id="trips-count-chip">0개 찜</span>
+            <span class="chip" id="trips-count-chip">0개</span>
           </div>
           <div class="trips-list" id="trips-list" aria-live="polite"></div>
         </section>
@@ -254,7 +254,7 @@
 
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="data.js?v=37"></script>
-  <script src="app.js?v=37"></script>
+  <script src="data.js?v=38"></script>
+  <script src="app.js?v=38"></script>
 </body>
 </html>
