@@ -6,6 +6,7 @@ from typing import Any
 import config  # noqa: F401 — .env 로드
 
 from gangwon_agent_prompt import (
+    KTO_FALLBACK_INTRO,
     build_agent_system_prompt,
     build_region_info_reply,
     collect_kto_catalog_entries,
@@ -24,22 +25,8 @@ MAX_HISTORY_MSGS = 0
 MAX_HISTORY_CHARS = 200
 MAX_USER_CHARS = 600
 
-# English instructions → fewer tokens; user-facing JSON values stay Korean.
-CURATION_SCHEMA = (
-    "JSON only.Korean brief.why≤80chars. "
-    "Extract trip_intent from user: origin,transport,duration,companion,themes. "
-    "If origin/transport/lodging/duration given: plan outbound transit, lodging area, return. "
-    '{"trip_intent":{"origin":"","transport":"","duration":"","companion":"","themes":[]},'
-    '"transit_plan":{"outbound":"","return":"","local_transit":""},'
-    '"accommodation":{"area":"","type":"","note":""},'
-    '"itinerary_title":"","summary":"","total_duration":"",'
-    '"day_plans":[{"day":1,"title":"","focus":""}],'
-    '"route_steps":[{"order":1,"day":1,"spot_name":"","stay_minutes":60,"why":"","move_to_next":""}],'
-    '"map_tip":""}. '
-    "1박2일=2-4 spots across days; spot_name exact from catalog; "
-    "move_to_next must include KTX/버스/환승 when public transit; "
-    "accommodation.area near evening spot cluster."
-)
+# KTO JSON schema is embedded in gangwon_agent_prompt.KTO_OUTPUT_FORMAT
+CURATION_SCHEMA = ""
 
 
 def _compact_spot_catalog(spots: list[dict[str, Any]], user_message: str = "") -> str:
@@ -331,7 +318,7 @@ def _fallback_curation(user_message: str, spots: list[dict[str, Any]], source: s
     picks = pick_regional_spots(spots, regions, limit=3) if regions else spots[:3]
 
     if not picks and regions:
-        msg = region_empty_fallback_message(regions[0])
+        msg = region_empty_fallback_message()
         return {
             "itinerary_title": f"{regions[0]} 안내",
             "summary": msg,
@@ -478,7 +465,85 @@ def _call_google_curation(
         return None
 
 
+def _finalize_kto_json_curation(
+    parsed: dict[str, Any],
+    spots: list[dict[str, Any]],
+    user_message: str,
+) -> dict[str, Any]:
+    regions = regions_in_message(user_message)
+    intro = parsed.get("introduction") or KTO_FALLBACK_INTRO
+    title = f"{regions[0]} AI 추천 코스" if regions else "AI 추천 코스"
+
+    if parsed.get("fallback_triggered") or not parsed.get("itinerary"):
+        return {
+            "itinerary_title": f"{regions[0]} 안내" if regions else "강원도 안내",
+            "summary": intro,
+            "message": intro,
+            "curated_spots": [],
+            "route_steps": [],
+            "map_tip": "",
+            "total_duration": "",
+            "trip_intent": {},
+            "transit_plan": {},
+            "accommodation": {},
+            "day_plans": [],
+            "source": "",
+        }
+
+    names = [str(item.get("spot_name") or "") for item in (parsed.get("itinerary") or []) if item.get("spot_name")]
+    curated = _spots_from_names(spots, names, regions=regions or None)
+    if not curated and regions:
+        curated = pick_regional_spots(spots, regions, limit=min(3, len(names) or 3))
+
+    by_name = {item.get("spot_name"): item for item in (parsed.get("itinerary") or [])}
+    route_steps = []
+    for idx, spot in enumerate(curated, start=1):
+        item = by_name.get(spot["name"], {})
+        route_steps.append(
+            {
+                "order": item.get("step") or idx,
+                "day": 1,
+                "spot_name": spot["name"],
+                "region": spot["region"],
+                "theme": spot["theme"],
+                "stay_minutes": 60,
+                "why": (item.get("reason") or spot.get("description", "")).strip(),
+                "move_to_next": "",
+            }
+        )
+
+    legacy = {
+        "itinerary_title": title,
+        "summary": intro,
+        "route_steps": route_steps,
+        "total_duration": "반나절~당일",
+        "map_tip": "지도에서 번호 순으로 동선을 확인하세요.",
+    }
+    message = format_itinerary_message(legacy, curated)
+    return {
+        "itinerary_title": title,
+        "summary": intro,
+        "message": message,
+        "curated_spots": curated,
+        "route_steps": route_steps,
+        "map_tip": legacy["map_tip"],
+        "total_duration": legacy["total_duration"],
+        "trip_intent": {},
+        "transit_plan": {},
+        "accommodation": {},
+        "day_plans": [],
+        "source": "",
+    }
+
+
 def _finalize_curation(parsed: dict[str, Any], spots: list[dict[str, Any]], user_message: str = "") -> dict[str, Any]:
+    if (
+        parsed.get("fallback_triggered") is not None
+        or "introduction" in parsed
+        or "itinerary" in parsed
+    ):
+        return _finalize_kto_json_curation(parsed, spots, user_message)
+
     regions = regions_in_message(user_message)
     route_names = parsed.get("route_order") or parsed.get("recommended_spots") or []
     if not route_names:

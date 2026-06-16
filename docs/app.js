@@ -29,51 +29,42 @@ const AGENT_WELCOME =
 
 const GANGWON_AGENT_ROLE =
   "# ROLE\n" +
-  'You are "Gangwon-do Tourism Expert AI," an official guide dedicated to revitalizing the local economy of Gangwon-do. ' +
-  "Your engine is fueled directly by live Korea Tourism Organization (KTO) API data.\n\n" +
-  "Your ONLY domain is Gangwon-do, South Korea (e.g., Wonju, Gangneung, Chuncheon, Sokcho, etc.).\n\n" +
-  "# INPUT CONTEXT CONSTRAINTS\n" +
-  "You will be provided with a structured data context named `compactSpotCatalog` derived from KTO Open APIs, containing:\n" +
-  "- Spot Names & Descriptions (국문 관광 정보)\n" +
-  "- Eco-Tourism/Local Attractions (생태 및 지자체 중심 정보)\n" +
-  "- Regional Big Data (지역별 방문자 수 및 통계 자료)\n\n" +
-  "# CORE DIRECTIVES (STRICT)\n" +
-  "1. LANGUAGE: ALWAYS reply in polite, enthusiastic Korean (해요체/하십시오체).\n" +
-  "2. BOUNDARY: NEVER provide information, travel routes, or recommendations for locations outside Gangwon-do.\n" +
-  "3. DATA SOURCE: Base answers strictly on the provided KTO API context — never invent spots or stats.\n\n" +
-  "# OUT-OF-BOUNDS HANDLING (GUARDRAIL)\n" +
-  "If the user asks about ANY region outside Gangwon-do (e.g., Seoul, Busan, Jeju, or overseas):\n" +
-  "- Do NOT answer the query.\n" +
-  "- Politely state your purpose (Gangwon-do specialization).\n" +
-  "- Pivot immediately to a similar concept/vibe within Gangwon-do.\n" +
-  'Format: "[Polite Refusal] + [Reason] + [Gangwon Alternative]"';
+  'You are "Gangwon-do Tourism Expert AI", an official guide for Gangwon-do, South Korea.\n' +
+  "Your responses must be entirely based on the injected KTO (Korea Tourism Organization) data provided within the <kto_data> XML tags.\n\n" +
+  "# INPUT CONTEXT\n" +
+  "You will receive context data enclosed in <kto_data> tags. This data is strictly filtered and formatted.\n" +
+  "Example format:\n" +
+  "<kto_data>\n" +
+  "| 지역 | 관광지명 | 생태/테마 | 방문자수(빅데이터) |\n" +
+  "|---|---|---|---|\n" +
+  "| 원주 | 소금산 출렁다리 | 자연/풍경 | 15000 |\n" +
+  "| 원주 | 뮤지엄 산 | 문화/예술 | 8000 |\n" +
+  "</kto_data>\n\n" +
+  "# STRICT DIRECTIVES\n" +
+  "1. DATA ISOLATION: Do NOT use your pre-trained knowledge to suggest locations. You must ONLY use the spots listed inside <kto_data>.\n" +
+  "2. REGION LOCKING: Ensure the spots you recommend strictly match the city/county the user asked for.\n" +
+  "3. MULTI-INTENT FULFILLMENT: Analyze <kto_data> to create BOTH a compelling introduction and a structured itinerary.\n\n" +
+  "# OUT-OF-BOUNDS (Gangwon-only)\n" +
+  "If the user asks about locations outside Gangwon-do: set fallback_triggered to true, " +
+  'introduction to a polite refusal+pivot in Korean, itinerary to [].';
 
-const KTO_API_DATA_RULES =
-  "# STRICT API DATA UTILIZATION RULES\n\n" +
-  "## 1. MULTI-INTENT PROCESSING VIA API (Intro + Schedule)\n" +
-  'When a user asks for both information ("알려줘") and an itinerary ("일정 짜줘"):\n' +
-  "- **Step 1 (API-Based Intro):** Extract descriptive phrases, themes, and big-data statistics from the KTO context for the target region (use `summary`).\n" +
-  "- **Step 2 (API-Based Itinerary):** Immediately follow with `route_steps` — arrange exact spots from the context into a chronological itinerary.\n" +
-  "- **Prohibition:** Never skip Step 2. KTO data must become BOTH an informational overview AND a structured schedule.\n\n" +
-  "## 2. DATA-DRIVEN REGION FILTERING (Cross-Region Bug Fix)\n" +
-  "To prevent recommending spots from other cities (e.g., Gangneung spots for a Wonju query):\n" +
-  "- Inspect location/region fields in every `compactSpotCatalog` entry. Filter to ONLY the requested city/county.\n" +
-  "- Rank using **Regional Big Data (visitor counts) for that city only**. Do not let other cities' stats skew curation.\n\n" +
-  "## 3. LOCALIZED FALLBACK PROTOCOL (Global Fallback Bug Fix)\n" +
-  "If spot-name parsing fails or a spot is not in the catalog:\n" +
-  "- Do NOT fall back to global top Gangwon spots.\n" +
-  "- Select the next best alternative from the **same requested city** using local big-data / hub-rank metrics.\n" +
-  "- If the entire dataset for that city is empty, set summary to exactly:\n" +
-  '  "현재 KTO API 상에 [요청 지역]의 상세 정보가 부족합니다. 데이터 기반 빅데이터 방문자 수가 높은 다른 매력적인 강원도 지역을 추천해 드릴까요?"\n' +
-  "  and route_steps to [].";
+const KTO_OUTPUT_FORMAT =
+  "# FALLBACK PROTOCOL\n" +
+  "If the <kto_data> block is empty, or does not contain spots matching the user's requested region:\n" +
+  'Set "fallback_triggered" to true and set "introduction" to EXACTLY:\n' +
+  '"현재 KTO API 상에 요청하신 지역의 상세 정보가 부족합니다. 데이터 기반 방문자 수가 높은 다른 강원도 지역을 추천해 드릴까요?"\n\n' +
+  "# OUTPUT FORMAT (STRICT JSON)\n" +
+  "Return STRICTLY a valid JSON object. No markdown code fences. Polite Korean for all string values.\n" +
+  "{\n" +
+  '  "introduction": "Engaging intro using themes and big data from <kto_data>",\n' +
+  '  "itinerary": [\n' +
+  '    {"step": 1, "spot_name": "EXACT name from <kto_data>", "reason": "Why recommended, referencing theme or visitor count"}\n' +
+  "  ],\n" +
+  '  "fallback_triggered": false\n' +
+  "}";
 
-const CURATION_TASK_PROMPT =
-  "# CURATION TASK\n" +
-  "When the user requests a trip plan or course: output JSON ONLY (schema below).\n" +
-  "Pick spot_name only from the Gangwon catalog. Never include non-Gangwon destinations.\n" +
-  "If intro + itinerary were both requested: summary = Step 1 intro; route_steps = Step 2 schedule (non-empty).\n" +
-  "If the request is entirely outside Gangwon-do: set summary to a polite refusal+pivot (해요체), " +
-  "itinerary_title to '강원도 전용 안내', route_steps to [].\n";
+const KTO_FALLBACK_INTRO =
+  "현재 KTO API 상에 요청하신 지역의 상세 정보가 부족합니다. 데이터 기반 방문자 수가 높은 다른 강원도 지역을 추천해 드릴까요?";
 
 const GANGWON_REGION_NAMES = [
   "강릉시", "고성군", "동해시", "삼척시", "속초시", "양구군", "양양군", "영월군",
@@ -110,11 +101,8 @@ function isMultiIntentPrompt(prompt) {
   return regionsInPrompt(msg).length > 0 && REGION_INFO_INTENT_RE.test(msg) && hasTripPlanIntent(msg);
 }
 
-function regionEmptyFallbackMessage(region) {
-  return (
-    `현재 KTO API 상에 ${region}의 상세 정보가 부족합니다. ` +
-    "데이터 기반 빅데이터 방문자 수가 높은 다른 매력적인 강원도 지역을 추천해 드릴까요?"
-  );
+function regionEmptyFallbackMessage() {
+  return KTO_FALLBACK_INTRO;
 }
 
 function ktoThemeFromCategory(category) {
@@ -131,11 +119,11 @@ function collectKtoCatalogEntries(region) {
   const seen = new Set();
   const out = [];
 
-  function add(name, { rank, theme, source, lat, lng }) {
+  function add(name, { rank, theme, source, lat, lng, categoryLabel }) {
     const key = String(name || "").replace(/\s/g, "");
     if (!name || seen.has(key)) return;
     seen.add(key);
-    out.push({ name, region, theme, rank, source, lat, lng });
+    out.push({ name, region, theme, rank, source, lat, lng, categoryLabel: categoryLabel || "" });
   }
 
   hubs.forEach((h) =>
@@ -145,6 +133,7 @@ function collectKtoCatalogEntries(region) {
       source: "중심관광지",
       lat: h.lat,
       lng: h.lng,
+      categoryLabel: h.category || h.category_m || "",
     })
   );
   kor.forEach((k, i) => {
@@ -182,6 +171,50 @@ function ktoEntryToSpot(entry, region) {
   };
 }
 
+function ktoThemeDisplayLabel(entry) {
+  const cat = String(entry.categoryLabel || "").trim();
+  if (cat) {
+    if (/자연|생태|산|숲|경관/.test(cat)) return "자연/풍경";
+    if (/레저|스포츠|체험/.test(cat)) return "레저/체험";
+    if (/문화|예술|역사/.test(cat)) return "문화/예술";
+    return cat.replace(/관광/g, "").trim() || "관광";
+  }
+  if (entry.theme === "nature") return "자연/풍경";
+  if (entry.theme === "experience") return "레저/체험";
+  return "문화/예술";
+}
+
+function ktoSpotVisitorCount(region, rank) {
+  const stats = typeof TOUR_VISITOR_STATS !== "undefined" ? TOUR_VISITOR_STATS?.regions?.[region] : null;
+  const base = stats?.avg_daily || stats?.total || 0;
+  if (!base) return "—";
+  const weight = rank <= 5 ? (6 - Math.min(rank, 5)) / 15 : 1 / (rank + 5);
+  return Math.max(100, Math.round(base * weight));
+}
+
+function buildKtoDataXml(prompt, maxRows = 12) {
+  const regions = regionsInPrompt(prompt);
+  const targetRegions = regions.length ? regions : GANGWON_REGION_NAMES.slice(0, 6);
+  const rows = [];
+  for (const region of targetRegions) {
+    for (const entry of collectKtoCatalogEntries(region)) {
+      if (rows.length >= maxRows) break;
+      rows.push({
+        region: region.replace(/(시|군)$/, ""),
+        name: entry.name,
+        theme: ktoThemeDisplayLabel(entry),
+        visitors: ktoSpotVisitorCount(region, entry.rank),
+      });
+    }
+    if (rows.length >= maxRows) break;
+  }
+  if (!rows.length) return "<kto_data>\n</kto_data>";
+  const header = "| 지역 | 관광지명 | 생태/테마 | 방문자수(빅데이터) |";
+  const sep = "|---|---|---|---|";
+  const body = rows.map((r) => `| ${r.region} | ${r.name} | ${r.theme} | ${r.visitors} |`).join("\n");
+  return `<kto_data>\n${header}\n${sep}\n${body}\n</kto_data>`;
+}
+
 function hubRankMap(region) {
   const map = new Map();
   collectKtoCatalogEntries(region).forEach((e) => map.set(e.name, e.rank));
@@ -214,21 +247,21 @@ function regionFocusPromptBlock(prompt) {
   const lines = [
     "# REGION FOCUS (STRICT)",
     `User focus region(s): ${regions.join(", ")}.`,
-    "- Filter compactSpotCatalog to these region(s) ONLY before ranking or picking spots.",
-    "- Rank using visitor big-data for these region(s) only — ignore other cities' stats.",
+    "- Use ONLY rows inside <kto_data> that match these region(s).",
+    "- Rank by 방문자수(빅데이터) within the requested region only.",
   ];
   if (multi) {
     lines.push(
       "- MULTI-INTENT: User wants intro AND itinerary.",
-      "- summary: Step 1 — KTO data-backed regional introduction (해요체).",
-      "- route_steps: Step 2 — non-empty chronological itinerary from catalog; NEVER skip."
+      "- introduction: Step 1 — KTO data-backed regional intro from <kto_data>.",
+      "- itinerary: Step 2 — non-empty array from <kto_data> spot names; NEVER skip."
     );
   } else {
     lines.push("- summary: polite Korean (해요체) introducing this region using KTO context — sights, food, mood.");
   }
   lines.push(
-    `- route_steps: spot_name MUST be from the catalog below AND located in ${regions.join(" or ")}.`,
-    "- Do NOT include spots from other cities/counties unless the user explicitly asked for a multi-city trip."
+    "- spot_name in itinerary MUST be EXACT names from <kto_data> for these region(s).",
+    "- Do NOT include spots from other cities/counties unless multi-city was requested."
   );
   return lines.join("\n") + "\n";
 }
@@ -1566,6 +1599,68 @@ function resolveSpotWithRegionalFallback(name, regions, usedNames) {
 function parseGeminiCuration(raw, prompt) {
   const parsed = parseJsonFromGemini(raw);
   const regions = regionsInPrompt(prompt);
+
+  if (parsed.fallback_triggered || parsed.introduction != null || Array.isArray(parsed.itinerary)) {
+    const intro = parsed.introduction || KTO_FALLBACK_INTRO;
+    if (parsed.fallback_triggered || !parsed.itinerary?.length) {
+      return {
+        title: regions[0] ? `${regions[0]} 안내` : "강원도 안내",
+        summary: intro,
+        duration: "",
+        steps: [],
+        source: "gemini",
+        tripIntent: {},
+        transitPlan: {},
+        accommodation: {},
+        dayPlans: [],
+      };
+    }
+    const usedNames = new Set();
+    const steps = parsed.itinerary
+      .map((item, i) => {
+        const spot = resolveSpotWithRegionalFallback(item.spot_name, regions, usedNames);
+        if (!spot) return null;
+        if (regions.length && !regions.includes(spot.region)) return null;
+        usedNames.add(spot.name);
+        return {
+          order: item.step ?? i + 1,
+          day: 1,
+          spot,
+          stay: spot.stay_min ?? 60,
+          why: (item.reason || `${spot.description}. ${spot.tip || ""}`).trim(),
+          move_to_next: "",
+        };
+      })
+      .filter(Boolean);
+    if (!steps.length) {
+      return {
+        title: regions[0] ? `${regions[0]} 안내` : "강원도 안내",
+        summary: intro,
+        duration: "",
+        steps: [],
+        source: "gemini",
+        tripIntent: {},
+        transitPlan: {},
+        accommodation: {},
+        dayPlans: [],
+      };
+    }
+    const scoped = constrainStepsToRegions(steps, regions);
+    const legs = computeLegs(scoped);
+    const sum = routeSummary(scoped, legs);
+    return {
+      title: regions[0] ? `${regions[0]} AI 추천 코스` : "AI 추천 코스",
+      summary: intro,
+      duration: sum.totalMin <= 300 ? "반나절 코스" : "당일 코스",
+      steps: scoped,
+      source: "gemini",
+      tripIntent: {},
+      transitPlan: {},
+      accommodation: {},
+      dayPlans: [],
+    };
+  }
+
   const usedNames = new Set();
   const steps = (parsed.route_steps || [])
     .map((st, i) => {
@@ -1585,7 +1680,7 @@ function parseGeminiCuration(raw, prompt) {
     .filter(Boolean);
   if (!steps.length) {
     if (regions.length && !pickRegionalSpots(regions, 1).length) {
-      const msg = regionEmptyFallbackMessage(regions[0]);
+      const msg = regionEmptyFallbackMessage();
       return {
         title: `${regions[0]} 안내`,
         summary: msg,
@@ -1602,7 +1697,7 @@ function parseGeminiCuration(raw, prompt) {
   }
   const scoped = constrainStepsToRegions(steps, regions);
   if (!scoped.length && regions.length) {
-    const msg = regionEmptyFallbackMessage(regions[0]);
+    const msg = regionEmptyFallbackMessage();
     return {
       title: `${regions[0]} AI 추천 코스`,
       summary: parsed.summary || msg,
@@ -1633,9 +1728,7 @@ function localCuration(prompt, source = "local") {
   const regions = regionsInPrompt(prompt);
   const picks = pickSpotsForPrompt(prompt, 3);
   if (!picks.length) {
-    const msg = regions[0]
-      ? regionEmptyFallbackMessage(regions[0])
-      : "현재 필터에 맞는 장소가 없습니다.";
+    const msg = regions[0] ? regionEmptyFallbackMessage() : "현재 필터에 맞는 장소가 없습니다.";
     return {
       title: regions[0] ? `${regions[0]} 안내` : "맞춤 코스",
       summary: msg,
@@ -1667,28 +1760,13 @@ function localCuration(prompt, source = "local") {
 /* ==================== Curation ==================== */
 async function geminiCuration(prompt, key) {
   await waitGeminiSlot();
-  const catalog = compactSpotCatalog(prompt);
-  const hints = buildTripHints(prompt);
-  const kto = buildKtoApiContext(prompt);
+  const ktoXml = buildKtoDataXml(prompt);
   const regionFocus = regionFocusPromptBlock(prompt);
   const sys =
     GANGWON_AGENT_ROLE + "\n\n" +
-    KTO_API_DATA_RULES + "\n\n" +
-    (kto ? kto + "\n\n" : "") +
-    (regionFocus ? regionFocus + "\n" : "") +
-    CURATION_TASK_PROMPT +
-    "Extract trip_intent: origin,transport,duration,companion,themes. " +
-    "Plan outbound transit,lodging,return when user asks.\n" +
-    hints + "\n" +
-    '{"trip_intent":{"origin":"","transport":"","duration":"","companion":"","themes":[]},' +
-    '"transit_plan":{"outbound":"","return":"","local_transit":""},' +
-    '"accommodation":{"area":"","type":"","note":""},' +
-    '"itinerary_title":"","summary":"","total_duration":"",' +
-    '"day_plans":[{"day":1,"title":"","focus":""}],' +
-    '"route_steps":[{"order":1,"day":1,"spot_name":"","stay_minutes":60,"why":"","move_to_next":""}]}\n' +
-    "1박2일=2-4 spots; spot_name exact from catalog; move_to_next=KTX/버스/환승 when transit.\n" +
-    "# GANGWON SPOT CATALOG (name|region|theme)\n" +
-    catalog;
+    ktoXml + "\n\n" +
+    KTO_OUTPUT_FORMAT +
+    (regionFocus ? "\n\n" + regionFocus : "");
   const body = {
     system_instruction: { parts: [{ text: sys }] },
     contents: [{ role: "user", parts: [{ text: prompt.slice(0, 600) }] }],
@@ -1784,7 +1862,7 @@ async function runRegionTrip(prompt, key, complex) {
   const cacheKey = normalizePromptKey(prompt);
   if (curationCache.has(cacheKey)) {
     const cached = curationCache.get(cacheKey);
-    const prefix = multiIntent ? buildRegionInfoReply(prompt) : "";
+    const prefix = multiIntent && cached.source !== "gemini" ? buildRegionInfoReply(prompt) : "";
     applyCurationResult(prompt, cached, { chatPrefix: prefix });
     return;
   }
@@ -1813,7 +1891,7 @@ async function runRegionTrip(prompt, key, complex) {
     result = localCuration(prompt, "local");
   }
 
-  const prefix = multiIntent ? buildRegionInfoReply(prompt) : "";
+  const prefix = multiIntent && result.source !== "gemini" ? buildRegionInfoReply(prompt) : "";
   saveCurationAndApply(prompt, result, { chatPrefix: prefix });
 }
 
