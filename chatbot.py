@@ -14,9 +14,11 @@ from gangwon_agent_prompt import (
     is_multi_intent_prompt,
     is_region_info_only_prompt,
     out_of_gangwon_reply,
+    pick_province_wide_spots,
     pick_regional_spots,
     region_empty_fallback_message,
     regions_in_message,
+    resolve_kto_spot_by_name,
 )
 from trip_intent import attach_origin_step, build_trip_hints, detect_themes, needs_ai_curation
 
@@ -99,17 +101,23 @@ def _spots_from_names(
         pool = [s for s in spots if s.get("region") in regions]
     order = {name: idx for idx, name in enumerate(names)}
     by_name = {s["name"]: s for s in pool}
-    result = []
+    result: list[dict[str, Any]] = []
     for name in names:
         if name in by_name and by_name[name] not in result:
             result.append(by_name[name])
-    if result:
-        return result
-    for spot in pool:
+    if not result:
+        for spot in pool:
+            for name in names:
+                if name in spot["name"] or spot["name"] in name:
+                    if spot not in result:
+                        result.append(spot)
+    if not result:
         for name in names:
-            if name in spot["name"] or spot["name"] in name:
-                if spot not in result:
-                    result.append(spot)
+            kto = resolve_kto_spot_by_name(name, regions)
+            if not kto:
+                kto = resolve_kto_spot_by_name(name, None)
+            if kto and kto not in result:
+                result.append(kto)
     if not result and regions:
         kto_pool = pick_regional_spots(spots, regions, limit=8)
         for name in names:
@@ -476,18 +484,22 @@ def _finalize_kto_json_curation(
     user_message: str,
 ) -> dict[str, Any]:
     regions = regions_in_message(user_message)
-    intro = parsed.get("introduction") or KTO_FALLBACK_INTRO
-    title = f"{regions[0]} AI 추천 코스" if regions else "AI 추천 코스"
+    intro = str(parsed.get("introduction") or KTO_FALLBACK_INTRO)
+    if not regions:
+        regions = regions_in_message(intro)
+    title = f"{regions[0]} AI 추천 코스" if regions else "강원도 AI 추천 코스"
 
-    if parsed.get("fallback_triggered") or not parsed.get("itinerary"):
+    if parsed.get("fallback_triggered"):
+        curated = pick_regional_spots(spots, regions, limit=3) if regions else pick_province_wide_spots(spots, limit=3)
+        route_steps = _steps_for_spots(curated, parsed) if curated else []
         return {
             "itinerary_title": f"{regions[0]} 안내" if regions else "강원도 안내",
             "summary": intro,
-            "message": intro,
-            "curated_spots": [],
-            "route_steps": [],
-            "map_tip": "",
-            "total_duration": "",
+            "message": format_itinerary_message({"itinerary_title": title, "summary": intro}, curated) if curated else intro,
+            "curated_spots": curated,
+            "route_steps": route_steps,
+            "map_tip": "지도에서 번호 순으로 동선을 확인하세요." if curated else "",
+            "total_duration": "반나절~당일" if curated else "",
             "trip_intent": {},
             "transit_plan": {},
             "accommodation": {},
@@ -495,12 +507,17 @@ def _finalize_kto_json_curation(
             "source": "",
         }
 
-    names = [str(item.get("spot_name") or "") for item in (parsed.get("itinerary") or []) if item.get("spot_name")]
+    itinerary = parsed.get("itinerary") or []
+    names = [str(item.get("spot_name") or "") for item in itinerary if item.get("spot_name")]
     curated = _spots_from_names(spots, names, regions=regions or None)
     if not curated and regions:
-        curated = pick_regional_spots(spots, regions, limit=min(3, len(names) or 3))
+        curated = pick_regional_spots(spots, regions, limit=min(3, max(len(names), 2)))
+    if not curated and names:
+        curated = _spots_from_names(spots, names, regions=None)
+    if not curated:
+        curated = pick_regional_spots(spots, regions, limit=3) if regions else pick_province_wide_spots(spots, limit=3)
 
-    by_name = {item.get("spot_name"): item for item in (parsed.get("itinerary") or [])}
+    by_name = {item.get("spot_name"): item for item in itinerary}
     route_steps = []
     for idx, spot in enumerate(curated, start=1):
         item = by_name.get(spot["name"], {})

@@ -55,6 +55,11 @@ You must return your response STRICTLY as a valid JSON object. Do not include ma
   ],
   "fallback_triggered": false
 }
+
+# ITINERARY RULES
+- When <kto_data> has rows: "itinerary" MUST be a non-empty array (at least 2 items).
+- Each spot_name MUST copy a 관광지명 from <kto_data> character-for-character.
+- Never return introduction-only JSON when <kto_data> is non-empty.
 """
 
 KTO_FALLBACK_INTRO = (
@@ -303,6 +308,38 @@ def collect_kto_catalog_entries(region: str) -> list[dict[str, Any]]:
     return out
 
 
+def _norm_spot_key(name: str) -> str:
+    return re.sub(r"[\s·\-]+", "", (name or "").strip())
+
+
+def resolve_kto_spot_by_name(
+    name: str,
+    regions_hint: list[str] | None = None,
+) -> dict[str, Any] | None:
+    """KTO hub/kor/eco 이름 → spot dict (로컬 spots.json 없어도 매칭)."""
+    raw = (name or "").strip()
+    if not raw:
+        return None
+    key = _norm_spot_key(raw)
+    search_regions = regions_hint if regions_hint else list(GANGWON_REGIONS)
+    for region in search_regions:
+        for entry in collect_kto_catalog_entries(region):
+            entry_key = _norm_spot_key(str(entry.get("name") or ""))
+            entry_name = str(entry.get("name") or "")
+            if not entry_name:
+                continue
+            if (
+                entry_name == raw
+                or entry_key == key
+                or raw in entry_name
+                or entry_name in raw
+                or key in entry_key
+                or entry_key in key
+            ):
+                return kto_entry_to_spot_dict(entry, region)
+    return None
+
+
 def kto_entry_to_spot_dict(entry: dict[str, Any], region: str) -> dict[str, Any]:
     theme_map = {"nature": "자연", "culture": "문화", "experience": "체험"}
     theme = theme_map.get(str(entry.get("theme") or ""), "관광")
@@ -318,9 +355,26 @@ def kto_entry_to_spot_dict(entry: dict[str, Any], region: str) -> dict[str, Any]
     }
 
 
+def pick_province_wide_spots(spots: list[dict[str, Any]], *, limit: int = 3) -> list[dict[str, Any]]:
+    """강원도 전역 — 시군별 KTO 1순위를 골고루."""
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for region in GANGWON_REGIONS:
+        if len(out) >= limit:
+            break
+        picks = pick_regional_spots(spots, [region], limit=1)
+        for spot in picks:
+            name = str(spot.get("name") or "")
+            if name and name not in seen:
+                seen.add(name)
+                out.append(spot)
+                break
+    return out[:limit]
+
+
 def pick_regional_spots(spots: list[dict[str, Any]], regions: list[str], *, limit: int = 3) -> list[dict[str, Any]]:
     if not regions:
-        return spots[:limit]
+        return pick_province_wide_spots(spots, limit=limit)
     region = regions[0]
     local = [s for s in spots if s.get("region") == region]
     if local:

@@ -61,7 +61,11 @@ const KTO_OUTPUT_FORMAT =
   '    {"step": 1, "spot_name": "EXACT name from <kto_data>", "reason": "Why recommended, referencing theme or visitor count"}\n' +
   "  ],\n" +
   '  "fallback_triggered": false\n' +
-  "}";
+  "}\n\n" +
+  "# ITINERARY RULES\n" +
+  "- When <kto_data> has rows: itinerary MUST be non-empty (at least 2 items).\n" +
+  "- Each spot_name MUST copy a 관광지명 from <kto_data> character-for-character.\n" +
+  "- Never return introduction-only JSON when <kto_data> is non-empty.";
 
 const KTO_FALLBACK_INTRO =
   "현재 KTO API 상에 요청하신 지역의 상세 정보가 부족합니다. 데이터 기반 방문자 수가 높은 다른 강원도 지역을 추천해 드릴까요?";
@@ -192,21 +196,92 @@ function ktoSpotVisitorCount(region, rank) {
   return Math.max(100, Math.round(base * weight));
 }
 
+function normSpotKey(name) {
+  return String(name ?? "").replace(/[\s·\-]+/g, "").trim();
+}
+
+function isProvinceWidePrompt(msg) {
+  return /강원도?/.test(String(msg || "")) && !regionsInPrompt(msg).length;
+}
+
+function inferRegionsForCuration(prompt, intro = "") {
+  const fromPrompt = regionsInPrompt(prompt);
+  if (fromPrompt.length) return fromPrompt;
+  return regionsInPrompt(intro);
+}
+
+function resolveKtoSpotByName(name, regionsHint = []) {
+  const raw = String(name ?? "").trim();
+  if (!raw) return null;
+  const key = normSpotKey(raw);
+  const searchRegions = regionsHint.length ? regionsHint : GANGWON_REGION_NAMES;
+  for (const region of searchRegions) {
+    for (const entry of collectKtoCatalogEntries(region)) {
+      const entryName = String(entry.name || "");
+      const entryKey = normSpotKey(entryName);
+      if (!entryName) continue;
+      if (
+        entryName === raw ||
+        entryKey === key ||
+        entryName.includes(raw) ||
+        raw.includes(entryName) ||
+        entryKey.includes(key) ||
+        key.includes(entryKey)
+      ) {
+        return ktoEntryToSpot(entry, region);
+      }
+    }
+  }
+  return null;
+}
+
+function pickProvinceWideSpots(limit = 3) {
+  const out = [];
+  const seen = new Set();
+  for (const region of GANGWON_REGION_NAMES) {
+    if (out.length >= limit) break;
+    const entries = collectKtoCatalogEntries(region);
+    if (!entries.length) continue;
+    const spot = ktoEntryToSpot(entries[0], region);
+    if (!seen.has(spot.name)) {
+      seen.add(spot.name);
+      out.push(spot);
+    }
+  }
+  return out;
+}
+
 function buildKtoDataXml(prompt, maxRows = 12) {
   const regions = regionsInPrompt(prompt);
-  const targetRegions = regions.length ? regions : GANGWON_REGION_NAMES.slice(0, 6);
+  const provinceWide = isProvinceWidePrompt(prompt);
+  const targetRegions = regions.length ? regions : GANGWON_REGION_NAMES;
+  const cap = provinceWide ? Math.max(maxRows, 18) : maxRows;
   const rows = [];
-  for (const region of targetRegions) {
-    for (const entry of collectKtoCatalogEntries(region)) {
-      if (rows.length >= maxRows) break;
+  if (provinceWide && !regions.length) {
+    for (const region of targetRegions) {
+      if (rows.length >= cap) break;
+      const top = collectKtoCatalogEntries(region)[0];
+      if (!top) continue;
       rows.push({
         region: region.replace(/(시|군)$/, ""),
-        name: entry.name,
-        theme: ktoThemeDisplayLabel(entry),
-        visitors: ktoSpotVisitorCount(region, entry.rank),
+        name: top.name,
+        theme: ktoThemeDisplayLabel(top),
+        visitors: ktoSpotVisitorCount(region, top.rank),
       });
     }
-    if (rows.length >= maxRows) break;
+  } else {
+    for (const region of targetRegions) {
+      for (const entry of collectKtoCatalogEntries(region)) {
+        if (rows.length >= cap) break;
+        rows.push({
+          region: region.replace(/(시|군)$/, ""),
+          name: entry.name,
+          theme: ktoThemeDisplayLabel(entry),
+          visitors: ktoSpotVisitorCount(region, entry.rank),
+        });
+      }
+      if (rows.length >= cap) break;
+    }
   }
   if (!rows.length) return "<kto_data>\n</kto_data>";
   const header = "| 지역 | 관광지명 | 생태/테마 | 방문자수(빅데이터) |";
@@ -477,7 +552,11 @@ function buildAgentReply(result) {
   if (result.accommodation?.area) {
     lines.push(`숙소: ${result.accommodation.area} ${result.accommodation.type || ""}`.trim());
   }
-  lines.push("아래 **일정·지도 열기** 버튼으로 확인하세요.");
+  if (result.steps.length) {
+    lines.push("아래 **일정·지도 열기** 버튼으로 확인하세요.");
+  } else {
+    lines.push("시·군 이름을 넣어 다시 질문하시면 일정·지도도 만들어 드릴게요.");
+  }
   return lines.join("\n");
 }
 
@@ -1540,18 +1619,87 @@ function resolveSpotByName(name, regions = []) {
   const scoped = regions.length ? regions : regionsInPrompt(state.query || "");
   const enriched = resolveSpotByNameInEnriched(raw, scoped);
   if (enriched) return enriched;
+  const kto = resolveKtoSpotByName(raw, scoped);
+  if (kto) return kto;
+  const globalKto = resolveKtoSpotByName(raw, GANGWON_REGION_NAMES);
+  if (globalKto) return globalKto;
   if (scoped.length) {
-    for (const region of scoped) {
-      const entry = collectKtoCatalogEntries(region).find(
-        (e) => e.name === raw || e.name.includes(raw) || raw.includes(e.name)
-      );
-      if (entry) return ktoEntryToSpot(entry, region);
-    }
-  } else {
     const global = resolveSpotByNameInEnriched(raw, []);
     if (global) return global;
   }
   return null;
+}
+
+function buildStepsFromItinerary(itinerary, prompt, intro = "") {
+  const inferredRegions = inferRegionsForCuration(prompt, intro);
+  const usedNames = new Set();
+  const steps = [];
+  for (let i = 0; i < (itinerary || []).length; i++) {
+    const item = itinerary[i];
+    const rawName = String(item.spot_name || "").trim();
+    if (!rawName) continue;
+    let spot =
+      resolveSpotByName(rawName, inferredRegions) ||
+      resolveKtoSpotByName(rawName, GANGWON_REGION_NAMES);
+    if (!spot && inferredRegions.length) {
+      spot = pickRegionalSpots(inferredRegions, 5).find((s) => !usedNames.has(s.name));
+    }
+    if (!spot || usedNames.has(spot.name)) continue;
+    if (inferredRegions.length && !inferredRegions.includes(spot.region)) continue;
+    usedNames.add(spot.name);
+    steps.push({
+      order: item.step ?? i + 1,
+      day: 1,
+      spot,
+      stay: spot.stay_min ?? 60,
+      why: (item.reason || `${spot.description}. ${spot.tip || ""}`).trim(),
+      move_to_next: "",
+    });
+  }
+  return steps;
+}
+
+function ensureCurationHasSteps(result, parsed, prompt) {
+  if (result.steps?.length) return result;
+  const intro = parsed.introduction || result.summary || "";
+  const inferredRegions = inferRegionsForCuration(prompt, intro);
+
+  if (parsed.itinerary?.length) {
+    const steps = buildStepsFromItinerary(parsed.itinerary, prompt, intro);
+    if (steps.length) {
+      const scoped = constrainStepsToRegions(steps, inferredRegions);
+      const legs = computeLegs(scoped);
+      const sum = routeSummary(scoped, legs);
+      return {
+        ...result,
+        steps: scoped,
+        duration: sum.totalMin <= 300 ? "반나절 코스" : "당일 코스",
+        title: inferredRegions[0] ? `${inferredRegions[0]} AI 추천 코스` : result.title,
+      };
+    }
+  }
+
+  const picks = inferredRegions.length
+    ? pickRegionalSpots(inferredRegions, 3)
+    : pickProvinceWideSpots(3);
+  if (!picks.length) return result;
+
+  const steps = picks.map((spot, i) => ({
+    order: i + 1,
+    day: 1,
+    spot,
+    stay: spot.stay_min ?? 60,
+    why: `${spot.description}. ${spot.tip || ""}`.trim(),
+    move_to_next: "",
+  }));
+  const legs = computeLegs(steps);
+  const sum = routeSummary(steps, legs);
+  return {
+    ...result,
+    steps,
+    duration: sum.totalMin <= 300 ? "반나절 코스" : "당일 코스",
+    title: inferredRegions[0] ? `${inferredRegions[0]} AI 추천 코스` : "강원도 AI 추천 코스",
+  };
 }
 
 function resolveSpotWithRegionalFallback(name, regions, usedNames) {
@@ -1567,11 +1715,11 @@ function resolveSpotWithRegionalFallback(name, regions, usedNames) {
 function parseGeminiCuration(raw, prompt) {
   const parsed = parseJsonFromGemini(raw);
   const regions = regionsInPrompt(prompt);
+  const intro = parsed.introduction || KTO_FALLBACK_INTRO;
 
-  if (parsed.fallback_triggered || parsed.introduction != null || Array.isArray(parsed.itinerary)) {
-    const intro = parsed.introduction || KTO_FALLBACK_INTRO;
-    if (parsed.fallback_triggered || !parsed.itinerary?.length) {
-      return {
+  if (parsed.fallback_triggered) {
+    return ensureCurationHasSteps(
+      {
         title: regions[0] ? `${regions[0]} 안내` : "강원도 안내",
         summary: intro,
         duration: "",
@@ -1581,52 +1729,42 @@ function parseGeminiCuration(raw, prompt) {
         transitPlan: {},
         accommodation: {},
         dayPlans: [],
-      };
-    }
-    const usedNames = new Set();
-    const steps = parsed.itinerary
-      .map((item, i) => {
-        const spot = resolveSpotWithRegionalFallback(item.spot_name, regions, usedNames);
-        if (!spot) return null;
-        if (regions.length && !regions.includes(spot.region)) return null;
-        usedNames.add(spot.name);
-        return {
-          order: item.step ?? i + 1,
-          day: 1,
-          spot,
-          stay: spot.stay_min ?? 60,
-          why: (item.reason || `${spot.description}. ${spot.tip || ""}`).trim(),
-          move_to_next: "",
-        };
-      })
-      .filter(Boolean);
-    if (!steps.length) {
-      return {
-        title: regions[0] ? `${regions[0]} 안내` : "강원도 안내",
-        summary: intro,
-        duration: "",
-        steps: [],
-        source: "gemini",
-        tripIntent: {},
-        transitPlan: {},
-        accommodation: {},
-        dayPlans: [],
-      };
-    }
-    const scoped = constrainStepsToRegions(steps, regions);
-    const legs = computeLegs(scoped);
-    const sum = routeSummary(scoped, legs);
-    return {
-      title: regions[0] ? `${regions[0]} AI 추천 코스` : "AI 추천 코스",
+      },
+      parsed,
+      prompt
+    );
+  }
+
+  if (parsed.introduction != null || Array.isArray(parsed.itinerary)) {
+    const inferredRegions = inferRegionsForCuration(prompt, intro);
+    let steps = parsed.itinerary?.length
+      ? buildStepsFromItinerary(parsed.itinerary, prompt, intro)
+      : [];
+    steps = constrainStepsToRegions(
+      steps,
+      regions.length ? regions : inferredRegions
+    );
+    let result = {
+      title: regions[0]
+        ? `${regions[0]} AI 추천 코스`
+        : inferredRegions[0]
+          ? `${inferredRegions[0]} AI 추천 코스`
+          : "강원도 AI 추천 코스",
       summary: intro,
-      duration: sum.totalMin <= 300 ? "반나절 코스" : "당일 코스",
-      steps: scoped,
+      duration: "",
+      steps,
       source: "gemini",
       tripIntent: {},
       transitPlan: {},
       accommodation: {},
       dayPlans: [],
     };
+    if (steps.length) {
+      const legs = computeLegs(steps);
+      const sum = routeSummary(steps, legs);
+      result.duration = sum.totalMin <= 300 ? "반나절 코스" : "당일 코스";
+    }
+    return ensureCurationHasSteps(result, parsed, prompt);
   }
 
   const usedNames = new Set();
@@ -1730,10 +1868,17 @@ async function geminiCuration(prompt, key) {
   await waitGeminiSlot();
   const ktoXml = buildKtoDataXml(prompt);
   const regionFocus = regionFocusPromptBlock(prompt);
+  const provinceBlock = isProvinceWidePrompt(prompt)
+    ? "# PROVINCE-WIDE QUERY\n" +
+      "User asks about Gangwon-do broadly (no single city/county).\n" +
+      "- Pick one region from <kto_data> and focus introduction + itinerary there.\n" +
+      "- itinerary MUST list 2-3 spots with EXACT names from <kto_data>.\n"
+    : "";
   const sys =
     GANGWON_AGENT_ROLE + "\n\n" +
     ktoXml + "\n\n" +
     KTO_OUTPUT_FORMAT +
+    (provinceBlock ? "\n\n" + provinceBlock : "") +
     (regionFocus ? "\n\n" + regionFocus : "");
   const body = {
     system_instruction: { parts: [{ text: sys }] },
