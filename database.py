@@ -7,9 +7,6 @@ from content_loader import load_spots
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "shy_potatoes.db"
 
-# Canonical owner: data/spots.json (via content_loader)
-SEED_SPOTS: list[dict[str, Any]] = load_spots()
-
 
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
@@ -37,12 +34,20 @@ def init_db() -> None:
 
 
 def seed_data() -> None:
+    load_spots.cache_clear()
+    spots = load_spots()
     with get_connection() as conn:
-        for spot in SEED_SPOTS:
+        for spot in spots:
             conn.execute(
                 """
-                INSERT OR IGNORE INTO spots (name, region, description, lat, lng, theme)
-                VALUES (:name, :region, :description, :lat, :lng, :theme);
+                INSERT INTO spots (name, region, description, lat, lng, theme)
+                VALUES (:name, :region, :description, :lat, :lng, :theme)
+                ON CONFLICT(name) DO UPDATE SET
+                    region = excluded.region,
+                    description = excluded.description,
+                    lat = excluded.lat,
+                    lng = excluded.lng,
+                    theme = excluded.theme;
                 """,
                 spot,
             )
