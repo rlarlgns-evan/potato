@@ -1,6 +1,17 @@
 {
   "source": "TourAPI GreenTourService1 areaBasedList1",
-  "updated_at": null,
+  "updated_at": "2026-06-16",
   "ecoAreaCode": 32,
-  "regions": {}
+  "regions": {
+    "태백시": [
+      {
+        "id": "2549247",
+        "title": "태백고생대자연사 박물관",
+        "summary": "전국에서 유일하게 고생대 지층 위에 건립된 고생대를 주제로 한 전문박물관이다.  고생대에 살았던 동식물의 화석과 모형, 당시 지층의 암석들이 전시되여 있다. 고생대의 바다 환경에서 생존했던 해양생물을 화려한 영상으로 볼 수 있는 비디오영상실이 있으며, 공룡과 암모나이트, 매머드 등 멸종 동물의 화석과 모형도 진열되어…",
+        "addr": "강원특별자치도 태백시 태백로 2249",
+        "tel": "033-581-3003",
+        "image": "http://tong.visitkorea.or.kr/cms/resource/55/2611355_image2_1.bmp"
+      }
+    ]
+  }
 }

@@ -2,5 +2,1032 @@
   "source": "TourAPI LocgoHubTarService1 areaBasedList1",
   "updated_at": "2026-06-16",
   "baseYm": "202605",
-  "regions": {}
+  "regions": {
+    "춘천시": [
+      {
+        "code": "80fd1c872e46fb1956ae2c8203aa5262",
+        "name": "춘천삼악산호수케이블카",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 37.8644149169348,
+        "lng": 127.691340787733,
+        "baseYm": "202605"
+      },
+      {
+        "code": "ba9c2fdd5b459338fde39e8415c05873",
+        "name": "소양강스카이워크",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.8945895145081,
+        "lng": 127.723564719912,
+        "baseYm": "202605"
+      },
+      {
+        "code": "275e9f3c366e31c70f2909671a4e116d",
+        "name": "강촌레일파크 · 김유정역",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "레저스포츠",
+        "category": "레저스포츠",
+        "lat": 37.8166354750739,
+        "lng": 127.712804823616,
+        "baseYm": "202605"
+      },
+      {
+        "code": "ca912c725156fda9e0e36d9293616d2e",
+        "name": "해피초원목장",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "체험관광",
+        "category": "체험관광",
+        "lat": 37.98008628915238,
+        "lng": 127.69799505567795,
+        "baseYm": "202605"
+      },
+      {
+        "code": "c9be92f2483770779b3c963fe8946c29",
+        "name": "레고랜드코리아리조트",
+        "rank": 5,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.88476489125681,
+        "lng": 127.6972426523987,
+        "baseYm": "202605"
+      }
+    ],
+    "원주시": [
+      {
+        "code": "0bfeca2105aa7bf8d83e4622e5da19ec",
+        "name": "뮤지엄산",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.4189019668293,
+        "lng": 127.822991893812,
+        "baseYm": "202605"
+      },
+      {
+        "code": "3816e6ec41e2c0ccbb821954d69a1e95",
+        "name": "오크밸리리조트 · 빌리지센터",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.4342057344668,
+        "lng": 127.819130966451,
+        "baseYm": "202605"
+      },
+      {
+        "code": "0b37553854f416b46ded92602ff89444",
+        "name": "오크밸리CC",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "레저스포츠",
+        "category": "레저스포츠",
+        "lat": 37.4380663643651,
+        "lng": 127.813714745281,
+        "baseYm": "202605"
+      },
+      {
+        "code": "b7744a42d79f430cbe6d0e5d41744964",
+        "name": "원주종합버스터미널",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 37.3448001128875,
+        "lng": 127.930733015399,
+        "baseYm": "202605"
+      },
+      {
+        "code": "488af5b2e04bba94e29498c4f9a5686d",
+        "name": "원주소금산출렁다리",
+        "rank": 5,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 37.3685624,
+        "lng": 127.8247584,
+        "baseYm": "202605"
+      }
+    ],
+    "강릉시": [
+      {
+        "code": "0c4e2344555b6361e8b22bce41ca942f",
+        "name": "강릉중앙시장",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "쇼핑",
+        "category": "쇼핑",
+        "lat": 37.7539867830233,
+        "lng": 128.89861390945,
+        "baseYm": "202605"
+      },
+      {
+        "code": "1597d21403f63da1bb0539592597a525",
+        "name": "경포해변",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 37.8055042534207,
+        "lng": 128.907862265888,
+        "baseYm": "202605"
+      },
+      {
+        "code": "4c9110a57d849af18d7e5f0b3f1a38f1",
+        "name": "신라모노그램 · 강릉",
+        "rank": 3,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 37.78555550484562,
+        "lng": 128.92881337816164,
+        "baseYm": "202605"
+      },
+      {
+        "code": "241a42aa4e1d329ae60189e9679e2866",
+        "name": "안목해변",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 37.773174950389,
+        "lng": 128.947303573799,
+        "baseYm": "202605"
+      },
+      {
+        "code": "0afe1a8a2e9c8ece08216a8b042519ac",
+        "name": "세인트존스호텔",
+        "rank": 5,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 37.7911814060421,
+        "lng": 128.920918376746,
+        "baseYm": "202605"
+      }
+    ],
+    "동해시": [
+      {
+        "code": "bdea8bb6399da11e07adcce2fcb9fdee",
+        "name": "촛대바위",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 37.4790437311299,
+        "lng": 129.159982645127,
+        "baseYm": "202605"
+      },
+      {
+        "code": "ac1a2d113d34fd071f2a89b0fca4b941",
+        "name": "묵호항",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 37.5498685710942,
+        "lng": 129.112486006961,
+        "baseYm": "202605"
+      },
+      {
+        "code": "4dc2c207fd84ca72a16de07cd0cc856b",
+        "name": "망상해수욕장",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 37.5937244737287,
+        "lng": 129.090070799053,
+        "baseYm": "202605"
+      },
+      {
+        "code": "015176c8a8a033bdcc0cef0c8fd80ca2",
+        "name": "동해도째비골스카이밸리",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.5548680547308,
+        "lng": 129.119763073025,
+        "baseYm": "202605"
+      },
+      {
+        "code": "a9fc21ef2caa043762ab45a686214fc5",
+        "name": "어달해변",
+        "rank": 5,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 37.5677276810998,
+        "lng": 129.118568575757,
+        "baseYm": "202605"
+      }
+    ],
+    "태백시": [
+      {
+        "code": "99899e2bd77dc80cce88ea9e0225e0ce",
+        "name": "황지연못",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 37.17296633678,
+        "lng": 128.991056945179,
+        "baseYm": "202605"
+      },
+      {
+        "code": "6fbdcdce1b49c8c6b39f0a9c2f82e7e6",
+        "name": "오투CC",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "레저스포츠",
+        "category": "레저스포츠",
+        "lat": 37.1593842353282,
+        "lng": 128.948783085821,
+        "baseYm": "202605"
+      },
+      {
+        "code": "57fc073dee9b5e57fe93285aadf0d530",
+        "name": "석탄박물관",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.1173057210568,
+        "lng": 128.950533424872,
+        "baseYm": "202605"
+      },
+      {
+        "code": "b372968d0a66cd22959ffa320fe66eb4",
+        "name": "매봉산바람의언덕",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 37.21439864,
+        "lng": 128.96512946,
+        "baseYm": "202605"
+      },
+      {
+        "code": "5b318245d9657d66d012c496416bb751",
+        "name": "태백역",
+        "rank": 5,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 37.17615713187378,
+        "lng": 128.98416546632853,
+        "baseYm": "202605"
+      }
+    ],
+    "속초시": [
+      {
+        "code": "2eba6ef37ac9b1344c9c466446d0072a",
+        "name": "속초관광수산시장",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "쇼핑",
+        "category": "쇼핑",
+        "lat": 38.204511252334,
+        "lng": 128.590247032207,
+        "baseYm": "202605"
+      },
+      {
+        "code": "817c4a3902258090a27aca081b01743f",
+        "name": "속초해변",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 38.190596300717,
+        "lng": 128.603579333174,
+        "baseYm": "202605"
+      },
+      {
+        "code": "3deebb46cef280e372539ec17e64302d",
+        "name": "설악케이블카",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 38.1730621070348,
+        "lng": 128.489129691577,
+        "baseYm": "202605"
+      },
+      {
+        "code": "db3cc7cebebdf997d8923f9eef058bda",
+        "name": "영금정전망대",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 38.2120382500364,
+        "lng": 128.602134752843,
+        "baseYm": "202605"
+      },
+      {
+        "code": "ad19c6867bb2082bc9717d8f3b7fa6ee",
+        "name": "롯데리조트 · 속초",
+        "rank": 5,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 38.1804291055537,
+        "lng": 128.612446044578,
+        "baseYm": "202605"
+      }
+    ],
+    "삼척시": [
+      {
+        "code": "1940eef6f47b71f130be3932e47a947e",
+        "name": "쏠비치 · 삼척",
+        "rank": 1,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 37.4713779755931,
+        "lng": 129.164149035065,
+        "baseYm": "202605"
+      },
+      {
+        "code": "0763ce66033f3599363e8aedd6c0242d",
+        "name": "삼척장미공원",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.43460449451113,
+        "lng": 129.17487075575298,
+        "baseYm": "202605"
+      },
+      {
+        "code": "f44ee90b4270af0123f819df0d8c7861",
+        "name": "새천년해안도로전망대",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.44995175812714,
+        "lng": 129.18940144481115,
+        "baseYm": "202605"
+      },
+      {
+        "code": "2148b254886d4083e985ec471d9a8fe9",
+        "name": "초곡용굴촛대바위길",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 37.3112029011042,
+        "lng": 129.296250365319,
+        "baseYm": "202605"
+      },
+      {
+        "code": "0498ac85ae9ffeb79c012eb6ce7f6899",
+        "name": "삼척중앙시장",
+        "rank": 5,
+        "category_l": "관광지",
+        "category_m": "쇼핑",
+        "category": "쇼핑",
+        "lat": 37.4421035600146,
+        "lng": 129.1652326333,
+        "baseYm": "202605"
+      }
+    ],
+    "홍천군": [
+      {
+        "code": "b7f0c611c96c0aeb4068f34411291b4c",
+        "name": "소노펠리체 비발디파크",
+        "rank": 1,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 37.6518137570023,
+        "lng": 127.682750838168,
+        "baseYm": "202605"
+      },
+      {
+        "code": "e1766dfa81342bbbf06b55f6294a70a5",
+        "name": "소노벨 · 비발디파크",
+        "rank": 2,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 37.64590260824,
+        "lng": 127.680585621258,
+        "baseYm": "202605"
+      },
+      {
+        "code": "6f86adae03cf1c59fd5964461f603f73",
+        "name": "비발디파크 오션월드",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.650070428585025,
+        "lng": 127.6868790426879,
+        "baseYm": "202605"
+      },
+      {
+        "code": "793e5eff39d55b737000306109cdfff7",
+        "name": "소노펠리체CC 비발디파크 이스트",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "레저스포츠",
+        "category": "레저스포츠",
+        "lat": 37.6656225901213,
+        "lng": 127.68608491406249,
+        "baseYm": "202605"
+      },
+      {
+        "code": "392352870cd0824a005074a84eca6b3c",
+        "name": "수타사",
+        "rank": 5,
+        "category_l": "관광지",
+        "category_m": "역사관광",
+        "category": "역사관광",
+        "lat": 37.69856511437794,
+        "lng": 127.95939324803861,
+        "baseYm": "202605"
+      }
+    ],
+    "횡성군": [
+      {
+        "code": "5038ec2c616485770ea09ccbe34cd220",
+        "name": "웰리힐리파크",
+        "rank": 1,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 37.4905355903545,
+        "lng": 128.250591617554,
+        "baseYm": "202605"
+      },
+      {
+        "code": "ba7591c60bae4064cba09c7a38db71fb",
+        "name": "벨라45컨트리클럽",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "레저스포츠",
+        "category": "레저스포츠",
+        "lat": 37.47747913308916,
+        "lng": 127.85631158728853,
+        "baseYm": "202605"
+      },
+      {
+        "code": "586f3019809f5bcecddea3210cc31174",
+        "name": "웰리힐리CC",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "레저스포츠",
+        "category": "레저스포츠",
+        "lat": 37.47356520039583,
+        "lng": 128.2338433102311,
+        "baseYm": "202605"
+      },
+      {
+        "code": "4db4ac896e508852ed1d6d22b6516f8c",
+        "name": "횡성호수길 · 5구간",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "레저스포츠",
+        "category": "레저스포츠",
+        "lat": 37.546346,
+        "lng": 128.0628583,
+        "baseYm": "202605"
+      },
+      {
+        "code": "9449ec99d68414c5d6c6ceb44ecd1877",
+        "name": "동원썬밸리CC",
+        "rank": 5,
+        "category_l": "관광지",
+        "category_m": "레저스포츠",
+        "category": "레저스포츠",
+        "lat": 37.4834498686336,
+        "lng": 127.790466350938,
+        "baseYm": "202605"
+      }
+    ],
+    "영월군": [
+      {
+        "code": "7820c81a9f3671326d2c46c0bd0bdf35",
+        "name": "청령포",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "역사관광",
+        "category": "역사관광",
+        "lat": 37.1761286209556,
+        "lng": 128.4456054792,
+        "baseYm": "202605"
+      },
+      {
+        "code": "5ceb29adcd4b4944f1d50efcfac3aa12",
+        "name": "장릉",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "역사관광",
+        "category": "역사관광",
+        "lat": 37.1974147011244,
+        "lng": 128.452844230105,
+        "baseYm": "202605"
+      },
+      {
+        "code": "e1ae64f6e4d30610e4837270e4eb55f3",
+        "name": "한반도지형",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.2196784867709,
+        "lng": 128.347252660934,
+        "baseYm": "202605"
+      },
+      {
+        "code": "dfdd63bfb1936d90449113d52a9e52c5",
+        "name": "선돌관광지",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.2058812763719,
+        "lng": 128.433274908833,
+        "baseYm": "202605"
+      },
+      {
+        "code": "b8b6cc45c7ed5f095d9a28baf9afb9b4",
+        "name": "탑스텐리조트 · 동강시스타",
+        "rank": 5,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 37.217818816378,
+        "lng": 128.518515173358,
+        "baseYm": "202605"
+      }
+    ],
+    "평창군": [
+      {
+        "code": "80f027540f03986b27e1b16b4759f74e",
+        "name": "대관령양떼목장",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 37.6883221011846,
+        "lng": 128.752710949139,
+        "baseYm": "202605"
+      },
+      {
+        "code": "776e7e89353e146a00645ecb2456c971",
+        "name": "월정사",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "역사관광",
+        "category": "역사관광",
+        "lat": 37.7316492328182,
+        "lng": 128.592585908738,
+        "baseYm": "202605"
+      },
+      {
+        "code": "01dffbc242ba6dd5672bde92ac2b93b4",
+        "name": "휘닉스평창",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.5808035216717,
+        "lng": 128.325667190708,
+        "baseYm": "202605"
+      },
+      {
+        "code": "ad90641e9a8c8aee6f5643d99b00f678",
+        "name": "삼양라운드힐",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 37.72416184055191,
+        "lng": 128.7199635094508,
+        "baseYm": "202605"
+      },
+      {
+        "code": "5cc943ceb89d35e6c326332a5d3a89d6",
+        "name": "라마다호텔앤스위트 · 강원평창",
+        "rank": 5,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 37.65999842693908,
+        "lng": 128.7179603066216,
+        "baseYm": "202605"
+      }
+    ],
+    "정선군": [
+      {
+        "code": "a0805e1758ea419fa6a4e010de131df8",
+        "name": "정선아리랑시장",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "쇼핑",
+        "category": "쇼핑",
+        "lat": 37.3805681438114,
+        "lng": 128.664614246698,
+        "baseYm": "202605"
+      },
+      {
+        "code": "6d162daa5d414b4c04f4dfd53017c652",
+        "name": "강원랜드카지노",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.2118495072702,
+        "lng": 128.821821544007,
+        "baseYm": "202605"
+      },
+      {
+        "code": "f7975e7d191cb09d48f400451baec98a",
+        "name": "힐콘도",
+        "rank": 3,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 37.2063780285079,
+        "lng": 128.837570205853,
+        "baseYm": "202605"
+      },
+      {
+        "code": "898bab1fb373743372d99b3ed16a5ddc",
+        "name": "하이원리조트",
+        "rank": 4,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 37.2064328450605,
+        "lng": 128.832621499772,
+        "baseYm": "202605"
+      },
+      {
+        "code": "152ecf745bb18dbc185f7220af6380c4",
+        "name": "병방치스카이워크",
+        "rank": 5,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 37.3621364690472,
+        "lng": 128.635725279824,
+        "baseYm": "202605"
+      }
+    ],
+    "철원군": [
+      {
+        "code": "378967397a2263528db8eea0b1259e60",
+        "name": "고석정국민관광지",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 38.18666364189886,
+        "lng": 127.2894518247951,
+        "baseYm": "202605"
+      },
+      {
+        "code": "b0e6381e411a6a9c23eb564dc1362a09",
+        "name": "철원한탄강은하수교",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 38.200494280296056,
+        "lng": 127.2781911391109,
+        "baseYm": "202605"
+      },
+      {
+        "code": "5d99dccb0caea4bda57c8d37767668e1",
+        "name": "노동당사",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "역사관광",
+        "category": "역사관광",
+        "lat": 38.255189830473,
+        "lng": 127.202011399788,
+        "baseYm": "202605"
+      },
+      {
+        "code": "17d378ff5b6b3dfe2274e1615838a624",
+        "name": "철원고석정꽃밭",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 38.1882285296042,
+        "lng": 127.295502779131,
+        "baseYm": "202605"
+      },
+      {
+        "code": "0942d1c0df5fb124d12ff5db137c1424",
+        "name": "직탕폭포",
+        "rank": 5,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 38.209723329509,
+        "lng": 127.265894951622,
+        "baseYm": "202605"
+      }
+    ],
+    "화천군": [
+      {
+        "code": "8e4a5978983a553e81fd5c2030fc0094",
+        "name": "화천공영버스터미널",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 38.1045022992473,
+        "lng": 127.704366559146,
+        "baseYm": "202605"
+      },
+      {
+        "code": "8641250d9d536bb1e329bbb91aa3d6fb",
+        "name": "평화의댐물문화관",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 38.2139475688044,
+        "lng": 127.846482654262,
+        "baseYm": "202605"
+      },
+      {
+        "code": "9bf55933ce48f1b60bfd3ba2a7a148cd",
+        "name": "화천산천어파크골프장",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "레저스포츠",
+        "category": "레저스포츠",
+        "lat": 38.0757293172247,
+        "lng": 127.688045409284,
+        "baseYm": "202605"
+      },
+      {
+        "code": "5c1219b592d82ec330a3ba149066ad77",
+        "name": "사창리버스터미널",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 38.0715244989539,
+        "lng": 127.522880860874,
+        "baseYm": "202605"
+      },
+      {
+        "code": "c33d6ed8f0a8f7fbb0c01cb902e197b3",
+        "name": "파로호전망대",
+        "rank": 5,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 38.0951290111079,
+        "lng": 127.772433495277,
+        "baseYm": "202605"
+      }
+    ],
+    "양구군": [
+      {
+        "code": "4ebe841f14df1dd81e8cfda6dc8c4996",
+        "name": "한반도섬",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 38.130570843583,
+        "lng": 127.983136208639,
+        "baseYm": "202605"
+      },
+      {
+        "code": "78a6301b49dc366f158647fc3884b9cb",
+        "name": "박수근미술관",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 38.0964636773883,
+        "lng": 127.981553412407,
+        "baseYm": "202605"
+      },
+      {
+        "code": "55ec53a5cf28aff5a1be1f453397e075",
+        "name": "양구독수리체육공원",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 38.075910699136045,
+        "lng": 128.00849565356478,
+        "baseYm": "202605"
+      },
+      {
+        "code": "242c0a173bde763293ecda4880ad420b",
+        "name": "파로호꽃섬",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 38.1187944570402,
+        "lng": 127.986608252291,
+        "baseYm": "202605"
+      },
+      {
+        "code": "ac304937f317a2b5ddf818d07ef5813f",
+        "name": "하리 제1야구장",
+        "rank": 5,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 38.11267043420676,
+        "lng": 127.98505594794494,
+        "baseYm": "202605"
+      }
+    ],
+    "인제군": [
+      {
+        "code": "08710d1cd5ab77ba863bcfb3dfc80891",
+        "name": "백담사",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "역사관광",
+        "category": "역사관광",
+        "lat": 38.1647364312493,
+        "lng": 128.373878198732,
+        "baseYm": "202605"
+      },
+      {
+        "code": "1b8d3093ec52d06258cde4b79708d0e9",
+        "name": "속삭이는자작나무숲",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 37.996282409746,
+        "lng": 128.197729461901,
+        "baseYm": "202605"
+      },
+      {
+        "code": "73b2c82021e8ff855a54bff4f9370a13",
+        "name": "인제스피디움",
+        "rank": 3,
+        "category_l": "관광지",
+        "category_m": "레저스포츠",
+        "category": "레저스포츠",
+        "lat": 38.0012627,
+        "lng": 128.2917528,
+        "baseYm": "202605"
+      },
+      {
+        "code": "c133603fba4c2c71570a5b71da115005",
+        "name": "원통버스터미널",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "기타관광",
+        "category": "기타관광",
+        "lat": 38.1232955144459,
+        "lng": 128.202977492903,
+        "baseYm": "202605"
+      },
+      {
+        "code": "f205a9784af734a3853f4c2198ecc6a1",
+        "name": "테이크호텔앤리조트 · 인제스피디움",
+        "rank": 5,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 38.0028263980677,
+        "lng": 128.295161570181,
+        "baseYm": "202605"
+      }
+    ],
+    "고성군": [
+      {
+        "code": "0167800f869be450fb51d5e4f56dbbfc",
+        "name": "아야진해수욕장",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 38.2764748474181,
+        "lng": 128.553305035135,
+        "baseYm": "202605"
+      },
+      {
+        "code": "d3165fff28ed4646da3d840d0ff99f7a",
+        "name": "송지호해변",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 38.330968328227,
+        "lng": 128.527806665497,
+        "baseYm": "202605"
+      },
+      {
+        "code": "e33464c9e61293aab454fdc98edae169",
+        "name": "켄싱턴리조트 · 설악비치",
+        "rank": 3,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 38.242840005823,
+        "lng": 128.572387060071,
+        "baseYm": "202605"
+      },
+      {
+        "code": "b208ab1fd6b7caf96309aa62266f15bb",
+        "name": "화암사",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "역사관광",
+        "category": "역사관광",
+        "lat": 38.227035496876,
+        "lng": 128.470229832025,
+        "baseYm": "202605"
+      },
+      {
+        "code": "c20899c543d0b50e7361a1da55aac612",
+        "name": "소노벨 · 델피노",
+        "rank": 5,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 38.212092966547,
+        "lng": 128.494005642169,
+        "baseYm": "202605"
+      }
+    ],
+    "양양군": [
+      {
+        "code": "8cce89feb1f76fc7cb1078812e964a94",
+        "name": "낙산사",
+        "rank": 1,
+        "category_l": "관광지",
+        "category_m": "역사관광",
+        "category": "역사관광",
+        "lat": 38.123965311177,
+        "lng": 128.627494665599,
+        "baseYm": "202605"
+      },
+      {
+        "code": "95f258de190e3d709ebe565f0b972ec4",
+        "name": "휴휴암",
+        "rank": 2,
+        "category_l": "관광지",
+        "category_m": "역사관광",
+        "category": "역사관광",
+        "lat": 37.9612235653507,
+        "lng": 128.767652675634,
+        "baseYm": "202605"
+      },
+      {
+        "code": "c59f4794f488f9c6a806fa4b6d6482f7",
+        "name": "쏠비치 · 양양",
+        "rank": 3,
+        "category_l": "숙박",
+        "category_m": "숙박",
+        "category": "숙박",
+        "lat": 38.0870381589341,
+        "lng": 128.665574551465,
+        "baseYm": "202605"
+      },
+      {
+        "code": "1ce64a45ad6f0d24fa466338dd5bf65f",
+        "name": "낙산해수욕장",
+        "rank": 4,
+        "category_l": "관광지",
+        "category_m": "자연관광",
+        "category": "자연관광",
+        "lat": 38.118021601767,
+        "lng": 128.633605298641,
+        "baseYm": "202605"
+      },
+      {
+        "code": "642293d15c01e8af813b409331b6aea5",
+        "name": "하조대전망대",
+        "rank": 5,
+        "category_l": "관광지",
+        "category_m": "문화관광",
+        "category": "문화관광",
+        "lat": 38.02237556129268,
+        "lng": 128.7291540867401,
+        "baseYm": "202605"
+      }
+    ]
+  }
 }

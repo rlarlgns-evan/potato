@@ -1561,12 +1561,15 @@ function courseCardHtml(step, active, src) {
 </a>`;
   }
   const t = THEME_BADGE[step.spot.theme] || { label: "SPOT", cls: "badge-nature" };
-  const img = THEME_IMAGE[step.spot.theme] || DEFAULT_IMAGE;
   const s = step.spot;
+  const apiImg = resolveSpotImage(s.region, s.name, s);
+  const mediaHtml = apiImg
+    ? `<img src="${esc(apiImg)}" alt="${esc(s.name)}" loading="lazy" decoding="async" />`
+    : `<div class="course-img-fallback ${esc(t.cls)}" aria-hidden="true"><span>${esc(t.label)}</span></div>`;
   return `
 <a class="course-card${active ? " on" : ""}" data-order="${step.order}">
   <div class="ci-wrap">
-    <img src="${img}" alt="" loading="lazy" />
+    ${mediaHtml}
     <span class="course-badge ${t.cls}">${t.label}</span>
     <span class="course-step">STEP ${String(step.order).padStart(2, "0")}</span>
   </div>
@@ -2257,6 +2260,9 @@ function landingRegionPhoto(region) {
 }
 
 function regionTourPhoto(region, spotName) {
+  if (typeof SPOT_TOUR_IMAGES !== "undefined" && spotName && SPOT_TOUR_IMAGES[spotName]) {
+    return SPOT_TOUR_IMAGES[spotName];
+  }
   const kor = typeof TOUR_KOR_SPOTS !== "undefined" ? TOUR_KOR_SPOTS?.regions?.[region] : null;
   if (kor?.length && spotName) {
     const norm = (s) => String(s || "").replace(/\s/g, "");
@@ -2264,8 +2270,22 @@ function regionTourPhoto(region, spotName) {
     if (hit?.image) return hit.image;
     if (kor[0]?.image) return kor[0].image;
   }
+  const eco = typeof TOUR_ECO_SPOTS !== "undefined" ? TOUR_ECO_SPOTS?.regions?.[region] : null;
+  if (eco?.length && spotName) {
+    const norm = (s) => String(s || "").replace(/\s/g, "");
+    const hit = eco.find((e) => norm(e.title).includes(norm(spotName)) || norm(spotName).includes(norm(e.title)));
+    if (hit?.image) return hit.image;
+  }
+  if (typeof REGION_TOUR_PHOTOS !== "undefined" && REGION_TOUR_PHOTOS[region]) {
+    return REGION_TOUR_PHOTOS[region];
+  }
   const photo = landingRegionPhoto(region);
   return photo?.image || null;
+}
+
+function resolveSpotImage(region, spotName, spot) {
+  if (spot?.tourImage) return spot.tourImage;
+  return regionTourPhoto(region, spotName);
 }
 
 function buildLandingRegionTipHtml(region) {
@@ -2731,7 +2751,7 @@ function renderSpotsGrid() {
     .map((s) => {
       const prompt = pillPromptAttr(`${s.name}(${s.region}) 포함 강원 여행 코스 추천해줘`);
       const theme = SPOT_THEME_LABELS[spotThemeKey(s.theme)] || s.theme;
-      const thumb = regionTourPhoto(s.region, s.name);
+      const thumb = resolveSpotImage(s.region, s.name, s);
       const thumbHtml = thumb
         ? `<img class="spot-card-thumb" src="${esc(thumb)}" alt="" loading="lazy" decoding="async" />`
         : "";

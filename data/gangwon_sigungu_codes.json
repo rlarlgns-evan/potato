@@ -3,23 +3,187 @@
   "areaCd": 51,
   "areaNm": "강원특별자치도",
   "regions": {
-    "춘천시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51110, "signguNm": "춘천시" },
-    "원주시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51130, "signguNm": "원주시" },
-    "강릉시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51150, "signguNm": "강릉시" },
-    "동해시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51170, "signguNm": "동해시" },
-    "태백시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51190, "signguNm": "태백시" },
-    "속초시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51210, "signguNm": "속초시" },
-    "삼척시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51230, "signguNm": "삼척시" },
-    "홍천군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51720, "signguNm": "홍천군" },
-    "횡성군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51730, "signguNm": "횡성군" },
-    "영월군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51750, "signguNm": "영월군" },
-    "평창군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51760, "signguNm": "평창군" },
-    "정선군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51770, "signguNm": "정선군" },
-    "철원군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51780, "signguNm": "철원군" },
-    "화천군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51790, "signguNm": "화천군" },
-    "양구군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51800, "signguNm": "양구군" },
-    "인제군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51810, "signguNm": "인제군" },
-    "고성군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51820, "signguNm": "고성군" },
-    "양양군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51830, "signguNm": "양양군" }
-  }
+    "춘천시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51110,
+      "signguNm": "춘천시",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "110",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 13
+    },
+    "원주시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51130,
+      "signguNm": "원주시",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "130",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 9
+    },
+    "강릉시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51150,
+      "signguNm": "강릉시",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "150",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 1
+    },
+    "동해시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51170,
+      "signguNm": "동해시",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "170",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 3
+    },
+    "태백시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51190,
+      "signguNm": "태백시",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "190",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 14
+    },
+    "속초시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51210,
+      "signguNm": "속초시",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "210",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 5
+    },
+    "삼척시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51230,
+      "signguNm": "삼척시",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "230",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 4
+    },
+    "홍천군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51720,
+      "signguNm": "홍천군",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "720",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 16
+    },
+    "횡성군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51730,
+      "signguNm": "횡성군",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "730",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 18
+    },
+    "영월군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51750,
+      "signguNm": "영월군",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "750",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 8
+    },
+    "평창군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51760,
+      "signguNm": "평창군",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "760",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 15
+    },
+    "정선군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51770,
+      "signguNm": "정선군",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "770",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 11
+    },
+    "철원군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51780,
+      "signguNm": "철원군",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "780",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 12
+    },
+    "화천군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51790,
+      "signguNm": "화천군",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "790",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 17
+    },
+    "양구군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51800,
+      "signguNm": "양구군",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "800",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 6
+    },
+    "인제군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51810,
+      "signguNm": "인제군",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "810",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 10
+    },
+    "고성군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51820,
+      "signguNm": "고성군",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "820",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 2
+    },
+    "양양군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51830,
+      "signguNm": "양양군",
+      "lDongRegnCd": "51",
+      "lDongSignguCd": "830",
+      "ecoAreaCode": 32,
+      "ecoSigunguCode": 7
+    }
+  },
+  "lDongRegnCd": "51",
+  "ecoAreaCode": 32
 }

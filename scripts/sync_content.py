@@ -24,6 +24,62 @@ DOCS_DATA = ROOT / "docs" / "data.js"
 MARKER = "// === CANONICAL DATA (auto-generated from data/*.json) ==="
 
 
+def _norm_name(s: str) -> str:
+    return re.sub(r"[\s·\-]+", "", (s or "").strip())
+
+
+def _title_matches_spot(title: str, spot_name: str) -> bool:
+    t, n = _norm_name(title), _norm_name(spot_name)
+    if not t or not n:
+        return False
+    if t in n or n in t:
+        return True
+    parts = re.split(r"[\s·\-]+", spot_name)
+    return any(len(p) >= 2 and p in title for p in parts)
+
+
+def build_spot_tour_images(
+    spots: list[dict],
+    tour_kor: dict,
+    tour_eco: dict,
+    tour_photos: dict,
+) -> dict[str, str]:
+    kor_r = tour_kor.get("regions") or {}
+    eco_r = tour_eco.get("regions") or {}
+    photo_r = tour_photos.get("regions") or {}
+    out: dict[str, str] = {}
+    for spot in spots:
+        name = str(spot.get("name") or "")
+        region = str(spot.get("region") or "")
+        if not name or not region:
+            continue
+        url: str | None = None
+        for item in kor_r.get(region, []):
+            if _title_matches_spot(str(item.get("title") or ""), name) and item.get("image"):
+                url = str(item["image"])
+                break
+        if not url:
+            for item in eco_r.get(region, []):
+                if _title_matches_spot(str(item.get("title") or ""), name) and item.get("image"):
+                    url = str(item["image"])
+                    break
+        if not url:
+            reg_photos = photo_r.get(region) or []
+            if reg_photos and reg_photos[0].get("image"):
+                url = str(reg_photos[0]["image"])
+        if url:
+            out[name] = url
+    return out
+
+
+def build_region_tour_photos(tour_photos: dict) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for region, items in (tour_photos.get("regions") or {}).items():
+        if items and items[0].get("image"):
+            out[region] = str(items[0]["image"])
+    return out
+
+
 def _js_array_block(name: str, data: object) -> str:
     return f"const {name} = {json.dumps(data, ensure_ascii=False, indent=2)};"
 
@@ -93,6 +149,8 @@ def generate_data_js() -> str:
         k: {**v, "bg": v.get("bg") or v.get("thumb_bg")}
         for k, v in catalog["weather_icons"].items()
     }
+    spot_tour_images = build_spot_tour_images(spots, tour_kor_spots, tour_eco, tour_photos)
+    region_tour_photos = build_region_tour_photos(tour_photos)
 
     blocks = [
         _js_array_block("SPOTS", spots),
@@ -117,6 +175,8 @@ def generate_data_js() -> str:
         f"const TOUR_KOR_SPOTS = {json.dumps(tour_kor_spots, ensure_ascii=False, indent=2)};",
         f"const TOUR_KOR_FESTIVALS = {json.dumps(tour_kor_fest, ensure_ascii=False, indent=2)};",
         f"const GANGWON_SIGUNGU_CODES = {json.dumps(sigungu_codes, ensure_ascii=False, indent=2)};",
+        f"const SPOT_TOUR_IMAGES = {json.dumps(spot_tour_images, ensure_ascii=False, indent=2)};",
+        f"const REGION_TOUR_PHOTOS = {json.dumps(region_tour_photos, ensure_ascii=False, indent=2)};",
     ]
 
     runtime = """
@@ -134,6 +194,7 @@ function enrichSpot(raw) {
     best_time: extra.best_time ?? theme.best_time ?? "주말·휴일",
     tip: extra.tip ?? theme.tip ?? raw.description,
     contentId: extra.contentId ?? raw.contentId ?? null,
+    tourImage: SPOT_TOUR_IMAGES[raw.name] ?? null,
     tags: extra.tags ?? [raw.theme, raw.region.replace(/[시군]$/, "")],
   };
 }

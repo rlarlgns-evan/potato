@@ -605,6 +605,21 @@ button, input, textarea, select { font-family: inherit; }
 }
 .ci-wrap { position: relative; }
 .ci-wrap img { width: 100%; aspect-ratio: 16 / 9; height: auto; object-fit: cover; display: block; }
+.course-img-fallback {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #006a61, #66bcb0);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.course-img-fallback.badge-culture { background: linear-gradient(135deg, #7c3aed, #c4b5fd); }
+.course-img-fallback.badge-night { background: linear-gradient(135deg, #1e3a5f, #38bdf8); }
+.course-img-fallback.badge-drive { background: linear-gradient(135deg, #ea580c, #fed7aa); }
 .course-badge {
   position: absolute; top: 12px; right: 12px; font-size: 0.62rem; font-weight: 800;
   letter-spacing: 0.06em; padding: 0.28rem 0.55rem; border-radius: 8px;

@@ -1,5 +1,306 @@
 {
   "source": "TourAPI PhotoGalleryService1 gallerySearchList1",
   "updated_at": "2026-06-16",
-  "regions": {}
+  "regions": {
+    "강릉시": [
+      {
+        "id": "2775758",
+        "title": "안반데기",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/58/2775758.jpg",
+        "location": "강원도 강릉시 왕산면",
+        "month": "202010",
+        "photographer": "강원지사 모먼트스튜디오",
+        "keyword": "안반데기, 강원도 강릉시, 안반덕 배추마을, 배추밭, 멍에전망대, 강릉 전망대, 야간 관광, 야경 명소, 별, 은하수"
+      },
+      {
+        "id": "2775753",
+        "title": "안반데기",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/53/2775753.jpg",
+        "location": "강원도 강릉시 왕산면",
+        "month": "202010",
+        "photographer": "강원지사 모먼트스튜디오",
+        "keyword": "안반데기, 강원도 강릉시, 안반덕 배추마을, 배추밭, 멍에전망대, 강릉 전망대, 야간 관광, 야경 명소, 별, 은하수"
+      }
+    ],
+    "고성군": [
+      {
+        "id": "3590077",
+        "title": "화진포의 성(김일성별장)",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/77/3590077.jpg",
+        "location": "강원특별자치도 고성군 거진읍",
+        "month": "202509",
+        "photographer": "황성훈",
+        "keyword": "화진포의성김일성별장, 강원특별자치도 고성군, 강원도, DMZ 관광, DMZ 투어, 안보관광지, 근대건축, 전시관, 문화시설, 솔숲, 소나무숲, 9월 추천여행지, 사진기자단, 프레임코리아3기"
+      },
+      {
+        "id": "3590078",
+        "title": "화진포의 성(김일성별장)",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/78/3590078.jpg",
+        "location": "강원특별자치도 고성군 거진읍",
+        "month": "202509",
+        "photographer": "황성훈",
+        "keyword": "화진포의성김일성별장, 강원특별자치도 고성군, 강원도, DMZ 관광, DMZ 투어, 안보관광지, 근대건축, 전시관, 문화시설, 솔숲, 소나무숲, 드론촬영, 드론사진, 항공촬영, 9월 추천여행지, 사진기자단, 프레임코리아3기"
+      }
+    ],
+    "삼척시": [
+      {
+        "id": "2474450",
+        "title": "삼척 해양레일바이크",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/50/2474450.jpg",
+        "location": "강원도 삼척시 근덕면",
+        "month": "201612",
+        "photographer": "한국관광공사 이범수",
+        "keyword": "삼척해양레일바이크, 강원도 삼척시, 체험관광"
+      },
+      {
+        "id": "2474449",
+        "title": "삼척 해양레일바이크",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/49/2474449.jpg",
+        "location": "강원도 삼척시 근덕면",
+        "month": "201612",
+        "photographer": "한국관광공사 이범수",
+        "keyword": "삼척해양레일바이크, 강원도 삼척시, 체험관광"
+      }
+    ],
+    "속초시": [
+      {
+        "id": "3566462",
+        "title": "속초아이대관람차",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/62/3566462.jpg",
+        "location": "강원특별자치도 속초시 조양동",
+        "month": "202507",
+        "photographer": "황성훈",
+        "keyword": "속초아이대관람차, 강원특별자치도 속초시, 강원도, 체험관광, 속초전경, 동해, 바다, 드론촬영, 드론사진, 항공촬영, 7월 추천여행지, 사진기자단, 프레임코리아3기"
+      },
+      {
+        "id": "3566461",
+        "title": "속초아이대관람차",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/61/3566461.jpg",
+        "location": "강원특별자치도 속초시 조양동",
+        "month": "202507",
+        "photographer": "황성훈",
+        "keyword": "속초아이대관람차, 강원특별자치도 속초시, 강원도, 체험관광, 속초전경, 동해, 바다, 드론촬영, 드론사진, 항공촬영, 7월 추천여행지, 사진기자단, 프레임코리아3기"
+      }
+    ],
+    "양구군": [
+      {
+        "id": "3513168",
+        "title": "두타연",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/68/3513168.jpg",
+        "location": "강원특별자치도 양구군 방산면",
+        "month": "202505",
+        "photographer": "손명권",
+        "keyword": "두타연, 강원특별자치도 양구군, 강원도, 계곡, 강원평화지역 국가지질공원, 양구9경, 제3경, DMZ 관광, DMZ 투어, 안보관광지, 5월 추천여행지, 사진기자단, 프레임코리아3기"
+      },
+      {
+        "id": "3513169",
+        "title": "두타연",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/69/3513169.jpg",
+        "location": "강원특별자치도 양구군 방산면",
+        "month": "202505",
+        "photographer": "손명권",
+        "keyword": "두타연, 강원특별자치도 양구군, 강원도, 계곡, 강원평화지역 국가지질공원, 양구9경, 제3경, DMZ 관광, DMZ 투어, 안보관광지, 5월 추천여행지, 사진기자단, 프레임코리아3기"
+      }
+    ],
+    "영월군": [
+      {
+        "id": "4073248",
+        "title": "난고 김삿갓 문학관",
+        "image": "https://tong.visitkorea.or.kr/cms/resource_photo/48/4073248_image2_1.jpg",
+        "location": "강원특별자치도 영월군 김삿갓면",
+        "month": "202507",
+        "photographer": "김지호",
+        "keyword": "난고 김삿갓 문학관,강원특별자치도 영월군,강원도,기념관,문화시설,역사관광지"
+      },
+      {
+        "id": "4073249",
+        "title": "난고 김삿갓 문학관",
+        "image": "https://tong.visitkorea.or.kr/cms/resource_photo/49/4073249_image2_1.jpg",
+        "location": "강원특별자치도 영월군 김삿갓면",
+        "month": "202507",
+        "photographer": "김지호",
+        "keyword": "난고 김삿갓 문학관,강원특별자치도 영월군,강원도,기념관,문화시설,역사관광지"
+      }
+    ],
+    "원주시": [
+      {
+        "id": "2765601",
+        "title": "소금산 그랜드밸리",
+        "image": "https://tong.visitkorea.or.kr/cms/resource_photo/01/2765601_image2_1.jpg",
+        "location": "강원도 원주시 지정면",
+        "month": "202108",
+        "photographer": "한국관광공사 김지호",
+        "keyword": "원주 소금산 출렁다리, 강원도 원주시, 간현관광지, 산악보도교, 암벽, 드론촬영, 드론사진, 항공촬영"
+      },
+      {
+        "id": "2765603",
+        "title": "소금산 그랜드밸리",
+        "image": "https://tong.visitkorea.or.kr/cms/resource_photo/03/2765603_image2_1.jpg",
+        "location": "강원도 원주시 지정면",
+        "month": "202108",
+        "photographer": "한국관광공사 김지호",
+        "keyword": "원주 소금산 출렁다리, 강원도 원주시, 간현관광지, 산악보도교, 암벽, 드론촬영, 드론사진, 항공촬영"
+      }
+    ],
+    "인제군": [
+      {
+        "id": "4062547",
+        "title": "설악산국립공원",
+        "image": "https://tong.visitkorea.or.kr/cms/resource_photo/47/4062547_image2_1.jpg",
+        "location": "강원특별자치도 인제군",
+        "month": "202510",
+        "photographer": "홍정표",
+        "keyword": "설악산국립공원,강원특별자치도 인제군,강원도,십이선녀탕,탕수동계곡,자연관광지,가을,단풍,추경,10월 추천여행지,사진기자단,프레임코리아3기"
+      },
+      {
+        "id": "4062548",
+        "title": "설악산국립공원",
+        "image": "https://tong.visitkorea.or.kr/cms/resource_photo/48/4062548_image2_1.jpg",
+        "location": "강원특별자치도 인제군",
+        "month": "202510",
+        "photographer": "홍정표",
+        "keyword": "설악산국립공원,강원특별자치도 인제군,강원도,십이선녀탕,탕수동계곡,자연관광지,가을,단풍,추경,10월 추천여행지,사진기자단,프레임코리아3기"
+      }
+    ],
+    "정선군": [
+      {
+        "id": "4073387",
+        "title": "아우라지",
+        "image": "https://tong.visitkorea.or.kr/cms/resource_photo/87/4073387_image2_1.jpg",
+        "location": "강원특별자치도 정선군 여량면",
+        "month": "202507",
+        "photographer": "김지호",
+        "keyword": "아우라지,강원특별자치도 정선군,강원도,자연관광지,자연경관"
+      },
+      {
+        "id": "4073393",
+        "title": "아우라지",
+        "image": "https://tong.visitkorea.or.kr/cms/resource_photo/93/4073393_image2_1.jpg",
+        "location": "강원특별자치도 정선군 여량면",
+        "month": "202507",
+        "photographer": "김지호",
+        "keyword": "아우라지,강원특별자치도 정선군,강원도,자연관광지,자연경관"
+      }
+    ],
+    "철원군": [
+      {
+        "id": "2830702",
+        "title": "철원 노동당사",
+        "image": "https://tong.visitkorea.or.kr/cms/resource_photo/02/2830702_image2_1.jpg",
+        "location": "강원도 철원군 철원읍",
+        "month": "202204",
+        "photographer": "한국관광공사 이범수",
+        "keyword": "철원 노동당사, 강원도 철원군, 국가등록문화재 제22호, 한여울길 3코스, DMZ 관광, DMZ 투어, 안보관광지"
+      },
+      {
+        "id": "2830704",
+        "title": "철원 노동당사",
+        "image": "https://tong.visitkorea.or.kr/cms/resource_photo/04/2830704_image2_1.jpg",
+        "location": "강원도 철원군 철원읍",
+        "month": "202204",
+        "photographer": "한국관광공사 이범수",
+        "keyword": "철원 노동당사, 강원도 철원군, 국가등록문화재 제22호, 한여울길 3코스, DMZ 관광, DMZ 투어, 안보관광지"
+      }
+    ],
+    "춘천시": [
+      {
+        "id": "2802451",
+        "title": "해피초원목장",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/51/2802451.jpeg",
+        "location": "강원도 춘천시 사북면",
+        "month": "202009",
+        "photographer": "강원지사",
+        "keyword": "해피초원목장, 강원도 춘천시, 체험관광지"
+      },
+      {
+        "id": "2802450",
+        "title": "해피초원목장",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/50/2802450.jpeg",
+        "location": "강원도 춘천시 사북면",
+        "month": "202009",
+        "photographer": "강원지사",
+        "keyword": "해피초원목장, 강원도 춘천시, 체험관광지, 양"
+      }
+    ],
+    "태백시": [
+      {
+        "id": "2802507",
+        "title": "365 세이프타운",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/07/2802507.jpeg",
+        "location": "강원도 태백시 장성동",
+        "month": "202010",
+        "photographer": "강원지사",
+        "keyword": "365 세이프타운, 강원도 태백시, 세이프타워, 체험관광지, 테마파크"
+      },
+      {
+        "id": "2802506",
+        "title": "365 세이프타운",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/06/2802506.jpeg",
+        "location": "강원도 태백시 장성동",
+        "month": "202010",
+        "photographer": "강원지사",
+        "keyword": "365 세이프타운, 강원도 태백시, 세이프타워, 체험관광지, 테마파크"
+      }
+    ],
+    "화천군": [
+      {
+        "id": "3554509",
+        "title": "서오지리 연꽃단지",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/09/3554509.JPG",
+        "location": "강원특별자치도 화천군 하남면",
+        "month": "202507",
+        "photographer": "손명권",
+        "keyword": "서오지리 연꽃단지, 강원특별자치도 화천군, 강원도, 자연생태관광지, 7월 추천여행지, 사진기자단, 프레임코리아3기"
+      },
+      {
+        "id": "3554508",
+        "title": "서오지리 연꽃단지",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/08/3554508.JPG",
+        "location": "강원특별자치도 화천군 하남면",
+        "month": "202507",
+        "photographer": "손명권",
+        "keyword": "서오지리 연꽃단지, 강원특별자치도 화천군, 강원도, 자연생태관광지, 7월 추천여행지, 사진기자단, 프레임코리아3기"
+      }
+    ],
+    "횡성군": [
+      {
+        "id": "2802750",
+        "title": "횡성 루지 체험장",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/50/2802750.jpeg",
+        "location": "강원도 횡성군 우천면",
+        "month": "202009",
+        "photographer": "강원지사",
+        "keyword": "횡성 루지 체험장, 강원도 횡성군, 체험관광지, 스포츠, 레포츠"
+      },
+      {
+        "id": "2802749",
+        "title": "횡성 루지 체험장",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/49/2802749.jpeg",
+        "location": "강원도 횡성군 우천면",
+        "month": "202009",
+        "photographer": "강원지사",
+        "keyword": "횡성 루지 체험장, 강원도 횡성군, 체험관광지, 스포츠, 레포츠"
+      }
+    ],
+    "평창군": [
+      {
+        "id": "3583953",
+        "title": "대관령양떼목장",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/53/3583953.jpg",
+        "location": "강원특별자치도 평창군 대관령면",
+        "month": "202508",
+        "photographer": "황성훈",
+        "keyword": "대관령양떼목장, 강원특별자치도 평창군, 강원도, 체험관광, 자연, 양, 8월 추천여행지, 사진기자단, 프레임코리아3기"
+      },
+      {
+        "id": "3583952",
+        "title": "대관령양떼목장",
+        "image": "http://tong.visitkorea.or.kr/cms2/website/52/3583952.jpg",
+        "location": "강원특별자치도 평창군 대관령면",
+        "month": "202508",
+        "photographer": "황성훈",
+        "keyword": "대관령양떼목장, 강원특별자치도 평창군, 강원도, 체험관광, 자연, 양, 8월 추천여행지, 사진기자단, 프레임코리아3기"
+      }
+    ]
+  }
 }
