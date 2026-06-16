@@ -29,12 +29,18 @@ const AGENT_WELCOME =
 
 const GANGWON_AGENT_ROLE =
   "# ROLE\n" +
-  'You are "Gangwon-do Tourism Expert AI", an official guide dedicated to revitalizing the Gangwon-do economy.\n' +
+  'You are "Gangwon-do Tourism Expert AI," an official guide dedicated to revitalizing the local economy of Gangwon-do. ' +
+  "Your engine is fueled directly by live Korea Tourism Organization (KTO) API data.\n\n" +
   "Your ONLY domain is Gangwon-do, South Korea (e.g., Wonju, Gangneung, Chuncheon, Sokcho, etc.).\n\n" +
+  "# INPUT CONTEXT CONSTRAINTS\n" +
+  "You will be provided with a structured data context named `compactSpotCatalog` derived from KTO Open APIs, containing:\n" +
+  "- Spot Names & Descriptions (국문 관광 정보)\n" +
+  "- Eco-Tourism/Local Attractions (생태 및 지자체 중심 정보)\n" +
+  "- Regional Big Data (지역별 방문자 수 및 통계 자료)\n\n" +
   "# CORE DIRECTIVES (STRICT)\n" +
-  "1. LANGUAGE: ALWAYS reply in polite Korean (해요체).\n" +
+  "1. LANGUAGE: ALWAYS reply in polite, enthusiastic Korean (해요체/하십시오체).\n" +
   "2. BOUNDARY: NEVER provide information, travel routes, or recommendations for locations outside Gangwon-do.\n" +
-  "3. DATA SOURCE: Base your answers strictly on the provided KTO (Korea Tourism Organization) API context.\n\n" +
+  "3. DATA SOURCE: Base answers strictly on the provided KTO API context — never invent spots or stats.\n\n" +
   "# OUT-OF-BOUNDS HANDLING (GUARDRAIL)\n" +
   "If the user asks about ANY region outside Gangwon-do (e.g., Seoul, Busan, Jeju, or overseas):\n" +
   "- Do NOT answer the query.\n" +
@@ -42,17 +48,37 @@ const GANGWON_AGENT_ROLE =
   "- Pivot immediately to a similar concept/vibe within Gangwon-do.\n" +
   'Format: "[Polite Refusal] + [Reason] + [Gangwon Alternative]"';
 
-const GANGWON_REGION_NAMES = [
-  "강릉시", "고성군", "동해시", "삼척시", "속초시", "양구군", "양양군", "영월군",
-  "원주시", "인제군", "정선군", "철원군", "춘천시", "태백시", "홍천군", "화천군", "횡성군", "평창군",
-];
+const KTO_API_DATA_RULES =
+  "# STRICT API DATA UTILIZATION RULES\n\n" +
+  "## 1. MULTI-INTENT PROCESSING VIA API (Intro + Schedule)\n" +
+  'When a user asks for both information ("알려줘") and an itinerary ("일정 짜줘"):\n' +
+  "- **Step 1 (API-Based Intro):** Extract descriptive phrases, themes, and big-data statistics from the KTO context for the target region (use `summary`).\n" +
+  "- **Step 2 (API-Based Itinerary):** Immediately follow with `route_steps` — arrange exact spots from the context into a chronological itinerary.\n" +
+  "- **Prohibition:** Never skip Step 2. KTO data must become BOTH an informational overview AND a structured schedule.\n\n" +
+  "## 2. DATA-DRIVEN REGION FILTERING (Cross-Region Bug Fix)\n" +
+  "To prevent recommending spots from other cities (e.g., Gangneung spots for a Wonju query):\n" +
+  "- Inspect location/region fields in every `compactSpotCatalog` entry. Filter to ONLY the requested city/county.\n" +
+  "- Rank using **Regional Big Data (visitor counts) for that city only**. Do not let other cities' stats skew curation.\n\n" +
+  "## 3. LOCALIZED FALLBACK PROTOCOL (Global Fallback Bug Fix)\n" +
+  "If spot-name parsing fails or a spot is not in the catalog:\n" +
+  "- Do NOT fall back to global top Gangwon spots.\n" +
+  "- Select the next best alternative from the **same requested city** using local big-data / hub-rank metrics.\n" +
+  "- If the entire dataset for that city is empty, set summary to exactly:\n" +
+  '  "현재 KTO API 상에 [요청 지역]의 상세 정보가 부족합니다. 데이터 기반 빅데이터 방문자 수가 높은 다른 매력적인 강원도 지역을 추천해 드릴까요?"\n' +
+  "  and route_steps to [].";
 
 const CURATION_TASK_PROMPT =
   "# CURATION TASK\n" +
   "When the user requests a trip plan or course: output JSON ONLY (schema below).\n" +
   "Pick spot_name only from the Gangwon catalog. Never include non-Gangwon destinations.\n" +
+  "If intro + itinerary were both requested: summary = Step 1 intro; route_steps = Step 2 schedule (non-empty).\n" +
   "If the request is entirely outside Gangwon-do: set summary to a polite refusal+pivot (해요체), " +
   "itinerary_title to '강원도 전용 안내', route_steps to [].\n";
+
+const GANGWON_REGION_NAMES = [
+  "강릉시", "고성군", "동해시", "삼척시", "속초시", "양구군", "양양군", "영월군",
+  "원주시", "인제군", "정선군", "철원군", "춘천시", "태백시", "홍천군", "화천군", "횡성군", "평창군",
+];
 
 function regionsInPrompt(msg) {
   const found = [];
@@ -79,26 +105,143 @@ function isRegionInfoOnlyPrompt(prompt) {
   return !hasTripPlanIntent(msg);
 }
 
+function isMultiIntentPrompt(prompt) {
+  const msg = String(prompt || "").trim();
+  return regionsInPrompt(msg).length > 0 && REGION_INFO_INTENT_RE.test(msg) && hasTripPlanIntent(msg);
+}
+
+function regionEmptyFallbackMessage(region) {
+  return (
+    `현재 KTO API 상에 ${region}의 상세 정보가 부족합니다. ` +
+    "데이터 기반 빅데이터 방문자 수가 높은 다른 매력적인 강원도 지역을 추천해 드릴까요?"
+  );
+}
+
+function ktoThemeFromCategory(category) {
+  const cat = String(category || "");
+  if (/자연|생태|산|숲/.test(cat)) return "nature";
+  if (/레저|스포츠|체험/.test(cat)) return "experience";
+  return "culture";
+}
+
+function collectKtoCatalogEntries(region) {
+  const hubs = typeof TOUR_HUB_SPOTS !== "undefined" ? TOUR_HUB_SPOTS?.regions?.[region] || [] : [];
+  const kor = typeof TOUR_KOR_SPOTS !== "undefined" ? TOUR_KOR_SPOTS?.regions?.[region] || [] : [];
+  const eco = typeof TOUR_ECO_SPOTS !== "undefined" ? TOUR_ECO_SPOTS?.regions?.[region] || [] : [];
+  const seen = new Set();
+  const out = [];
+
+  function add(name, { rank, theme, source, lat, lng }) {
+    const key = String(name || "").replace(/\s/g, "");
+    if (!name || seen.has(key)) return;
+    seen.add(key);
+    out.push({ name, region, theme, rank, source, lat, lng });
+  }
+
+  hubs.forEach((h) =>
+    add(h.name, {
+      rank: h.rank ?? 999,
+      theme: ktoThemeFromCategory(h.category),
+      source: "중심관광지",
+      lat: h.lat,
+      lng: h.lng,
+    })
+  );
+  kor.forEach((k, i) => {
+    let lat = null;
+    let lng = null;
+    if (k.mapY != null && k.mapY !== "") lat = parseFloat(k.mapY);
+    if (k.mapX != null && k.mapX !== "") lng = parseFloat(k.mapX);
+    add(k.title, { rank: 100 + i, theme: "culture", source: "공식관광지", lat, lng });
+  });
+  eco.forEach((e, i) =>
+    add(e.title, { rank: 200 + i, theme: "nature", source: "생태관광", lat: null, lng: null })
+  );
+
+  out.sort((a, b) => (a.rank !== b.rank ? a.rank - b.rank : a.name.localeCompare(b.name, "ko")));
+  return out;
+}
+
+function ktoEntryToSpot(entry, region) {
+  const enriched = resolveSpotByNameInEnriched(entry.name, [region]);
+  if (enriched) return enriched;
+  return {
+    name: entry.name,
+    region,
+    theme: entry.theme || "culture",
+    lat: entry.lat ?? 0,
+    lng: entry.lng ?? 0,
+    description: `${entry.name} — KTO ${entry.source}`,
+    tip: "현장에서 운영 시간·요금을 확인해 주세요.",
+    stay_min: 60,
+    fee: "현장 확인",
+    hours: "연중",
+    parking: "인근 주차 가능",
+    best_time: "주말·휴일",
+    tags: [region.replace(/[시군]$/, ""), "KTO"],
+  };
+}
+
+function hubRankMap(region) {
+  const map = new Map();
+  collectKtoCatalogEntries(region).forEach((e) => map.set(e.name, e.rank));
+  return map;
+}
+
+function pickRegionalSpots(regions, limit = 3) {
+  if (!regions?.length) return [];
+  const region = regions[0];
+  let local = ENRICHED_SPOTS.filter((s) => regions.includes(s.region));
+  if (local.length) {
+    const ranks = hubRankMap(region);
+    local = local.slice().sort((a, b) => {
+      const ra = ranks.get(a.name) ?? 999;
+      const rb = ranks.get(b.name) ?? 999;
+      if (ra !== rb) return ra - rb;
+      return a.name.localeCompare(b.name, "ko");
+    });
+    return local.slice(0, limit);
+  }
+  return collectKtoCatalogEntries(region)
+    .slice(0, limit)
+    .map((e) => ktoEntryToSpot(e, region));
+}
+
 function regionFocusPromptBlock(prompt) {
   const regions = regionsInPrompt(prompt);
   if (!regions.length) return "";
-  return (
-    "# REGION FOCUS (STRICT)\n" +
-    `User focus region(s): ${regions.join(", ")}.\n` +
-    "- summary: polite Korean (해요체) introducing this region using KTO context — sights, food, mood.\n" +
-    `- route_steps: spot_name MUST be from the catalog below AND located in ${regions.join(" or ")}.\n` +
-    "- Do NOT include spots from other cities/counties unless the user explicitly asked for a multi-city trip.\n"
+  const multi = isMultiIntentPrompt(prompt);
+  const lines = [
+    "# REGION FOCUS (STRICT)",
+    `User focus region(s): ${regions.join(", ")}.`,
+    "- Filter compactSpotCatalog to these region(s) ONLY before ranking or picking spots.",
+    "- Rank using visitor big-data for these region(s) only — ignore other cities' stats.",
+  ];
+  if (multi) {
+    lines.push(
+      "- MULTI-INTENT: User wants intro AND itinerary.",
+      "- summary: Step 1 — KTO data-backed regional introduction (해요체).",
+      "- route_steps: Step 2 — non-empty chronological itinerary from catalog; NEVER skip."
+    );
+  } else {
+    lines.push("- summary: polite Korean (해요체) introducing this region using KTO context — sights, food, mood.");
+  }
+  lines.push(
+    `- route_steps: spot_name MUST be from the catalog below AND located in ${regions.join(" or ")}.`,
+    "- Do NOT include spots from other cities/counties unless the user explicitly asked for a multi-city trip."
   );
+  return lines.join("\n") + "\n";
 }
 
 function pickSpotsForPrompt(prompt, limit = 3) {
   const regions = regionsInPrompt(prompt);
+  if (regions.length) {
+    const regional = pickRegionalSpots(regions, limit);
+    if (regional.length) return regional;
+    return [];
+  }
   const { scores } = getPromptSpotContext(prompt);
   let ranked = ENRICHED_SPOTS.map((spot, index) => ({ spot, index, score: scores[index] }));
-  if (regions.length) {
-    const regional = ranked.filter((r) => regions.includes(r.spot.region));
-    if (regional.length) ranked = regional;
-  }
   ranked.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     return a.spot.name.localeCompare(b.spot.name, "ko");
@@ -109,8 +252,30 @@ function pickSpotsForPrompt(prompt, limit = 3) {
 function constrainStepsToRegions(steps, regions) {
   if (!regions?.length || !steps?.length) return steps;
   const kept = steps.filter((s) => s.spot && regions.includes(s.spot.region));
-  if (!kept.length) return steps;
-  return kept.map((s, i) => ({ ...s, order: i + 1 }));
+  if (kept.length) return kept.map((s, i) => ({ ...s, order: i + 1 }));
+  const fallback = pickRegionalSpots(regions, Math.min(steps.length, 3));
+  if (!fallback.length) return [];
+  return fallback.slice(0, steps.length).map((spot, i) => ({
+    order: i + 1,
+    day: steps[i]?.day || 1,
+    spot,
+    stay: spot.stay_min ?? 60,
+    why: steps[i]?.why || `${spot.description}. ${spot.tip || ""}`.trim(),
+    move_to_next: steps[i]?.move_to_next || "",
+  }));
+}
+
+function formatRelateContextHint(region, relate, maxAnchors = 2) {
+  const byAnchor = relate?.by_anchor?.[region];
+  if (!byAnchor) return "";
+  return Object.entries(byAnchor)
+    .slice(0, maxAnchors)
+    .map(([anchor, rows]) => {
+      const names = (rows || []).slice(0, 2).map((r) => r.name).filter(Boolean);
+      return names.length ? `${anchor}→${names.join(", ")}` : "";
+    })
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function buildKtoApiContext(prompt) {
@@ -118,6 +283,7 @@ function buildKtoApiContext(prompt) {
   const pool = regions.length ? regions : GANGWON_REGION_NAMES.slice(0, 6);
   const stats = typeof TOUR_VISITOR_STATS !== "undefined" ? TOUR_VISITOR_STATS : null;
   const hubs = typeof TOUR_HUB_SPOTS !== "undefined" ? TOUR_HUB_SPOTS : null;
+  const relate = typeof TOUR_RELATE_SPOTS !== "undefined" ? TOUR_RELATE_SPOTS : null;
   const kor = typeof TOUR_KOR_SPOTS !== "undefined" ? TOUR_KOR_SPOTS : null;
   const eco = typeof TOUR_ECO_SPOTS !== "undefined" ? TOUR_ECO_SPOTS : null;
   const fest = typeof TOUR_KOR_FESTIVALS !== "undefined" ? TOUR_KOR_FESTIVALS : null;
@@ -128,6 +294,8 @@ function buildKtoApiContext(prompt) {
     if (vis?.label) parts.push(`방문 ${vis.label}`);
     const hubNames = (hubs?.regions?.[region] || []).slice(0, 2).map((h) => h.name).filter(Boolean);
     if (hubNames.length) parts.push(`중심관광지 ${hubNames.join(", ")}`);
+    const relateHint = formatRelateContextHint(region, relate, 2);
+    if (relateHint) parts.push(`연관관광지 ${relateHint}`);
     const korNames = (kor?.regions?.[region] || []).slice(0, 2).map((k) => k.title).filter(Boolean);
     if (korNames.length) parts.push(`공식관광지 ${korNames.join(", ")}`);
     const ecoNames = (eco?.regions?.[region] || []).slice(0, 2).map((e) => e.title).filter(Boolean);
@@ -1196,24 +1364,31 @@ function getGeminiKey() {
 function compactSpotCatalog(prompt) {
   const regions = regionsInPrompt(prompt);
   const { keywords, themeTerms, scores } = getPromptSpotContext(prompt);
-  let pool;
+
   if (regions.length) {
-    pool = ENRICHED_SPOTS.filter((s) => regions.includes(s.region));
+    let pool = ENRICHED_SPOTS.filter((s) => regions.includes(s.region));
+    const ktoLines = regions.flatMap((region) =>
+      collectKtoCatalogEntries(region).map((e) => `${e.name}|${region}|${e.theme}`)
+    );
+    const enrichedLines = pool.map((s) => `${s.name}|${s.region}|${s.theme}`);
+    const merged = [...new Set([...enrichedLines, ...ktoLines])];
+    if (merged.length) return merged.slice(0, MAX_SPOTS_IN_PROMPT).join("\n");
+    return ktoLines.slice(0, MAX_SPOTS_IN_PROMPT).join("\n");
   }
-  if (!pool?.length) {
-    if (keywords.length || themeTerms.length) {
-      const ranked = rankSpotIndices(scores);
-      const matched = [];
-      for (let i = 0; i < ranked.length && matched.length < MAX_SPOTS_IN_PROMPT; i++) {
-        if (ranked[i].score > 0) matched.push(ENRICHED_SPOTS[ranked[i].index]);
-      }
-      pool =
-        matched.length >= 6
-          ? matched
-          : ranked.slice(0, MAX_SPOTS_IN_PROMPT).map((r) => ENRICHED_SPOTS[r.index]);
-    } else {
-      pool = ENRICHED_SPOTS.slice(0, MAX_SPOTS_IN_PROMPT);
+
+  let pool;
+  if (keywords.length || themeTerms.length) {
+    const ranked = rankSpotIndices(scores);
+    const matched = [];
+    for (let i = 0; i < ranked.length && matched.length < MAX_SPOTS_IN_PROMPT; i++) {
+      if (ranked[i].score > 0) matched.push(ENRICHED_SPOTS[ranked[i].index]);
     }
+    pool =
+      matched.length >= 6
+        ? matched
+        : ranked.slice(0, MAX_SPOTS_IN_PROMPT).map((r) => ENRICHED_SPOTS[r.index]);
+  } else {
+    pool = ENRICHED_SPOTS.slice(0, MAX_SPOTS_IN_PROMPT);
   }
   return pool.map((s) => `${s.name}|${s.region}|${s.theme}`).join("\n");
 }
@@ -1341,24 +1516,63 @@ function parseJsonFromGemini(raw) {
   }
 }
 
-function resolveSpotByName(name) {
+function resolveSpotByNameInEnriched(name, regions = []) {
   const raw = String(name ?? "").trim();
   if (!raw) return null;
-  const exact = SPOT_BY_NAME[raw];
+  const list = regions.length
+    ? SPOT_FUZZY_LIST.filter((s) => regions.includes(s.region))
+    : SPOT_FUZZY_LIST;
+  const exact = regions.length
+    ? list.find((s) => s.name === raw)
+    : SPOT_BY_NAME[raw];
   if (exact) return exact;
-  for (let i = 0; i < SPOT_FUZZY_LIST.length; i++) {
-    const spot = SPOT_FUZZY_LIST[i];
+  for (let i = 0; i < list.length; i++) {
+    const spot = list[i];
     if (spot.name.includes(raw) || raw.includes(spot.name)) return spot;
   }
   return null;
 }
 
+function resolveSpotByName(name, regions = []) {
+  const raw = String(name ?? "").trim();
+  if (!raw) return null;
+  const scoped = regions.length ? regions : regionsInPrompt(state.query || "");
+  const enriched = resolveSpotByNameInEnriched(raw, scoped);
+  if (enriched) return enriched;
+  if (scoped.length) {
+    for (const region of scoped) {
+      const entry = collectKtoCatalogEntries(region).find(
+        (e) => e.name === raw || e.name.includes(raw) || raw.includes(e.name)
+      );
+      if (entry) return ktoEntryToSpot(entry, region);
+    }
+  } else {
+    const global = resolveSpotByNameInEnriched(raw, []);
+    if (global) return global;
+  }
+  return null;
+}
+
+function resolveSpotWithRegionalFallback(name, regions, usedNames) {
+  let spot = resolveSpotByName(name, regions);
+  if (spot && (!regions.length || regions.includes(spot.region))) {
+    if (!usedNames.has(spot.name)) return spot;
+  }
+  if (!regions.length) return spot;
+  const alt = pickRegionalSpots(regions, 5).find((s) => !usedNames.has(s.name));
+  return alt || spot;
+}
+
 function parseGeminiCuration(raw, prompt) {
   const parsed = parseJsonFromGemini(raw);
+  const regions = regionsInPrompt(prompt);
+  const usedNames = new Set();
   const steps = (parsed.route_steps || [])
     .map((st, i) => {
-      const spot = resolveSpotByName(st.spot_name);
+      const spot = resolveSpotWithRegionalFallback(st.spot_name, regions, usedNames);
       if (!spot) return null;
+      if (regions.length && !regions.includes(spot.region)) return null;
+      usedNames.add(spot.name);
       return {
         order: i + 1,
         day: st.day || 1,
@@ -1369,9 +1583,38 @@ function parseGeminiCuration(raw, prompt) {
       };
     })
     .filter(Boolean);
-  if (!steps.length) throw new Error("no spots matched");
-  const regions = regionsInPrompt(prompt);
+  if (!steps.length) {
+    if (regions.length && !pickRegionalSpots(regions, 1).length) {
+      const msg = regionEmptyFallbackMessage(regions[0]);
+      return {
+        title: `${regions[0]} 안내`,
+        summary: msg,
+        duration: "",
+        steps: [],
+        source: "gemini",
+        tripIntent: parsed.trip_intent || {},
+        transitPlan: parsed.transit_plan || {},
+        accommodation: parsed.accommodation || {},
+        dayPlans: parsed.day_plans || [],
+      };
+    }
+    throw new Error("no spots matched");
+  }
   const scoped = constrainStepsToRegions(steps, regions);
+  if (!scoped.length && regions.length) {
+    const msg = regionEmptyFallbackMessage(regions[0]);
+    return {
+      title: `${regions[0]} AI 추천 코스`,
+      summary: parsed.summary || msg,
+      duration: parsed.total_duration || "",
+      steps: [],
+      source: "gemini",
+      tripIntent: parsed.trip_intent || {},
+      transitPlan: parsed.transit_plan || {},
+      accommodation: parsed.accommodation || {},
+      dayPlans: parsed.day_plans || [],
+    };
+  }
   const legs = computeLegs(scoped);
   const sum = routeSummary(scoped, legs);
   return {
@@ -1390,9 +1633,12 @@ function localCuration(prompt, source = "local") {
   const regions = regionsInPrompt(prompt);
   const picks = pickSpotsForPrompt(prompt, 3);
   if (!picks.length) {
+    const msg = regions[0]
+      ? regionEmptyFallbackMessage(regions[0])
+      : "현재 필터에 맞는 장소가 없습니다.";
     return {
       title: regions[0] ? `${regions[0]} 안내` : "맞춤 코스",
-      summary: "해당 지역 큐레이션 관광지가 아직 없어요. 다른 시·군을 함께 물어보시거나 관광지 탭을 확인해 주세요.",
+      summary: msg,
       duration: "",
       steps: [],
       source,
@@ -1427,6 +1673,7 @@ async function geminiCuration(prompt, key) {
   const regionFocus = regionFocusPromptBlock(prompt);
   const sys =
     GANGWON_AGENT_ROLE + "\n\n" +
+    KTO_API_DATA_RULES + "\n\n" +
     (kto ? kto + "\n\n" : "") +
     (regionFocus ? regionFocus + "\n" : "") +
     CURATION_TASK_PROMPT +
@@ -1533,11 +1780,11 @@ function saveCurationAndApply(prompt, result, opts = {}) {
 }
 
 async function runRegionTrip(prompt, key, complex) {
-  const wantsInfo = REGION_INFO_INTENT_RE.test(prompt);
+  const multiIntent = isMultiIntentPrompt(prompt);
   const cacheKey = normalizePromptKey(prompt);
   if (curationCache.has(cacheKey)) {
     const cached = curationCache.get(cacheKey);
-    const prefix = wantsInfo && cached.source !== "gemini" ? buildRegionInfoReply(prompt) : "";
+    const prefix = multiIntent ? buildRegionInfoReply(prompt) : "";
     applyCurationResult(prompt, cached, { chatPrefix: prefix });
     return;
   }
@@ -1566,7 +1813,7 @@ async function runRegionTrip(prompt, key, complex) {
     result = localCuration(prompt, "local");
   }
 
-  const prefix = wantsInfo && result.source !== "gemini" ? buildRegionInfoReply(prompt) : "";
+  const prefix = multiIntent ? buildRegionInfoReply(prompt) : "";
   saveCurationAndApply(prompt, result, { chatPrefix: prefix });
 }
 
@@ -2317,6 +2564,7 @@ function buildRegionInfoReply(prompt) {
   const fest = landingRegionFestival(region);
   const visitors = landingRegionVisitors(region);
   const hubs = landingRegionHubSpots(region);
+  const relatePairs = landingRegionRelatePairs(region);
   const korSpots = landingRegionKorSpots(region);
   const ecoSpots = landingRegionEcoSpots(region);
 
@@ -2333,6 +2581,14 @@ function buildRegionInfoReply(prompt) {
   }
   if (hubs?.length) {
     lines.push(`- **중심 관광지** ${hubs.slice(0, 3).map((h) => h.name).join(", ")}`);
+  }
+  if (relatePairs?.length) {
+    lines.push(
+      `- **연관 관광지** ${relatePairs
+        .slice(0, 3)
+        .map((p) => `${p.anchor} → ${p.related.join(", ")}`)
+        .join(" · ")}`
+    );
   }
   if (korSpots?.length) {
     lines.push(`- **공식 관광지** ${korSpots.slice(0, 4).map((k) => k.title).join(", ")}`);
@@ -2397,6 +2653,20 @@ function landingRegionHubSpots(region) {
   return hubs.slice(0, 3);
 }
 
+function landingRegionRelatePairs(region, maxAnchors = 3) {
+  const byAnchor =
+    typeof TOUR_RELATE_SPOTS !== "undefined" ? TOUR_RELATE_SPOTS?.by_anchor?.[region] : null;
+  if (!byAnchor) return null;
+  const pairs = Object.entries(byAnchor)
+    .slice(0, maxAnchors)
+    .map(([anchor, rows]) => ({
+      anchor,
+      related: (rows || []).slice(0, 3).map((r) => r.name).filter(Boolean),
+    }))
+    .filter((p) => p.related.length);
+  return pairs.length ? pairs : null;
+}
+
 function landingRegionKorSpots(region) {
   const spots = typeof TOUR_KOR_SPOTS !== "undefined" ? TOUR_KOR_SPOTS?.regions?.[region] : null;
   if (!spots?.length) return null;
@@ -2456,6 +2726,7 @@ function buildLandingRegionTipHtml(region) {
   const fest = landingRegionFestival(region);
   const visitors = landingRegionVisitors(region);
   const hubs = landingRegionHubSpots(region);
+  const relatePairs = landingRegionRelatePairs(region);
   const korSpots = landingRegionKorSpots(region);
   const ecoSpots = landingRegionEcoSpots(region);
   const photo = landingRegionPhoto(region);
@@ -2503,6 +2774,12 @@ function buildLandingRegionTipHtml(region) {
     ? `<p class="landing-region-tip-spots"><span class="landing-region-tip-label">중심 관광지</span> ${esc(hubs.map((h) => h.name).join(" · "))}</p>`
     : "";
 
+  const relateHtml = relatePairs?.length
+    ? `<p class="landing-region-tip-spots"><span class="landing-region-tip-label">연관 관광지</span> ${esc(
+        relatePairs.map((p) => `${p.anchor} → ${p.related.join(", ")}`).join(" · ")
+      )}</p>`
+    : "";
+
   const korHtml = korSpots?.length
     ? `<p class="landing-region-tip-spots"><span class="landing-region-tip-label">공식 관광지</span> ${esc(korSpots.map((k) => k.title).join(" · "))}</p>`
     : "";
@@ -2520,6 +2797,7 @@ function buildLandingRegionTipHtml(region) {
     `<p class="landing-region-tip-blurb">${esc(profile.tagline)}</p>` +
     highlightHtml +
     hubHtml +
+    relateHtml +
     korHtml +
     ecoHtml +
     tagsHtml +

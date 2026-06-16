@@ -13,13 +13,20 @@ ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
 
 GANGWON_AGENT_ROLE = """# ROLE
-You are "Gangwon-do Tourism Expert AI", an official guide dedicated to revitalizing the Gangwon-do economy.
+You are "Gangwon-do Tourism Expert AI," an official guide dedicated to revitalizing the local economy of Gangwon-do. Your engine is fueled directly by live Korea Tourism Organization (KTO) API data.
+
 Your ONLY domain is Gangwon-do, South Korea (e.g., Wonju, Gangneung, Chuncheon, Sokcho, etc.).
 
+# INPUT CONTEXT CONSTRAINTS
+You will be provided with a structured data context named `compactSpotCatalog` derived from KTO Open APIs, containing:
+- Spot Names & Descriptions (국문 관광 정보)
+- Eco-Tourism/Local Attractions (생태 및 지자체 중심 정보)
+- Regional Big Data (지역별 방문자 수 및 통계 자료)
+
 # CORE DIRECTIVES (STRICT)
-1. LANGUAGE: ALWAYS reply in polite Korean (해요체).
+1. LANGUAGE: ALWAYS reply in polite, enthusiastic Korean (해요체/하십시오체).
 2. BOUNDARY: NEVER provide information, travel routes, or recommendations for locations outside Gangwon-do.
-3. DATA SOURCE: Base your answers strictly on the provided KTO (Korea Tourism Organization) API context.
+3. DATA SOURCE: Base answers strictly on the provided KTO API context — never invent spots or stats.
 
 # OUT-OF-BOUNDS HANDLING (GUARDRAIL)
 If the user asks about ANY region outside Gangwon-do (e.g., Seoul, Busan, Jeju, or overseas):
@@ -36,10 +43,33 @@ User: "제주도 비행기표 얼마야?"
 AI: "저는 강원도 관광 전문 가이드이므로 제주도 관련 정보는 알 수 없습니다. 혹시 원주 공항이나 양양 국제공항을 이용한 강원도 여행 계획을 세워보시는 건 어떨까요?"
 """
 
+KTO_API_DATA_RULES = """# STRICT API DATA UTILIZATION RULES
+
+## 1. MULTI-INTENT PROCESSING VIA API (Intro + Schedule)
+When a user asks for both information ("알려줘") and an itinerary ("일정 짜줘"):
+- **Step 1 (API-Based Intro):** Extract descriptive phrases, themes, and big-data statistics from the KTO context for the target region to create a compelling, data-backed introduction (use `summary`).
+- **Step 2 (API-Based Itinerary):** Immediately follow with `route_steps` — arrange exact spots from the context into a chronological itinerary.
+- **Prohibition:** Never skip Step 2. KTO data must become BOTH an informational overview AND a structured schedule.
+
+## 2. DATA-DRIVEN REGION FILTERING (Cross-Region Bug Fix)
+To prevent recommending spots from other cities (e.g., Gangneung spots for a Wonju query):
+- Inspect location/region fields in every `compactSpotCatalog` entry. Filter to ONLY the city/county the user requested.
+- Rank using **Regional Big Data (visitor counts) for that requested city only** to pick the top spots within that region. Do not let other cities' visitor counts skew curation.
+
+## 3. LOCALIZED FALLBACK PROTOCOL (Global Fallback Bug Fix)
+If spot-name parsing fails or a requested spot is not in the catalog:
+- Do NOT fall back to global top Gangwon spots.
+- Select the next best alternative from the **same requested city** using local big-data / hub-rank metrics in the context.
+- If the entire dataset for that city is empty, set summary to exactly:
+  "현재 KTO API 상에 [요청 지역]의 상세 정보가 부족합니다. 데이터 기반 빅데이터 방문자 수가 높은 다른 매력적인 강원도 지역을 추천해 드릴까요?"
+  and `route_steps` to [].
+"""
+
 CURATION_TASK = (
     "# CURATION TASK\n"
     "When the user requests a trip plan or course: output JSON ONLY (schema below).\n"
     "Pick spot_name only from the Gangwon catalog. Never include non-Gangwon destinations.\n"
+    "If intro + itinerary were both requested: summary = Step 1 intro; route_steps = Step 2 schedule (non-empty).\n"
     "If the request is entirely outside Gangwon-do: set summary to a polite refusal+pivot (해요체), "
     "itinerary_title to '강원도 전용 안내', route_steps to [].\n"
 )
@@ -92,6 +122,7 @@ def build_kto_api_context(user_message: str = "", *, max_regions: int = 6) -> st
 
     stats = _load_json("tour_visitor_stats.json")
     hubs = _load_json("tour_hub_spots.json")
+    relate = _load_json("tour_relate_spots.json")
     kor = _load_json("tour_kor_spots.json")
     eco = _load_json("tour_eco_spots.json")
     fest = _load_json("tour_kor_festivals.json")
@@ -105,6 +136,14 @@ def build_kto_api_context(user_message: str = "", *, max_regions: int = 6) -> st
         hub_names = [h.get("name") for h in (hubs.get("regions") or {}).get(region, [])[:2] if h.get("name")]
         if hub_names:
             parts.append(f"중심관광지 {', '.join(hub_names)}")
+        by_anchor = (relate.get("by_anchor") or {}).get(region) or {}
+        relate_bits: list[str] = []
+        for anchor, rows in list(by_anchor.items())[:2]:
+            names = [r.get("name") for r in (rows or [])[:2] if r.get("name")]
+            if names:
+                relate_bits.append(f"{anchor}→{', '.join(names)}")
+        if relate_bits:
+            parts.append(f"연관관광지 {' · '.join(relate_bits)}")
         kor_names = [k.get("title") for k in (kor.get("regions") or {}).get(region, [])[:2] if k.get("title")]
         if kor_names:
             parts.append(f"공식관광지 {', '.join(kor_names)}")
@@ -129,6 +168,96 @@ def has_trip_plan_intent(user_message: str) -> bool:
     return bool(_TRIP_PLAN.search(user_message or ""))
 
 
+def is_multi_intent_prompt(user_message: str) -> bool:
+    msg = (user_message or "").strip()
+    return bool(regions_in_message(msg) and _REGION_INFO.search(msg) and has_trip_plan_intent(msg))
+
+
+def region_empty_fallback_message(region: str) -> str:
+    return (
+        f"현재 KTO API 상에 {region}의 상세 정보가 부족합니다. "
+        "데이터 기반 빅데이터 방문자 수가 높은 다른 매력적인 강원도 지역을 추천해 드릴까요?"
+    )
+
+
+def _kto_theme_from_category(category: str) -> str:
+    cat = category or ""
+    if any(x in cat for x in ("자연", "생태", "산", "숲")):
+        return "nature"
+    if any(x in cat for x in ("레저", "스포츠", "체험")):
+        return "experience"
+    return "culture"
+
+
+def collect_kto_catalog_entries(region: str) -> list[dict[str, Any]]:
+    """시·군 KTO API 항목 — hub rank 우선, kor/eco 보강."""
+    hubs = _load_json("tour_hub_spots.json")
+    kor = _load_json("tour_kor_spots.json")
+    eco = _load_json("tour_eco_spots.json")
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+
+    def add(name: str, *, rank: int, theme: str, source: str, lat: float | None = None, lng: float | None = None) -> None:
+        key = name.replace(" ", "")
+        if not name or key in seen:
+            return
+        seen.add(key)
+        out.append(
+            {
+                "name": name,
+                "region": region,
+                "theme": theme,
+                "rank": rank,
+                "source": source,
+                "lat": lat,
+                "lng": lng,
+            }
+        )
+
+    for h in (hubs.get("regions") or {}).get(region, []):
+        add(
+            str(h.get("name") or ""),
+            rank=int(h.get("rank") or 999),
+            theme=_kto_theme_from_category(str(h.get("category") or "")),
+            source="중심관광지",
+            lat=h.get("lat"),
+            lng=h.get("lng"),
+        )
+    for i, k in enumerate((kor.get("regions") or {}).get(region, [])):
+        title = str(k.get("title") or "")
+        lat = lng = None
+        try:
+            if k.get("mapY") not in (None, ""):
+                lat = float(k["mapY"])
+            if k.get("mapX") not in (None, ""):
+                lng = float(k["mapX"])
+        except (TypeError, ValueError):
+            pass
+        add(title, rank=100 + i, theme="culture", source="공식관광지", lat=lat, lng=lng)
+    for i, e in enumerate((eco.get("regions") or {}).get(region, [])):
+        add(
+            str(e.get("title") or ""),
+            rank=200 + i,
+            theme="nature",
+            source="생태관광",
+        )
+
+    out.sort(key=lambda x: (x["rank"], x["name"]))
+    return out
+
+
+def pick_regional_spots(spots: list[dict[str, Any]], regions: list[str], *, limit: int = 3) -> list[dict[str, Any]]:
+    if not regions:
+        return spots[:limit]
+    region = regions[0]
+    local = [s for s in spots if s.get("region") == region]
+    if local:
+        kto_order = {e["name"]: e["rank"] for e in collect_kto_catalog_entries(region)}
+        local.sort(key=lambda s: (kto_order.get(s.get("name", ""), 999), s.get("name", "")))
+        return local[:limit]
+    return []
+
+
 def is_region_info_only_prompt(user_message: str) -> bool:
     msg = (user_message or "").strip()
     regions = regions_in_message(msg)
@@ -142,13 +271,30 @@ def region_focus_prompt_block(user_message: str) -> str:
     if not regions:
         return ""
     joined = ", ".join(regions)
-    return (
-        "# REGION FOCUS (STRICT)\n"
-        f"User focus region(s): {joined}.\n"
-        "- summary: polite Korean (해요체) introducing this region using KTO context.\n"
-        f"- route_steps: spot_name MUST be from the catalog below AND in {joined}.\n"
-        "- Do NOT include spots from other cities/counties unless multi-city was requested.\n"
+    multi = is_multi_intent_prompt(user_message)
+    lines = [
+        "# REGION FOCUS (STRICT)",
+        f"User focus region(s): {joined}.",
+        "- Filter compactSpotCatalog to these region(s) ONLY before ranking or picking spots.",
+        "- Rank using visitor big-data for these region(s) only — ignore other cities' stats.",
+    ]
+    if multi:
+        lines.extend(
+            [
+                "- MULTI-INTENT: User wants intro AND itinerary.",
+                "- summary: Step 1 — KTO data-backed regional introduction (해요체).",
+                "- route_steps: Step 2 — non-empty chronological itinerary from catalog; NEVER skip.",
+            ]
+        )
+    else:
+        lines.append("- summary: polite Korean (해요체) introducing this region using KTO context.")
+    lines.extend(
+        [
+            f"- route_steps: spot_name MUST be from the catalog below AND in {joined}.",
+            "- Do NOT include spots from other cities/counties unless multi-city was requested.",
+        ]
     )
+    return "\n".join(lines) + "\n"
 
 
 def is_region_info_prompt(user_message: str) -> bool:
@@ -225,7 +371,7 @@ def build_agent_system_prompt(
     user_message: str = "",
 ) -> str:
     kto = build_kto_api_context(user_message)
-    parts = [GANGWON_AGENT_ROLE]
+    parts = [GANGWON_AGENT_ROLE, KTO_API_DATA_RULES]
     if kto:
         parts.append(kto)
     if for_curation and user_message.strip():

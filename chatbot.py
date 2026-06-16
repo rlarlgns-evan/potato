@@ -8,9 +8,13 @@ import config  # noqa: F401 — .env 로드
 from gangwon_agent_prompt import (
     build_agent_system_prompt,
     build_region_info_reply,
+    collect_kto_catalog_entries,
     has_trip_plan_intent,
+    is_multi_intent_prompt,
     is_region_info_only_prompt,
     out_of_gangwon_reply,
+    pick_regional_spots,
+    region_empty_fallback_message,
     regions_in_message,
 )
 from trip_intent import attach_origin_step, build_trip_hints, detect_themes, needs_ai_curation
@@ -43,14 +47,20 @@ def _compact_spot_catalog(spots: list[dict[str, Any]], user_message: str = "") -
         return ""
     pool = spots
     msg = user_message.strip()
+    regions = regions_in_message(msg) if msg else []
+    if regions:
+        regional = [s for s in spots if s.get("region") in regions]
+        if regional:
+            pool = regional
+        else:
+            kto_lines = []
+            for region in regions:
+                for entry in collect_kto_catalog_entries(region):
+                    kto_lines.append(f"{entry['name']}|{region}|{entry['theme']}")
+            return "\n".join(kto_lines[:MAX_SPOTS_IN_PROMPT])
     if msg:
-        regions = regions_in_message(msg)
-        if regions:
-            regional = [s for s in spots if s.get("region") in regions]
-            if regional:
-                pool = regional
         kws = [w for w in re.split(r"\s+", msg) if len(w) >= 2]
-        for r in regions_in_message(msg):
+        for r in regions:
             kws.extend([r, r.replace("시", "").replace("군", "")])
         kws = list(dict.fromkeys(kws))
         themes = detect_themes(msg)
@@ -66,7 +76,10 @@ def _compact_spot_catalog(spots: list[dict[str, Any]], user_message: str = "") -
                 ranked.append((score, s))
             ranked.sort(key=lambda x: (-x[0], x[1]["name"]))
             matched = [s for sc, s in ranked if sc > 0][:MAX_SPOTS_IN_PROMPT]
-            pool = matched if len(matched) >= 6 else [s for _, s in ranked][:MAX_SPOTS_IN_PROMPT]
+            if matched:
+                pool = matched
+            elif not regions:
+                pool = [s for _, s in ranked][:MAX_SPOTS_IN_PROMPT]
     return "\n".join(f"{s['name']}|{s['region']}|{s['theme']}" for s in pool[:MAX_SPOTS_IN_PROMPT])
 
 
@@ -86,22 +99,34 @@ def _build_system_prompt(
     )
 
 
-def _spots_from_names(spots: list[dict[str, Any]], names: list[str]) -> list[dict[str, Any]]:
+def _spots_from_names(
+    spots: list[dict[str, Any]],
+    names: list[str],
+    *,
+    regions: list[str] | None = None,
+) -> list[dict[str, Any]]:
     if not names:
         return []
+    pool = spots
+    if regions:
+        regional = [s for s in spots if s.get("region") in regions]
+        if regional:
+            pool = regional
     order = {name: idx for idx, name in enumerate(names)}
-    by_name = {s["name"]: s for s in spots}
+    by_name = {s["name"]: s for s in pool}
     result = []
     for name in names:
         if name in by_name and by_name[name] not in result:
             result.append(by_name[name])
     if result:
         return result
-    for spot in spots:
+    for spot in pool:
         for name in names:
             if name in spot["name"] or spot["name"] in name:
                 if spot not in result:
                     result.append(spot)
+    if not result and regions:
+        return pick_regional_spots(spots, regions, limit=4)
     result.sort(key=lambda s: order.get(s["name"], 999))
     return result[:4]
 
@@ -302,7 +327,25 @@ def _ai_required_failure(user_message: str, reason: str = "") -> dict[str, Any]:
 
 
 def _fallback_curation(user_message: str, spots: list[dict[str, Any]], source: str = "local") -> dict[str, Any]:
-    if not spots:
+    regions = regions_in_message(user_message)
+    picks = pick_regional_spots(spots, regions, limit=3) if regions else spots[:3]
+
+    if not picks and regions:
+        msg = region_empty_fallback_message(regions[0])
+        return {
+            "itinerary_title": f"{regions[0]} 안내",
+            "summary": msg,
+            "message": msg,
+            "recommended_spots": [],
+            "route_order": [],
+            "route_steps": [],
+            "total_duration": "",
+            "map_tip": "",
+            "curated_spots": [],
+            "source": source,
+        }
+
+    if not picks:
         return {
             "itinerary_title": "후보 없음",
             "summary": "현재 필터에 맞는 장소가 없습니다.",
@@ -314,19 +357,14 @@ def _fallback_curation(user_message: str, spots: list[dict[str, Any]], source: s
         }
 
     keywords = user_message.replace(",", " ").split()
-    for r in regions_in_message(user_message):
+    for r in regions:
         keywords.extend([r, r.replace("시", "").replace("군", "")])
-    candidates = spots
-    regions = regions_in_message(user_message)
-    if regions:
-        regional = [s for s in spots if s.get("region") in regions]
-        if regional:
-            candidates = regional
+    candidates = picks
     ranked = []
     for spot in candidates:
         score = sum(1 for kw in keywords if kw and kw in f"{spot['name']} {spot['region']} {spot['theme']} {spot['description']}")
         ranked.append((score, spot))
-    ranked.sort(key=lambda x: (-x[0], x[1]["region"]))
+    ranked.sort(key=lambda x: (-x[0], x[1]["name"]))
     picks = [spot for _, spot in ranked[:3]]
     region_label = regions[0] if regions else (picks[0]["region"] if picks else "")
     names = [s["name"] for s in picks]
@@ -440,7 +478,8 @@ def _call_google_curation(
         return None
 
 
-def _finalize_curation(parsed: dict[str, Any], spots: list[dict[str, Any]]) -> dict[str, Any]:
+def _finalize_curation(parsed: dict[str, Any], spots: list[dict[str, Any]], user_message: str = "") -> dict[str, Any]:
+    regions = regions_in_message(user_message)
     route_names = parsed.get("route_order") or parsed.get("recommended_spots") or []
     if not route_names:
         route_names = [
@@ -449,9 +488,13 @@ def _finalize_curation(parsed: dict[str, Any], spots: list[dict[str, Any]]) -> d
             if s.get("spot_name")
         ]
     rec_names = parsed.get("recommended_spots") or route_names
-    curated = _spots_from_names(spots, list(route_names) if route_names else list(rec_names))
+    curated = _spots_from_names(
+        spots,
+        list(route_names) if route_names else list(rec_names),
+        regions=regions or None,
+    )
     if not curated and rec_names:
-        curated = _spots_from_names(spots, list(rec_names))
+        curated = _spots_from_names(spots, list(rec_names), regions=regions or None)
 
     steps = _steps_for_spots(curated, parsed)
     message = format_itinerary_message(parsed, curated)
@@ -470,6 +513,24 @@ def _finalize_curation(parsed: dict[str, Any], spots: list[dict[str, Any]]) -> d
         "day_plans": parsed.get("day_plans") or [],
         "source": "",
     }
+
+
+def _maybe_prepend_region_intro(
+    user_message: str,
+    spots: list[dict[str, Any]],
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    if not is_multi_intent_prompt(user_message):
+        return result
+    if not result.get("route_steps") and not result.get("curated_spots"):
+        return result
+    intro = build_region_info_reply(user_message, spots)
+    body = result.get("message") or result.get("summary") or ""
+    if intro and intro not in body:
+        result["message"] = f"{intro}\n\n{body}".strip()
+        if not result.get("summary"):
+            result["summary"] = intro
+    return result
 
 
 def curate_trip(
@@ -505,17 +566,17 @@ def curate_trip(
     provider = os.getenv("AI_PROVIDER", "openai").lower()
 
     if not _should_call_ai(user_message, spots):
-        return _fallback_curation(user_message, spots, source="local_skip")
+        return _maybe_prepend_region_intro(user_message, spots, _fallback_curation(user_message, spots, source="local_skip"))
 
     complex = needs_ai_curation(user_message)
     if provider == "google" and not os.getenv("GOOGLE_API_KEY"):
         if complex:
             return _ai_required_failure(user_message, "AI 키가 설정되지 않았습니다.")
-        return _fallback_curation(user_message, spots, source="local")
+        return _maybe_prepend_region_intro(user_message, spots, _fallback_curation(user_message, spots, source="local"))
     if provider != "google" and not os.getenv("OPENAI_API_KEY"):
         if complex:
             return _ai_required_failure(user_message, "AI 키가 설정되지 않았습니다.")
-        return _fallback_curation(user_message, spots, source="local")
+        return _maybe_prepend_region_intro(user_message, spots, _fallback_curation(user_message, spots, source="local"))
 
     parsed: dict[str, Any] | None = None
     ai_source = "gemini" if provider == "google" else "openai"
@@ -527,13 +588,13 @@ def curate_trip(
     if not parsed:
         if complex:
             return _ai_required_failure(user_message)
-        return _fallback_curation(user_message, spots, source="local_api_fail")
+        return _maybe_prepend_region_intro(user_message, spots, _fallback_curation(user_message, spots, source="local_api_fail"))
 
-    result = _finalize_curation(parsed, spots)
+    result = _finalize_curation(parsed, spots, user_message)
     if not result["curated_spots"]:
         if complex:
             return _ai_required_failure(user_message, "AI 응답에서 장소를 찾지 못했습니다.")
-        return _fallback_curation(user_message, spots, source="local_api_fail")
+        return _maybe_prepend_region_intro(user_message, spots, _fallback_curation(user_message, spots, source="local_api_fail"))
     result["route_steps"] = attach_origin_step(
         result["route_steps"],
         result.get("trip_intent"),
@@ -541,4 +602,11 @@ def curate_trip(
         user_message,
     )
     result["source"] = ai_source
+    if is_multi_intent_prompt(user_message):
+        intro = build_region_info_reply(user_message, spots)
+        body = result.get("message") or ""
+        if intro and intro not in body:
+            result["message"] = f"{intro}\n\n{body}".strip()
+            if not result.get("summary"):
+                result["summary"] = intro
     return result

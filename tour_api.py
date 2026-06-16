@@ -4,6 +4,7 @@
 매뉴얼
 - 관광빅데이터 v4.1 → DataLabService
 - 기초지자체 중심관광지 v4.1 → LocgoHubTarService1
+- 관광지별 연관관광지 v4.1 → TarRlteTarService1
 - 관광사진 v4.2 → PhotoGalleryService1
 - 생태관광 v4.2 → GreenTourService1
 - 국문 관광정보 v4.4 → KorService2
@@ -27,6 +28,7 @@ SIGUNGU_CODES_PATH = ROOT / "data" / "gangwon_sigungu_codes.json"
 
 DATALAB_BASE = "http://apis.data.go.kr/B551011/DataLabService"
 HUB_BASE = "http://apis.data.go.kr/B551011/LocgoHubTarService1"
+RELATE_BASE = "http://apis.data.go.kr/B551011/TarRlteTarService1"
 PHOTO_BASE = "http://apis.data.go.kr/B551011/PhotoGalleryService1"
 ECO_BASE = "http://apis.data.go.kr/B551011/GreenTourService1"
 KOR_BASE = "http://apis.data.go.kr/B551011/KorService2"
@@ -76,6 +78,7 @@ def get_service_key() -> str:
             "TOUR_API_SERVICE_KEY가 없습니다. 공공데이터포털에서 아래 API 활용신청 후 .env에 키를 넣으세요.\n"
             "- 관광빅데이터 정보서비스_GW\n"
             "- 기초지자체 중심 관광지 정보서비스_GW\n"
+            "- 관광지별 연관관광지 정보서비스_GW\n"
             "- 관광사진갤러리 서비스_GW\n"
             "- 생태관광 정보서비스_GW\n"
             "- 국문 관광정보 서비스_GW"
@@ -467,6 +470,159 @@ def fetch_gangwon_hub_spots(
         "updated_at": date.today().isoformat(),
         "baseYm": base,
         "regions": regions,
+    }
+
+
+# ---------- TarRlteTar (연관관광지) ----------
+
+
+def _anchor_field(item: dict[str, Any], suffix: str) -> str:
+    """매뉴얼 baseTatsCd/baseTatsNm (일부 응답은 tatsCd/tatsNm)."""
+    for key in (f"baseTats{suffix}", f"tats{suffix}", f"baseTar{suffix}"):
+        val = item.get(key)
+        if val not in (None, ""):
+            return str(val)
+    return ""
+
+
+def normalize_relate_item(item: dict[str, Any]) -> dict[str, Any]:
+    rank_raw = item.get("rlteRank")
+    try:
+        rank = int(rank_raw)
+    except (TypeError, ValueError):
+        rank = 999
+    cat_m = str(item.get("rlteCtgryMclsNm") or "")
+    cat_l = str(item.get("rlteCtgryLclsNm") or "")
+    cat_s = str(item.get("rlteCtgrySclsNm") or "")
+    return {
+        "anchor_code": _anchor_field(item, "Cd"),
+        "anchor_name": _clean_hub_name(_anchor_field(item, "Nm")),
+        "code": str(item.get("rlteTatsCd") or ""),
+        "name": _clean_hub_name(str(item.get("rlteTatsNm") or "")),
+        "rank": rank,
+        "category_l": cat_l,
+        "category_m": cat_m,
+        "category_s": cat_s,
+        "category": cat_m or cat_l or cat_s,
+        "region": str(item.get("rlteSignguNm") or item.get("signguNm") or "").strip(),
+        "baseYm": str(item.get("baseYm") or ""),
+    }
+
+
+def _group_relate_by_anchor(items: list[dict[str, Any]], *, top_n: int = 5) -> dict[str, list[dict[str, Any]]]:
+    buckets: dict[str, list[dict[str, Any]]] = {}
+    for row in items:
+        anchor = row.get("anchor_name") or row.get("anchor_code") or "기타"
+        slot = buckets.setdefault(anchor, [])
+        if any(x.get("code") == row.get("code") for x in slot):
+            continue
+        slot.append(
+            {
+                "code": row["code"],
+                "name": row["name"],
+                "rank": row["rank"],
+                "category": row.get("category") or "",
+            }
+        )
+    for anchor, related in buckets.items():
+        related.sort(key=lambda x: x["rank"])
+        buckets[anchor] = related[:top_n]
+    return buckets
+
+
+def fetch_relate_spots_for_sigungu(
+    *,
+    area_cd: int,
+    signgu_cd: int,
+    base_ym: str | None = None,
+    service_key: str | None = None,
+    top_n_per_anchor: int = 5,
+) -> list[dict[str, Any]]:
+    items = _fetch_all_pages(
+        RELATE_BASE,
+        "areaBasedList1",
+        {
+            "baseYm": base_ym or _default_base_ym(),
+            "areaCd": area_cd,
+            "signguCd": signgu_cd,
+        },
+        service_key=service_key,
+        num_of_rows=100,
+        max_pages=15,
+    )
+    normalized = [normalize_relate_item(i) for i in items if i.get("rlteTatsNm")]
+    normalized.sort(key=lambda x: (x.get("anchor_name") or "", x["rank"]))
+    if top_n_per_anchor <= 0:
+        return normalized
+    out: list[dict[str, Any]] = []
+    counts: dict[str, int] = {}
+    for row in normalized:
+        anchor = row.get("anchor_name") or row.get("anchor_code") or ""
+        n = counts.get(anchor, 0)
+        if n >= top_n_per_anchor:
+            continue
+        counts[anchor] = n + 1
+        out.append(row)
+    return out
+
+
+def search_relate_spots_by_keyword(
+    keyword: str,
+    *,
+    service_key: str | None = None,
+    top_n: int = 10,
+) -> list[dict[str, Any]]:
+    items = _fetch_all_pages(
+        RELATE_BASE,
+        "searchKeyword1",
+        {"keyword": keyword},
+        service_key=service_key,
+        num_of_rows=50,
+        max_pages=2,
+    )
+    normalized = [normalize_relate_item(i) for i in items if i.get("rlteTatsNm")]
+    normalized.sort(key=lambda x: x["rank"])
+    return normalized[:top_n]
+
+
+def fetch_gangwon_relate_spots(
+    *,
+    base_ym: str | None = None,
+    service_key: str | None = None,
+    top_n_per_anchor: int = 5,
+    throttle_sec: float = 0.12,
+) -> dict[str, Any]:
+    key = service_key or get_service_key()
+    codes = load_gangwon_sigungu_codes()
+    base = base_ym or _default_base_ym()
+    regions: dict[str, list[dict[str, Any]]] = {}
+    by_anchor: dict[str, dict[str, list[dict[str, Any]]]] = {}
+
+    for region, meta in codes.get("regions", {}).items():
+        if region not in GANGWON_REGIONS:
+            continue
+        try:
+            pairs = fetch_relate_spots_for_sigungu(
+                area_cd=int(meta["areaCd"]),
+                signgu_cd=int(meta["signguCd"]),
+                base_ym=base,
+                service_key=key,
+                top_n_per_anchor=top_n_per_anchor,
+            )
+            if pairs:
+                regions[region] = pairs
+                by_anchor[region] = _group_relate_by_anchor(pairs, top_n=top_n_per_anchor)
+        except TourApiError:
+            continue
+        if throttle_sec > 0:
+            time.sleep(throttle_sec)
+
+    return {
+        "source": "TourAPI TarRlteTarService1 areaBasedList1",
+        "updated_at": date.today().isoformat(),
+        "baseYm": base,
+        "regions": regions,
+        "by_anchor": by_anchor,
     }
 
 

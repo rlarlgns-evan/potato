@@ -21,6 +21,7 @@ def main() -> int:
     codes |= run("sync_tour_ldong.py")
     codes |= run("sync_tour_stats.py", "--days", "7")
     codes |= run("sync_tour_hub.py")
+    codes |= run("sync_tour_relate.py")
     codes |= run("sync_tour_photos.py", "--per-region", "2")
     codes |= run("sync_tour_kor.py")
     codes |= run("sync_tour_eco.py")

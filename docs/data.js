@@ -1762,6 +1762,14 @@ const TOUR_HUB_SPOTS = {
   }
 };
 
+const TOUR_RELATE_SPOTS = {
+  "source": "TourAPI TarRlteTarService1 areaBasedList1",
+  "updated_at": "2026-06-16",
+  "baseYm": "202605",
+  "regions": {},
+  "by_anchor": {}
+};
+
 const TOUR_ECO_SPOTS = {
   "source": "TourAPI GreenTourService1 areaBasedList1",
   "updated_at": "2026-06-16",

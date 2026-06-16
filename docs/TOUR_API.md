@@ -6,6 +6,7 @@
 |-----|--------|------|
 | 관광빅데이터 정보서비스_GW | `TourAPI_Guide_(관광빅데이터)v4.1` | 시·군 **방문자 통계** |
 | 기초지자체 중심 관광지 정보서비스_GW | `TourAPI_Guide_(중심관광지)v4.1` | 시·군 **중심 관광지** 순위 |
+| **관광지별 연관관광지 정보서비스_GW** | `TourAPI_Guide_(연관관광지)v4.1` | 기준 관광지 **연관 관광지** (함께 방문) |
 | 관광사진갤러리 서비스_GW | `TourAPI_Guide_(관광사진)v4.2` | 지역 **관광 사진** |
 | 생태관광 정보서비스_GW | `TourAPI_Guide_(생태관광)v4.2` | 시·군 **생태관광** 명소 |
 | 국문 관광정보 서비스_GW | `한국관광공사_개방데이터_활용매뉴얼(국문)_v4.4` | **공식 관광지**·**축제** |
@@ -32,6 +33,7 @@ python scripts/sync_tour_all.py
 python scripts/sync_tour_ldong.py              # 법정동·생태 시군구 코드 보강
 python scripts/sync_tour_stats.py --days 7    # 방문자 통계
 python scripts/sync_tour_hub.py               # 중심 관광지
+python scripts/sync_tour_relate.py            # 연관 관광지
 python scripts/sync_tour_photos.py            # 관광 사진
 python scripts/sync_tour_kor.py               # 국문 관광지 + 축제
 python scripts/sync_tour_eco.py               # 생태관광
@@ -51,6 +53,7 @@ python scripts/import_sigungu_codes.py
 |------|-----|---------|
 | `data/tour_visitor_stats.json` | DataLab `locgoRegnVisitrDDList` | 지도 툴팁 **방문** |
 | `data/tour_hub_spots.json` | `LocgoHubTarService1/areaBasedList1` | 지도 툴팁 **중심 관광지** |
+| `data/tour_relate_spots.json` | `TarRlteTarService1/areaBasedList1` | 툴팁·AI **연관 관광지** (기준→연관) |
 | `data/tour_region_photos.json` | `PhotoGalleryService1/gallerySearchList1` | 툴팁 사진·관광지 카드 썸네일 |
 | `data/tour_kor_spots.json` | `KorService2/areaBasedList2` | 툴팁 **공식 관광지**·카드 썸네일 |
 | `data/tour_kor_festivals.json` | `KorService2/searchFestival2` | 툴팁·축제 탭 (큐레이션과 병합) |
@@ -99,6 +102,27 @@ GET http://apis.data.go.kr/B551011/LocgoHubTarService1/areaBasedList1
 ```
 
 응답: `hubTatsNm`, `hubRank`, `hubCtgryMclsNm`, `mapX`, `mapY` …
+
+### 연관관광지 `areaBasedList1`
+
+```
+GET http://apis.data.go.kr/B551011/TarRlteTarService1/areaBasedList1
+  ?serviceKey=...&baseYm=202504&areaCd=51&signguCd=51150
+  &numOfRows=10&pageNo=1&MobileOS=ETC&MobileApp=GangwonOndo&_type=json
+```
+
+- 중심관광지 API와 동일하게 `baseYm`, `areaCd`, `signguCd` 사용
+- 기준 관광지(`baseTatsNm`) 방문 시 함께 가기 좋은 **연관 관광지**(`rlteTatsNm`) 순위
+- 공공데이터포털에서 **「관광지별 연관관광지 정보서비스_GW」** 별도 활용신청 필요 (미신청 시 HTTP 403)
+
+응답: `baseTatsCd`, `baseTatsNm`, `rlteTatsCd`, `rlteTatsNm`, `rlteRank`, `rlteCtgryMclsNm`, `rlteSignguNm` …
+
+키워드 검색:
+
+```
+GET http://apis.data.go.kr/B551011/TarRlteTarService1/searchKeyword1
+  ?serviceKey=...&keyword=치악산&numOfRows=10&pageNo=1&MobileOS=ETC&MobileApp=GangwonOndo&_type=json
+```
 
 ### 관광사진 `gallerySearchList1`
 

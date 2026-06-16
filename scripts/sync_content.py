@@ -110,6 +110,12 @@ def generate_data_js() -> str:
         if tour_hub_path.exists()
         else {"regions": {}}
     )
+    tour_relate_path = DATA_DIR / "tour_relate_spots.json"
+    tour_relate = (
+        json.loads(tour_relate_path.read_text(encoding="utf-8"))
+        if tour_relate_path.exists()
+        else {"regions": {}, "by_anchor": {}}
+    )
     tour_photos_path = DATA_DIR / "tour_region_photos.json"
     tour_photos = (
         json.loads(tour_photos_path.read_text(encoding="utf-8"))
@@ -155,6 +161,7 @@ def generate_data_js() -> str:
         _js_array_block("TRANSIT_ORIGINS", catalog.get("transit_origins") or {}),
         f"const TOUR_VISITOR_STATS = {json.dumps(tour_stats, ensure_ascii=False, indent=2)};",
         f"const TOUR_HUB_SPOTS = {json.dumps(tour_hub, ensure_ascii=False, indent=2)};",
+        f"const TOUR_RELATE_SPOTS = {json.dumps(tour_relate, ensure_ascii=False, indent=2)};",
         f"const TOUR_ECO_SPOTS = {json.dumps(tour_eco, ensure_ascii=False, indent=2)};",
         f"const TOUR_KOR_SPOTS = {json.dumps(tour_kor_spots, ensure_ascii=False, indent=2)};",
         f"const TOUR_KOR_FESTIVALS = {json.dumps(tour_kor_fest, ensure_ascii=False, indent=2)};",

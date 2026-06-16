@@ -13,6 +13,12 @@ OUT = ROOT / "data" / "gangwon_sigungu_codes.json"
 DEFAULT_XLSX = (
     Path.home()
     / "Downloads"
+    / "TourAPI_Guide_(연관관광지)v4.1"
+    / "한국관광공사_TourAPI_관광지_시군구_코드정보_v1.0.xlsx"
+)
+FALLBACK_XLSX = (
+    Path.home()
+    / "Downloads"
     / "TourAPI_Guide_(중심관광지)v4.1"
     / "한국관광공사_TourAPI_관광지_시군구_코드정보_v1.0.xlsx"
 )
@@ -63,7 +69,11 @@ def import_gangwon_codes(xlsx_path: Path) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--xlsx", type=Path, default=DEFAULT_XLSX)
+    parser.add_argument(
+        "--xlsx",
+        type=Path,
+        default=DEFAULT_XLSX if DEFAULT_XLSX.exists() else FALLBACK_XLSX,
+    )
     args = parser.parse_args()
 
     if not args.xlsx.exists():
