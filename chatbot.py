@@ -75,7 +75,7 @@ def _build_system_prompt(
     for_curation: bool = False,
     user_message: str = "",
 ) -> str:
-    catalog = _compact_spot_catalog(spots, user_message)
+    catalog = "" if for_curation else _compact_spot_catalog(spots, user_message)
     hints = build_trip_hints(user_message) if user_message.strip() else ""
     return build_agent_system_prompt(
         catalog=catalog,
@@ -96,9 +96,7 @@ def _spots_from_names(
         return []
     pool = spots
     if regions:
-        regional = [s for s in spots if s.get("region") in regions]
-        if regional:
-            pool = regional
+        pool = [s for s in spots if s.get("region") in regions]
     order = {name: idx for idx, name in enumerate(names)}
     by_name = {s["name"]: s for s in pool}
     result = []
@@ -113,7 +111,14 @@ def _spots_from_names(
                 if spot not in result:
                     result.append(spot)
     if not result and regions:
-        return pick_regional_spots(spots, regions, limit=4)
+        kto_pool = pick_regional_spots(spots, regions, limit=8)
+        for name in names:
+            for spot in kto_pool:
+                if name in spot["name"] or spot["name"] in name:
+                    if spot not in result:
+                        result.append(spot)
+        if not result:
+            result = kto_pool[: min(len(names), 4)]
     result.sort(key=lambda s: order.get(s["name"], 999))
     return result[:4]
 
@@ -587,6 +592,8 @@ def _maybe_prepend_region_intro(
 ) -> dict[str, Any]:
     if not is_multi_intent_prompt(user_message):
         return result
+    if result.get("source") in ("gemini", "openai"):
+        return result
     if not result.get("route_steps") and not result.get("curated_spots"):
         return result
     intro = build_region_info_reply(user_message, spots)
@@ -667,7 +674,7 @@ def curate_trip(
         user_message,
     )
     result["source"] = ai_source
-    if is_multi_intent_prompt(user_message):
+    if is_multi_intent_prompt(user_message) and ai_source not in ("gemini", "openai"):
         intro = build_region_info_reply(user_message, spots)
         body = result.get("message") or ""
         if intro and intro not in body:

@@ -75,11 +75,11 @@ _OUT_OF_SCOPE_INTENT = re.compile(
     re.I,
 )
 _REGION_INFO = re.compile(
-    r"(설명|소개|알려|안내|어때|특징|정보|대해|대해서|어떤|볼거리|먹거리|특산)",
+    r"(설명|소개|알려|안내|어때|특징|정보|대해|대해서|어떤|가볼|볼거리|먹거리|특산)",
     re.I,
 )
 _TRIP_PLAN = re.compile(
-    r"(코스|일정|경로|동선|루트|하루|당일|\d+박|숙소|펜션|호텔|길찾|계획|짜\s*줘|만들어)",
+    r"(코스|일정|경로|동선|루트|하루|당일|\d+박|숙소|펜션|호텔|길찾|계획|짜\s*줘|만들어|추천해\s*줘)",
     re.I,
 )
 
@@ -303,6 +303,21 @@ def collect_kto_catalog_entries(region: str) -> list[dict[str, Any]]:
     return out
 
 
+def kto_entry_to_spot_dict(entry: dict[str, Any], region: str) -> dict[str, Any]:
+    theme_map = {"nature": "자연", "culture": "문화", "experience": "체험"}
+    theme = theme_map.get(str(entry.get("theme") or ""), "관광")
+    lat = entry.get("lat")
+    lng = entry.get("lng")
+    return {
+        "name": entry["name"],
+        "region": region,
+        "description": f"{entry['name']} — KTO {entry.get('source', '')}",
+        "lat": float(lat) if lat is not None else 37.5,
+        "lng": float(lng) if lng is not None else 128.0,
+        "theme": theme,
+    }
+
+
 def pick_regional_spots(spots: list[dict[str, Any]], regions: list[str], *, limit: int = 3) -> list[dict[str, Any]]:
     if not regions:
         return spots[:limit]
@@ -312,7 +327,7 @@ def pick_regional_spots(spots: list[dict[str, Any]], regions: list[str], *, limi
         kto_order = {e["name"]: e["rank"] for e in collect_kto_catalog_entries(region)}
         local.sort(key=lambda s: (kto_order.get(s.get("name", ""), 999), s.get("name", "")))
         return local[:limit]
-    return []
+    return [kto_entry_to_spot_dict(e, region) for e in collect_kto_catalog_entries(region)[:limit]]
 
 
 def is_region_info_only_prompt(user_message: str) -> bool:
@@ -437,6 +452,6 @@ def build_agent_system_prompt(
         parts.append(hints)
     if for_curation and curation_schema:
         parts.append(curation_schema)
-    elif catalog:
+    elif catalog and not for_curation:
         parts.append(f"# GANGWON SPOT CATALOG (name|region|theme)\n{catalog}")
     return "\n\n".join(parts)

@@ -346,7 +346,7 @@ function outOfGangwonReply(prompt) {
   if (!msg) return null;
   if (/강원|춘천|원주|강릉|속초|동해|삼척|태백|홍천|횡성|영월|평창|정선|철원|화천|양구|인제|고성|양양/i.test(msg)) return null;
   if (!/(?:부산|제주|제주도|해운대|서울|경주|여수|대전|대구|인천|광주|울산|명동|홍대|이태원|강남|판교|수원|해외|일본|태국|유럽|미국|중국|베트남)/.test(msg)) return null;
-  if (!/(맛집|관광|여행|코스|추천|숙소|호텔|비행기|항공|기차표|날씨|일정)/i.test(msg)) return null;
+  if (!/(맛집|관광|여행|코스|추천|숙소|호텔|비행기|항공|기차표|날씨|일정|설명|소개|안내|대해)/i.test(msg)) return null;
   if (/부산|해운대/.test(msg)) {
     return (
       "죄송해요, 저는 강원도 지역 관광 및 경제 활성화를 위한 전용 가이드라서 타 지역 정보는 제공하지 않아요. " +
@@ -1392,38 +1392,6 @@ function getGeminiKey() {
   return normalizeGeminiKey(
     typeof window !== "undefined" ? window.GEMINI_API_KEY : ""
   );
-}
-
-function compactSpotCatalog(prompt) {
-  const regions = regionsInPrompt(prompt);
-  const { keywords, themeTerms, scores } = getPromptSpotContext(prompt);
-
-  if (regions.length) {
-    let pool = ENRICHED_SPOTS.filter((s) => regions.includes(s.region));
-    const ktoLines = regions.flatMap((region) =>
-      collectKtoCatalogEntries(region).map((e) => `${e.name}|${region}|${e.theme}`)
-    );
-    const enrichedLines = pool.map((s) => `${s.name}|${s.region}|${s.theme}`);
-    const merged = [...new Set([...enrichedLines, ...ktoLines])];
-    if (merged.length) return merged.slice(0, MAX_SPOTS_IN_PROMPT).join("\n");
-    return ktoLines.slice(0, MAX_SPOTS_IN_PROMPT).join("\n");
-  }
-
-  let pool;
-  if (keywords.length || themeTerms.length) {
-    const ranked = rankSpotIndices(scores);
-    const matched = [];
-    for (let i = 0; i < ranked.length && matched.length < MAX_SPOTS_IN_PROMPT; i++) {
-      if (ranked[i].score > 0) matched.push(ENRICHED_SPOTS[ranked[i].index]);
-    }
-    pool =
-      matched.length >= 6
-        ? matched
-        : ranked.slice(0, MAX_SPOTS_IN_PROMPT).map((r) => ENRICHED_SPOTS[r.index]);
-  } else {
-    pool = ENRICHED_SPOTS.slice(0, MAX_SPOTS_IN_PROMPT);
-  }
-  return pool.map((s) => `${s.name}|${s.region}|${s.theme}`).join("\n");
 }
 
 function isBilling429(detail) {
@@ -4131,10 +4099,20 @@ function initSuggestions() {
 function init() {
   try {
     initIcons();
+    const n = String(ENRICHED_SPOTS.length);
     const spotEl = $("spot-count");
-    if (spotEl) spotEl.textContent = String(ENRICHED_SPOTS.length);
+    if (spotEl) spotEl.textContent = n;
     const landingSpotEl = $("landing-spot-count");
-    if (landingSpotEl) landingSpotEl.textContent = String(ENRICHED_SPOTS.length);
+    if (landingSpotEl) landingSpotEl.textContent = n;
+    const spotsTotalEl = $("spots-total");
+    if (spotsTotalEl) spotsTotalEl.textContent = n;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute(
+        "content",
+        `강원 온도(ON道) — 강원도 맞춤 여행 코스, ${n}곳 큐레이션, AI 일정·지도·날씨·축제를 한곳에서.`
+      );
+    }
     initSuggestions();
     $("weather-refresh")?.addEventListener("click", () => {
       wxCache = null;

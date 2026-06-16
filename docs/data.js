@@ -101,6 +101,14 @@ const SPOTS = [
     "theme": "트레킹"
   },
   {
+    "name": "뮤지엄산",
+    "region": "원주시",
+    "description": "미술·자연을 잇는 문화 산책",
+    "lat": 37.4189,
+    "lng": 127.823,
+    "theme": "문화"
+  },
+  {
     "name": "홍천 비내섭계곡",
     "region": "홍천군",
     "description": "계곡 피서·물놀이",
@@ -195,6 +203,14 @@ const SPOTS = [
     "lat": 38.106,
     "lng": 127.708,
     "theme": "체험"
+  },
+  {
+    "name": "고석정국민관광지",
+    "region": "철원군",
+    "description": "한탄강·고석정·DMZ 역사",
+    "lat": 38.1867,
+    "lng": 127.2895,
+    "theme": "문화"
   }
 ];
 
@@ -3988,6 +4004,7 @@ const SPOT_TOUR_IMAGES = {
   "춘천 남이섬": "http://tong.visitkorea.or.kr/cms2/website/51/2802451.jpeg",
   "춘천 소양강 스카이워크": "http://tong.visitkorea.or.kr/cms2/website/51/2802451.jpeg",
   "원주 치악산 케이블카": "http://tong.visitkorea.or.kr/cms/resource/78/3379278_image2_1.JPG",
+  "뮤지엄산": "https://tong.visitkorea.or.kr/cms/resource_photo/01/2765601_image2_1.jpg",
   "태백산 천제단": "http://tong.visitkorea.or.kr/cms2/website/07/2802507.jpeg",
   "정선 레일바이크": "https://tong.visitkorea.or.kr/cms/resource_photo/87/4073387_image2_1.jpg",
   "정선 하이원 리조트 전망": "https://tong.visitkorea.or.kr/cms/resource_photo/87/4073387_image2_1.jpg",
@@ -3995,7 +4012,8 @@ const SPOT_TOUR_IMAGES = {
   "고성 통일전망대": "http://tong.visitkorea.or.kr/cms2/website/77/3590077.jpg",
   "인제 원대리 자작나무숲": "https://tong.visitkorea.or.kr/cms/resource_photo/47/4062547_image2_1.jpg",
   "횡성 한우·둔내 온천": "https://tong.visitkorea.or.kr/cms/resource/59/3105959_image2_1.jpg",
-  "화천 산천어축제 거리": "http://tong.visitkorea.or.kr/cms2/website/09/3554509.JPG"
+  "화천 산천어축제 거리": "http://tong.visitkorea.or.kr/cms2/website/09/3554509.JPG",
+  "고석정국민관광지": "http://tong.visitkorea.or.kr/cms/resource/12/3331512_image2_1.jpg"
 };
 
 const REGION_TOUR_PHOTOS = {
