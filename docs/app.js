@@ -24,6 +24,7 @@ function insightLabel(src) {
 const AGENT_WELCOME =
   "안녕하세요! 저는 **강원도 관광 전문 AI 가이드**예요.\n\n" +
   "강원도 여행·맛집·축제·동선을 한국관광공사(KTO) 공식 데이터를 바탕으로 안내해 드려요. " +
+  "「춘천시 소개해줘」「정선군 설명해줘」처럼 시·군 질문도 환영해요. " +
   "강원도 밖 지역은 안내하지 않으며, 궁금한 것을 편하게 물어보세요.";
 
 const GANGWON_AGENT_ROLE =
@@ -60,6 +61,21 @@ function regionsInPrompt(msg) {
     if (msg.includes(region) || msg.includes(base)) found.push(region);
   }
   return found;
+}
+
+const REGION_INFO_INTENT_RE =
+  /(?:설명|소개|알려|안내|어때|특징|정보|대해|대해서|어떤|가볼|볼거리|먹거리|특산|뭐가\s*좋)/i;
+const TRIP_PLAN_INTENT_RE =
+  /(?:코스|일정|경로|동선|루트|하루|당일|\d+박|숙소|펜션|호텔|길찾|추천해\s*줘)/i;
+
+function isRegionInfoPrompt(prompt) {
+  const msg = String(prompt || "").trim();
+  const regions = regionsInPrompt(msg);
+  if (!regions.length || !REGION_INFO_INTENT_RE.test(msg)) return false;
+  if (TRIP_PLAN_INTENT_RE.test(msg) && !/(?:설명|소개|알려|안내|특징|정보|대해|대해서)/i.test(msg)) {
+    return false;
+  }
+  return true;
 }
 
 function buildKtoApiContext(prompt) {
@@ -282,9 +298,6 @@ function syncBodyMode(view) {
 }
 
 function updateSidebar(view) {
-  document.querySelectorAll(".side .sb-item[data-nav]").forEach((el) => {
-    el.classList.toggle("on", el.dataset.nav === view);
-  });
   document.querySelectorAll(".app-tab[data-nav]").forEach((el) => {
     el.classList.toggle("on", el.dataset.nav === view);
   });
@@ -720,24 +733,6 @@ function renderFestivals() {
   initIcons();
 }
 
-/* ==================== Festival marquee (legacy) ==================== */
-function initFestivals() {
-  const grads = [
-    "linear-gradient(135deg,#006a61,#66bcb0)",
-    "linear-gradient(135deg,#38bdf8,#7dd3fc)",
-    "linear-gradient(135deg,#a78bfa,#ddd6fe)",
-    "linear-gradient(135deg,#fb923c,#fed7aa)",
-  ];
-  const rows = FESTIVALS.map(
-    (f, i) =>
-      `<div class="fest-row">
-         <div class="fest-thumb" style="background:${grads[i % 4]}">${FESTIVAL_ICONS[i % FESTIVAL_ICONS.length]}</div>
-         <div><strong>${esc(f.title)}</strong><span>${esc(f.place)} · ${esc(f.period)}</span>${f.desc ? `<span class="fest-desc">${esc(f.desc)}</span>` : ""}</div>
-       </div>`
-  ).join("");
-  $("fest-tr").innerHTML = rows + rows;
-}
-
 /* ==================== Route math ==================== */
 function haversineKm(a, b) {
   const R = 6371;
@@ -876,7 +871,9 @@ const PROMPT_SCORE_CACHE_MAX = 48;
 const promptSpotScoreCache = new Map();
 
 function tokenizeSearchKeywords(prompt) {
-  return String(prompt).replace(/,/g, " ").split(/\s+/).filter((w) => w.length >= 2);
+  const words = String(prompt).replace(/,/g, " ").split(/\s+/).filter((w) => w.length >= 2);
+  const fromRegions = regionsInPrompt(prompt).flatMap((r) => [r, r.replace(/[시군]$/, "")]);
+  return [...new Set([...words, ...fromRegions])];
 }
 
 function expandThemeSearchTerms(themes) {
@@ -996,10 +993,6 @@ function persistCacheEntry(key, data) {
     store[key] = { ts: Date.now(), data };
     localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(store));
   } catch { /* quota */ }
-}
-
-function clearPersistedCache() {
-  try { localStorage.removeItem(CACHE_STORAGE_KEY); } catch { /* ignore */ }
 }
 
 const curationCache = new Map(Object.entries(loadPersistedCache()));
@@ -1163,10 +1156,6 @@ function getGeminiKey() {
   );
 }
 
-function geminiAvailable() {
-  return Boolean(getGeminiKey());
-}
-
 function compactSpotCatalog(prompt) {
   const { keywords, themeTerms, scores } = getPromptSpotContext(prompt);
   let pool;
@@ -1223,7 +1212,7 @@ function geminiFailToast(e) {
 
 async function callGemini(body, key, retries = 1) {
   const primary = typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "gemini-3.5-flash";
-  const models = [...new Set([primary, "gemini-3.5-flash", "gemini-3-flash-preview", "gemini-2.5-flash"])];
+  const models = [...new Set([primary, "gemini-3.5-flash", "gemini-2.5-flash"])];
   let lastErr = null;
   for (const model of models) {
     const generationConfig = {
@@ -1231,7 +1220,7 @@ async function callGemini(body, key, retries = 1) {
       maxOutputTokens: 4096,
       responseMimeType: "application/json",
     };
-    if (/gemini-3[\.\-]/i.test(model)) {
+    if (/gemini-3(?:\.\d+|-)/i.test(model)) {
       generationConfig.thinkingConfig = { thinkingLevel: "MINIMAL" };
     }
     const reqBody = { ...body, generationConfig };
@@ -1504,6 +1493,11 @@ async function runCuration(prompt) {
     const refusal = outOfGangwonReply(prompt);
     if (refusal) {
       pushAgentFailure(refusal);
+      return;
+    }
+
+    if (isRegionInfoPrompt(prompt)) {
+      state.chat.push({ role: "assistant", text: buildRegionInfoReply(prompt) });
       return;
     }
 
@@ -2205,6 +2199,61 @@ function landingRegionProfile(region) {
   };
 }
 
+function buildRegionInfoReply(prompt) {
+  const regions = regionsInPrompt(prompt);
+  const region = regions[0];
+  if (!region) return "강원도 시·군 이름을 포함해 다시 물어봐 주세요.";
+
+  const profile = landingRegionProfile(region);
+  const spots = landingRegionSpots(region);
+  const wx = landingRegionWeather(region);
+  const fest = landingRegionFestival(region);
+  const visitors = landingRegionVisitors(region);
+  const hubs = landingRegionHubSpots(region);
+  const korSpots = landingRegionKorSpots(region);
+  const ecoSpots = landingRegionEcoSpots(region);
+
+  const lines = [`**${region}**`, "", profile.tagline, ""];
+  lines.push(`- **인구** ${profile.pop}`);
+  lines.push(`- **특산·먹거리** ${profile.specialty}`);
+  lines.push(`- **대표** ${profile.highlight}`);
+
+  if (visitors?.label) {
+    lines.push(
+      `- **방문**(KTO) ${visitors.label}` +
+        (visitors.detail ? ` (${visitors.detail})` : "")
+    );
+  }
+  if (hubs?.length) {
+    lines.push(`- **중심 관광지** ${hubs.slice(0, 3).map((h) => h.name).join(", ")}`);
+  }
+  if (korSpots?.length) {
+    lines.push(`- **공식 관광지** ${korSpots.slice(0, 4).map((k) => k.title).join(", ")}`);
+  }
+  if (ecoSpots?.length) {
+    lines.push(`- **생태관광** ${ecoSpots.slice(0, 3).map((e) => e.title).join(", ")}`);
+  }
+  if (fest?.title) {
+    lines.push(`- **축제** ${fest.title}${fest.period ? ` (${fest.period})` : ""}`);
+  }
+  if (wx) {
+    lines.push(`- **날씨** ${wx.city} ${wx.temp}° · ${wx.label}`);
+  }
+
+  if (spots.length) {
+    lines.push("", "**온도 큐레이션 관광지**");
+    spots.forEach((s) => {
+      lines.push(`- **${s.name}** — ${s.description}${s.tip ? ` · ${s.tip}` : ""}`);
+    });
+  }
+
+  lines.push(
+    "",
+    `"${region} 맞춤 코스 짜줘"라고 하시면 동선·일정도 바로 만들어 드려요.`
+  );
+  return lines.join("\n");
+}
+
 function regionCityKey(region) {
   return String(region ?? "").replace(/(시|군)$/, "");
 }
@@ -2253,10 +2302,26 @@ function landingRegionEcoSpots(region) {
   return spots.slice(0, 2);
 }
 
+function normSpotTitle(s) {
+  return String(s || "").replace(/\s/g, "");
+}
+
+function tourSpotImage(items, spotName) {
+  if (!items?.length) return null;
+  if (spotName) {
+    const n = normSpotTitle(spotName);
+    const hit = items.find((item) => {
+      const t = normSpotTitle(item.title || item.name);
+      return t && (t.includes(n) || n.includes(t));
+    });
+    if (hit?.image) return hit.image;
+  }
+  return items[0]?.image || null;
+}
+
 function landingRegionPhoto(region) {
-  const photos = typeof TOUR_REGION_PHOTOS !== "undefined" ? TOUR_REGION_PHOTOS?.regions?.[region] : null;
-  if (!photos?.length) return null;
-  return photos[0];
+  const url = typeof REGION_TOUR_PHOTOS !== "undefined" ? REGION_TOUR_PHOTOS[region] : null;
+  return url ? { image: url } : null;
 }
 
 function regionTourPhoto(region, spotName) {
@@ -2264,23 +2329,12 @@ function regionTourPhoto(region, spotName) {
     return SPOT_TOUR_IMAGES[spotName];
   }
   const kor = typeof TOUR_KOR_SPOTS !== "undefined" ? TOUR_KOR_SPOTS?.regions?.[region] : null;
-  if (kor?.length && spotName) {
-    const norm = (s) => String(s || "").replace(/\s/g, "");
-    const hit = kor.find((k) => norm(k.title).includes(norm(spotName)) || norm(spotName).includes(norm(k.title)));
-    if (hit?.image) return hit.image;
-    if (kor[0]?.image) return kor[0].image;
-  }
+  const fromKor = tourSpotImage(kor, spotName);
+  if (fromKor) return fromKor;
   const eco = typeof TOUR_ECO_SPOTS !== "undefined" ? TOUR_ECO_SPOTS?.regions?.[region] : null;
-  if (eco?.length && spotName) {
-    const norm = (s) => String(s || "").replace(/\s/g, "");
-    const hit = eco.find((e) => norm(e.title).includes(norm(spotName)) || norm(spotName).includes(norm(e.title)));
-    if (hit?.image) return hit.image;
-  }
-  if (typeof REGION_TOUR_PHOTOS !== "undefined" && REGION_TOUR_PHOTOS[region]) {
-    return REGION_TOUR_PHOTOS[region];
-  }
-  const photo = landingRegionPhoto(region);
-  return photo?.image || null;
+  const fromEco = tourSpotImage(eco, spotName);
+  if (fromEco) return fromEco;
+  return typeof REGION_TOUR_PHOTOS !== "undefined" ? REGION_TOUR_PHOTOS[region] || null : null;
 }
 
 function resolveSpotImage(region, spotName, spot) {
@@ -2693,29 +2747,6 @@ function resetLandingMap() {
   hideLandingTip();
   hideLandingRegionTip();
 }
-
-function resetSession() {
-  state.steps = [];
-  state.query = "";
-  state.chat = [];
-  state.chatTyping = false;
-  resetMapState();
-  resetLandingMap();
-  ensureAgentWelcome();
-  renderAgentChat();
-  show("explore");
-  toast("처음 화면으로 돌아왔어요.");
-}
-
-$("btn-logout")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  resetSession();
-});
-
-$("btn-logout-community")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  resetSession();
-});
 
 /* ==================== Spots catalog ==================== */
 function spotThemeKey(theme) {
@@ -3251,10 +3282,6 @@ async function renderTrips() {
 
 function initTrips() {
   $("btn-save-trip")?.addEventListener("click", saveCurrentTrip);
-  $("btn-logout-trips")?.addEventListener("click", (e) => {
-    e.preventDefault();
-    resetSession();
-  });
 }
 
 /* ==================== Auth (Supabase Google/Kakao + local nick) ==================== */

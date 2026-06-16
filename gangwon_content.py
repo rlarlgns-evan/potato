@@ -8,7 +8,7 @@ from typing import Any
 from urllib.error import URLError
 from urllib.request import urlopen
 
-from content_loader import load_catalog, load_festivals, load_highlights, load_region_intro_md
+from content_loader import load_catalog, load_festivals, load_region_intro_md
 
 _catalog = load_catalog()
 GANGWON_CITIES: list[dict[str, Any]] = _catalog["cities"]
@@ -153,10 +153,6 @@ def get_weather() -> dict[str, str]:
 
 def get_festivals() -> list[dict[str, str]]:
     return load_festivals()
-
-
-def get_highlights() -> list[dict[str, Any]]:
-    return load_highlights()
 
 
 def get_region_intro() -> str:

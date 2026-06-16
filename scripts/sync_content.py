@@ -134,17 +134,6 @@ def generate_data_js() -> str:
         if tour_kor_fest_path.exists()
         else {"items": [], "regions": {}}
     )
-    sigungu_path = DATA_DIR / "gangwon_sigungu_codes.json"
-    sigungu_codes = (
-        json.loads(sigungu_path.read_text(encoding="utf-8"))
-        if sigungu_path.exists()
-        else {"regions": {}}
-    )
-
-    highlights = [
-        {**h, "bg": h.get("bg") or h.get("thumb_bg")}
-        for h in catalog["highlights"]
-    ]
     weather_icons = {
         k: {**v, "bg": v.get("bg") or v.get("thumb_bg")}
         for k, v in catalog["weather_icons"].items()
@@ -156,25 +145,19 @@ def generate_data_js() -> str:
         _js_array_block("SPOTS", spots),
         _js_array_block("GANGWON_CITIES", catalog["cities"]),
         _js_array_block("FESTIVALS", catalog["festivals"]),
-        _js_array_block("HIGHLIGHTS", highlights),
         _js_array_block("THEME_META", catalog["theme_meta"]),
         _js_array_block("SPOT_OVERRIDES", catalog["spot_overrides"]),
         _js_array_block("FESTIVAL_ICONS", catalog["festival_icons"]),
         _js_array_block("WEATHER_ICONS", weather_icons),
         _js_array_block("THEME_BADGE", catalog["theme_badge"]),
-        _js_array_block("THEME_IMAGE", catalog["theme_image"]),
-        f'const DEFAULT_IMAGE = {json.dumps(catalog["default_image"], ensure_ascii=False)};',
-        f'const REGION_INTRO = {json.dumps(catalog["region_intro_html"], ensure_ascii=False)};',
         _js_array_block("SUGGESTIONS", catalog["suggestions"]),
         f'const GEMINI_MODEL = {json.dumps(catalog["gemini_model"], ensure_ascii=False)};',
         _js_array_block("TRANSIT_ORIGINS", catalog.get("transit_origins") or {}),
         f"const TOUR_VISITOR_STATS = {json.dumps(tour_stats, ensure_ascii=False, indent=2)};",
         f"const TOUR_HUB_SPOTS = {json.dumps(tour_hub, ensure_ascii=False, indent=2)};",
-        f"const TOUR_REGION_PHOTOS = {json.dumps(tour_photos, ensure_ascii=False, indent=2)};",
         f"const TOUR_ECO_SPOTS = {json.dumps(tour_eco, ensure_ascii=False, indent=2)};",
         f"const TOUR_KOR_SPOTS = {json.dumps(tour_kor_spots, ensure_ascii=False, indent=2)};",
         f"const TOUR_KOR_FESTIVALS = {json.dumps(tour_kor_fest, ensure_ascii=False, indent=2)};",
-        f"const GANGWON_SIGUNGU_CODES = {json.dumps(sigungu_codes, ensure_ascii=False, indent=2)};",
         f"const SPOT_TOUR_IMAGES = {json.dumps(spot_tour_images, ensure_ascii=False, indent=2)};",
         f"const REGION_TOUR_PHOTOS = {json.dumps(region_tour_photos, ensure_ascii=False, indent=2)};",
     ]

@@ -13,7 +13,6 @@ from design_tokens import TOKENS as T
 from gangwon_content import (
     FESTIVAL_ICONS,
     get_festivals,
-    get_highlights,
     get_region_intro,
     get_weather_cities,
 )

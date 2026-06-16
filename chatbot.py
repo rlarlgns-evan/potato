@@ -5,7 +5,13 @@ from typing import Any
 
 import config  # noqa: F401 — .env 로드
 
-from gangwon_agent_prompt import build_agent_system_prompt, out_of_gangwon_reply
+from gangwon_agent_prompt import (
+    build_agent_system_prompt,
+    build_region_info_reply,
+    is_region_info_prompt,
+    out_of_gangwon_reply,
+    regions_in_message,
+)
 from trip_intent import attach_origin_step, build_trip_hints, detect_themes, needs_ai_curation
 
 MAX_SPOTS_IN_PROMPT = 12
@@ -459,6 +465,19 @@ def curate_trip(
             "source": "guardrail",
         }
 
+    if is_region_info_prompt(user_message):
+        reply = build_region_info_reply(user_message, spots)
+        region = regions_in_message(user_message)
+        title = f"{region[0]} 안내" if region else "지역 안내"
+        return {
+            "itinerary_title": title,
+            "summary": reply,
+            "message": reply,
+            "curated_spots": [],
+            "route_steps": [],
+            "source": "local",
+        }
+
     provider = os.getenv("AI_PROVIDER", "openai").lower()
 
     if not _should_call_ai(user_message, spots):
@@ -499,11 +518,3 @@ def curate_trip(
     )
     result["source"] = ai_source
     return result
-
-
-def generate_reply(
-    user_message: str,
-    spots: list[dict[str, Any]],
-    chat_history: list[dict[str, str]] | None = None,
-) -> str:
-    return curate_trip(user_message, spots, chat_history)["message"]

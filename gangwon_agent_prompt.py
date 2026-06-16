@@ -53,7 +53,15 @@ _GANGWON = re.compile(
     re.I,
 )
 _OUT_OF_SCOPE_INTENT = re.compile(
-    r"(맛집|관광|여행|코스|추천|숙소|호텔|비행기|항공|기차표|날씨|일정)",
+    r"(맛집|관광|여행|코스|추천|숙소|호텔|비행기|항공|기차표|날씨|일정|설명|소개|안내|대해)",
+    re.I,
+)
+_REGION_INFO = re.compile(
+    r"(설명|소개|알려|안내|어때|특징|정보|대해|대해서|어떤|볼거리|먹거리|특산)",
+    re.I,
+)
+_TRIP_PLAN = re.compile(
+    r"(코스|일정|경로|동선|루트|하루|당일|\d+박|숙소|펜션|호텔|길찾)",
     re.I,
 )
 
@@ -115,6 +123,46 @@ def build_kto_api_context(user_message: str = "", *, max_regions: int = 6) -> st
         lines.append(f"- 강원 전체 방문: {prov['label']}")
 
     return "\n".join(lines) if len(lines) > 1 else ""
+
+
+def is_region_info_prompt(user_message: str) -> bool:
+    msg = (user_message or "").strip()
+    regions = regions_in_message(msg)
+    if not regions or not _REGION_INFO.search(msg):
+        return False
+    if _TRIP_PLAN.search(msg) and not re.search(
+        r"(설명|소개|알려|안내|특징|정보|대해|대해서)", msg, re.I
+    ):
+        return False
+    return True
+
+
+def build_region_info_reply(user_message: str, spots: list[dict[str, Any]]) -> str:
+    regions = regions_in_message(user_message)
+    region = regions[0] if regions else ""
+    if not region:
+        return "강원도 시·군 이름을 포함해 다시 물어봐 주세요."
+
+    kto = build_kto_api_context(user_message, max_regions=1)
+    local = [s for s in spots if s.get("region") == region]
+
+    lines = [f"**{region}**", ""]
+    if kto:
+        body = kto.replace("# KTO API CONTEXT (Gangwon only)\n", "").strip()
+        for part in body.split("\n"):
+            if part.startswith("- "):
+                lines.append(part.replace("- ", "- **KTO** ", 1))
+            elif part:
+                lines.append(part)
+
+    if local:
+        lines.extend(["", "**온도 큐레이션 관광지**"])
+        for s in local[:8]:
+            desc = s.get("description", "")
+            lines.append(f"- **{s.get('name', '')}** — {desc}")
+
+    lines.extend(["", f'"{region} 맞춤 코스 짜줘"라고 하시면 동선·일정도 바로 만들어 드려요.'])
+    return "\n".join(lines)
 
 
 def out_of_gangwon_reply(user_message: str) -> str | None:
