@@ -66,16 +66,51 @@ function regionsInPrompt(msg) {
 const REGION_INFO_INTENT_RE =
   /(?:설명|소개|알려|안내|어때|특징|정보|대해|대해서|어떤|가볼|볼거리|먹거리|특산|뭐가\s*좋)/i;
 const TRIP_PLAN_INTENT_RE =
-  /(?:코스|일정|경로|동선|루트|하루|당일|\d+박|숙소|펜션|호텔|길찾|추천해\s*줘)/i;
+  /(?:코스|일정|경로|동선|루트|하루|당일|\d+박|숙소|펜션|호텔|길찾|계획|짜\s*줘|만들어|추천해\s*줘)/i;
 
-function isRegionInfoPrompt(prompt) {
+function hasTripPlanIntent(msg) {
+  return TRIP_PLAN_INTENT_RE.test(String(msg || ""));
+}
+
+function isRegionInfoOnlyPrompt(prompt) {
   const msg = String(prompt || "").trim();
   const regions = regionsInPrompt(msg);
   if (!regions.length || !REGION_INFO_INTENT_RE.test(msg)) return false;
-  if (TRIP_PLAN_INTENT_RE.test(msg) && !/(?:설명|소개|알려|안내|특징|정보|대해|대해서)/i.test(msg)) {
-    return false;
+  return !hasTripPlanIntent(msg);
+}
+
+function regionFocusPromptBlock(prompt) {
+  const regions = regionsInPrompt(prompt);
+  if (!regions.length) return "";
+  return (
+    "# REGION FOCUS (STRICT)\n" +
+    `User focus region(s): ${regions.join(", ")}.\n` +
+    "- summary: polite Korean (해요체) introducing this region using KTO context — sights, food, mood.\n" +
+    `- route_steps: spot_name MUST be from the catalog below AND located in ${regions.join(" or ")}.\n` +
+    "- Do NOT include spots from other cities/counties unless the user explicitly asked for a multi-city trip.\n"
+  );
+}
+
+function pickSpotsForPrompt(prompt, limit = 3) {
+  const regions = regionsInPrompt(prompt);
+  const { scores } = getPromptSpotContext(prompt);
+  let ranked = ENRICHED_SPOTS.map((spot, index) => ({ spot, index, score: scores[index] }));
+  if (regions.length) {
+    const regional = ranked.filter((r) => regions.includes(r.spot.region));
+    if (regional.length) ranked = regional;
   }
-  return true;
+  ranked.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return a.spot.name.localeCompare(b.spot.name, "ko");
+  });
+  return ranked.slice(0, limit).map((r) => r.spot);
+}
+
+function constrainStepsToRegions(steps, regions) {
+  if (!regions?.length || !steps?.length) return steps;
+  const kept = steps.filter((s) => s.spot && regions.includes(s.spot.region));
+  if (!kept.length) return steps;
+  return kept.map((s, i) => ({ ...s, order: i + 1 }));
 }
 
 function buildKtoApiContext(prompt) {
@@ -1135,6 +1170,8 @@ function destinationSteps(steps) {
 
 function shouldCallGemini(prompt) {
   if (needsComplexAi(prompt)) return true;
+  const regions = regionsInPrompt(prompt);
+  if (regions.length && hasTripPlanIntent(prompt)) return true;
   const { topScore, strongHits, top3Sum } = scoreLocalMatch(prompt);
   if (topScore >= 3) return false;
   if (topScore >= 2 && strongHits >= 2) return false;
@@ -1157,20 +1194,26 @@ function getGeminiKey() {
 }
 
 function compactSpotCatalog(prompt) {
+  const regions = regionsInPrompt(prompt);
   const { keywords, themeTerms, scores } = getPromptSpotContext(prompt);
   let pool;
-  if (keywords.length || themeTerms.length) {
-    const ranked = rankSpotIndices(scores);
-    const matched = [];
-    for (let i = 0; i < ranked.length && matched.length < MAX_SPOTS_IN_PROMPT; i++) {
-      if (ranked[i].score > 0) matched.push(ENRICHED_SPOTS[ranked[i].index]);
+  if (regions.length) {
+    pool = ENRICHED_SPOTS.filter((s) => regions.includes(s.region));
+  }
+  if (!pool?.length) {
+    if (keywords.length || themeTerms.length) {
+      const ranked = rankSpotIndices(scores);
+      const matched = [];
+      for (let i = 0; i < ranked.length && matched.length < MAX_SPOTS_IN_PROMPT; i++) {
+        if (ranked[i].score > 0) matched.push(ENRICHED_SPOTS[ranked[i].index]);
+      }
+      pool =
+        matched.length >= 6
+          ? matched
+          : ranked.slice(0, MAX_SPOTS_IN_PROMPT).map((r) => ENRICHED_SPOTS[r.index]);
+    } else {
+      pool = ENRICHED_SPOTS.slice(0, MAX_SPOTS_IN_PROMPT);
     }
-    pool =
-      matched.length >= 6
-        ? matched
-        : ranked.slice(0, MAX_SPOTS_IN_PROMPT).map((r) => ENRICHED_SPOTS[r.index]);
-  } else {
-    pool = ENRICHED_SPOTS.slice(0, MAX_SPOTS_IN_PROMPT);
   }
   return pool.map((s) => `${s.name}|${s.region}|${s.theme}`).join("\n");
 }
@@ -1327,13 +1370,15 @@ function parseGeminiCuration(raw, prompt) {
     })
     .filter(Boolean);
   if (!steps.length) throw new Error("no spots matched");
-  const legs = computeLegs(steps);
-  const sum = routeSummary(steps, legs);
+  const regions = regionsInPrompt(prompt);
+  const scoped = constrainStepsToRegions(steps, regions);
+  const legs = computeLegs(scoped);
+  const sum = routeSummary(scoped, legs);
   return {
-    title: parsed.itinerary_title || "AI 추천 코스",
+    title: parsed.itinerary_title || (regions[0] ? `${regions[0]} AI 추천 코스` : "AI 추천 코스"),
     summary: parsed.summary || `총 ${fmtKm(sum.driveKm)} · 체류 ${fmtMin(sum.stayMin)} · 이동 ${fmtMin(sum.driveMin)} (추정)`,
     duration: parsed.total_duration || (sum.totalMin <= 300 ? "반나절 코스" : "당일 코스"),
-    steps,
+    steps: scoped,
     source: "gemini",
     tripIntent: parsed.trip_intent || {},
     transitPlan: parsed.transit_plan || {},
@@ -1342,9 +1387,17 @@ function parseGeminiCuration(raw, prompt) {
   };
 }
 function localCuration(prompt, source = "local") {
-  const { scores } = getPromptSpotContext(prompt);
-  const ranked = rankSpotIndices(scores, 3, true);
-  const picks = ranked.map((r) => ENRICHED_SPOTS[r.index]);
+  const regions = regionsInPrompt(prompt);
+  const picks = pickSpotsForPrompt(prompt, 3);
+  if (!picks.length) {
+    return {
+      title: regions[0] ? `${regions[0]} 안내` : "맞춤 코스",
+      summary: "해당 지역 큐레이션 관광지가 아직 없어요. 다른 시·군을 함께 물어보시거나 관광지 탭을 확인해 주세요.",
+      duration: "",
+      steps: [],
+      source,
+    };
+  }
   const steps = picks.map((s, i) => ({
     order: i + 1,
     spot: s,
@@ -1353,9 +1406,12 @@ function localCuration(prompt, source = "local") {
   }));
   const legs = computeLegs(steps);
   const sum = routeSummary(steps, legs);
+  const regionLabel = regions[0] || picks[0]?.region || "";
   return {
-    title: "🥔 로컬 추천 코스",
-    summary: `총 ${fmtKm(sum.driveKm)} · 체류 ${fmtMin(sum.stayMin)} · 이동 ${fmtMin(sum.driveMin)} (추정)`,
+    title: regionLabel ? `${regionLabel} 맞춤 코스` : "🥔 로컬 추천 코스",
+    summary:
+      (regionLabel ? `${regionLabel} 중심 · ` : "") +
+      `총 ${fmtKm(sum.driveKm)} · 체류 ${fmtMin(sum.stayMin)} · 이동 ${fmtMin(sum.driveMin)} (추정)`,
     duration: sum.totalMin <= 300 ? "반나절 코스" : "당일 코스",
     steps,
     source,
@@ -1368,9 +1424,11 @@ async function geminiCuration(prompt, key) {
   const catalog = compactSpotCatalog(prompt);
   const hints = buildTripHints(prompt);
   const kto = buildKtoApiContext(prompt);
+  const regionFocus = regionFocusPromptBlock(prompt);
   const sys =
     GANGWON_AGENT_ROLE + "\n\n" +
     (kto ? kto + "\n\n" : "") +
+    (regionFocus ? regionFocus + "\n" : "") +
     CURATION_TASK_PROMPT +
     "Extract trip_intent: origin,transport,duration,companion,themes. " +
     "Plan outbound transit,lodging,return when user asks.\n" +
@@ -1432,9 +1490,14 @@ function pushAgentFailure(text) {
   renderAgentChat();
 }
 
-function applyCurationResult(prompt, result) {
-  state.chat.push({ role: "assistant", text: buildAgentReply(result) });
-  renderAgentChat();
+function applyCurationResult(prompt, result, opts = {}) {
+  const { skipChat = false, chatPrefix = "" } = opts;
+  if (!skipChat) {
+    const text = chatPrefix ? `${chatPrefix}\n\n${buildAgentReply(result)}` : buildAgentReply(result);
+    state.chat.push({ role: "assistant", text });
+    renderAgentChat();
+  }
+  if (!result.steps?.length) return;
   state.query = prompt;
   state.meta = {
     title: result.title,
@@ -1464,9 +1527,47 @@ function appendPlannerOpenButton() {
   );
 }
 
-function saveCurationAndApply(prompt, result) {
+function saveCurationAndApply(prompt, result, opts = {}) {
   saveCurationCache(prompt, result);
-  applyCurationResult(prompt, result);
+  applyCurationResult(prompt, result, opts);
+}
+
+async function runRegionTrip(prompt, key, complex) {
+  const wantsInfo = REGION_INFO_INTENT_RE.test(prompt);
+  const cacheKey = normalizePromptKey(prompt);
+  if (curationCache.has(cacheKey)) {
+    const cached = curationCache.get(cacheKey);
+    const prefix = wantsInfo && cached.source !== "gemini" ? buildRegionInfoReply(prompt) : "";
+    applyCurationResult(prompt, cached, { chatPrefix: prefix });
+    return;
+  }
+
+  let result;
+  if (key) {
+    try {
+      result = await geminiCuration(prompt, key);
+    } catch (e) {
+      console.warn("Gemini 실패:", e);
+      geminiFailToast(e);
+      if (complex) {
+        pushAgentFailure(buildComplexFailReply(e));
+        return;
+      }
+      result = localCuration(prompt, "local_api_fail");
+    }
+  } else {
+    if (complex) {
+      pushAgentFailure(
+        "**AI 일정을 만들 수 없어요**\n" +
+          "출발·교통·숙박·기간 조건은 AI 키가 필요합니다. 잠시 후 다시 시도해 주세요."
+      );
+      return;
+    }
+    result = localCuration(prompt, "local");
+  }
+
+  const prefix = wantsInfo && result.source !== "gemini" ? buildRegionInfoReply(prompt) : "";
+  saveCurationAndApply(prompt, result, { chatPrefix: prefix });
 }
 
 async function tryGeminiCurationWithFallback(prompt, key, complex) {
@@ -1496,8 +1597,14 @@ async function runCuration(prompt) {
       return;
     }
 
-    if (isRegionInfoPrompt(prompt)) {
+    if (isRegionInfoOnlyPrompt(prompt)) {
       state.chat.push({ role: "assistant", text: buildRegionInfoReply(prompt) });
+      return;
+    }
+
+    const regions = regionsInPrompt(prompt);
+    if (regions.length && hasTripPlanIntent(prompt)) {
+      await runRegionTrip(prompt, getGeminiKey(), needsComplexAi(prompt));
       return;
     }
 

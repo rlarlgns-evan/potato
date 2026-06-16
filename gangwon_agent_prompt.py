@@ -61,7 +61,7 @@ _REGION_INFO = re.compile(
     re.I,
 )
 _TRIP_PLAN = re.compile(
-    r"(코스|일정|경로|동선|루트|하루|당일|\d+박|숙소|펜션|호텔|길찾)",
+    r"(코스|일정|경로|동선|루트|하루|당일|\d+박|숙소|펜션|호텔|길찾|계획|짜\s*줘|만들어)",
     re.I,
 )
 
@@ -125,16 +125,35 @@ def build_kto_api_context(user_message: str = "", *, max_regions: int = 6) -> st
     return "\n".join(lines) if len(lines) > 1 else ""
 
 
-def is_region_info_prompt(user_message: str) -> bool:
+def has_trip_plan_intent(user_message: str) -> bool:
+    return bool(_TRIP_PLAN.search(user_message or ""))
+
+
+def is_region_info_only_prompt(user_message: str) -> bool:
     msg = (user_message or "").strip()
     regions = regions_in_message(msg)
     if not regions or not _REGION_INFO.search(msg):
         return False
-    if _TRIP_PLAN.search(msg) and not re.search(
-        r"(설명|소개|알려|안내|특징|정보|대해|대해서)", msg, re.I
-    ):
-        return False
-    return True
+    return not has_trip_plan_intent(msg)
+
+
+def region_focus_prompt_block(user_message: str) -> str:
+    regions = regions_in_message(user_message)
+    if not regions:
+        return ""
+    joined = ", ".join(regions)
+    return (
+        "# REGION FOCUS (STRICT)\n"
+        f"User focus region(s): {joined}.\n"
+        "- summary: polite Korean (해요체) introducing this region using KTO context.\n"
+        f"- route_steps: spot_name MUST be from the catalog below AND in {joined}.\n"
+        "- Do NOT include spots from other cities/counties unless multi-city was requested.\n"
+    )
+
+
+def is_region_info_prompt(user_message: str) -> bool:
+    """Backward-compatible alias — region intro only, not trip planning."""
+    return is_region_info_only_prompt(user_message)
 
 
 def build_region_info_reply(user_message: str, spots: list[dict[str, Any]]) -> str:
@@ -209,6 +228,10 @@ def build_agent_system_prompt(
     parts = [GANGWON_AGENT_ROLE]
     if kto:
         parts.append(kto)
+    if for_curation and user_message.strip():
+        focus = region_focus_prompt_block(user_message)
+        if focus:
+            parts.append(focus)
     parts.append(f"# GANGWON SPOT CATALOG (name|region|theme)\n{catalog or '(none)'}")
     if hints:
         parts.append(hints)

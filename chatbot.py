@@ -8,7 +8,8 @@ import config  # noqa: F401 — .env 로드
 from gangwon_agent_prompt import (
     build_agent_system_prompt,
     build_region_info_reply,
-    is_region_info_prompt,
+    has_trip_plan_intent,
+    is_region_info_only_prompt,
     out_of_gangwon_reply,
     regions_in_message,
 )
@@ -43,14 +44,22 @@ def _compact_spot_catalog(spots: list[dict[str, Any]], user_message: str = "") -
     pool = spots
     msg = user_message.strip()
     if msg:
+        regions = regions_in_message(msg)
+        if regions:
+            regional = [s for s in spots if s.get("region") in regions]
+            if regional:
+                pool = regional
         kws = [w for w in re.split(r"\s+", msg) if len(w) >= 2]
+        for r in regions_in_message(msg):
+            kws.extend([r, r.replace("시", "").replace("군", "")])
+        kws = list(dict.fromkeys(kws))
         themes = detect_themes(msg)
         theme_kws = list(themes)
         if "바다" in themes:
             theme_kws.extend(("해변", "해수욕", "서핑", "바다"))
         if kws or theme_kws:
             ranked: list[tuple[int, dict[str, Any]]] = []
-            for s in spots:
+            for s in pool:
                 blob = f"{s['name']} {s['region']} {s['theme']} {s.get('description', '')}"
                 score = sum(1 for kw in kws if kw in blob)
                 score += sum(2 for kw in theme_kws if kw in blob)
@@ -258,6 +267,8 @@ def _should_call_ai(user_message: str, spots: list[dict[str, Any]]) -> bool:
     """복합 조건(출발·교통·숙박·기간)은 반드시 AI. 단순 키워드만 로컬."""
     if needs_ai_curation(user_message):
         return True
+    if regions_in_message(user_message) and has_trip_plan_intent(user_message):
+        return True
     top, strong, top3 = _local_match_quality(user_message, spots)
     if top >= 3:
         return False
@@ -303,12 +314,21 @@ def _fallback_curation(user_message: str, spots: list[dict[str, Any]], source: s
         }
 
     keywords = user_message.replace(",", " ").split()
+    for r in regions_in_message(user_message):
+        keywords.extend([r, r.replace("시", "").replace("군", "")])
+    candidates = spots
+    regions = regions_in_message(user_message)
+    if regions:
+        regional = [s for s in spots if s.get("region") in regions]
+        if regional:
+            candidates = regional
     ranked = []
-    for spot in spots:
+    for spot in candidates:
         score = sum(1 for kw in keywords if kw and kw in f"{spot['name']} {spot['region']} {spot['theme']} {spot['description']}")
         ranked.append((score, spot))
     ranked.sort(key=lambda x: (-x[0], x[1]["region"]))
     picks = [spot for _, spot in ranked[:3]]
+    region_label = regions[0] if regions else (picks[0]["region"] if picks else "")
     names = [s["name"] for s in picks]
 
     route_steps = []
@@ -327,8 +347,12 @@ def _fallback_curation(user_message: str, spots: list[dict[str, Any]], source: s
         )
 
     parsed = {
-        "itinerary_title": "🥔 로컬 추천 코스",
-        "summary": "입력하신 키워드와 가장 잘 맞는 강원도 명소를 순서대로 묶었어요.",
+        "itinerary_title": f"{region_label} 맞춤 코스" if region_label else "🥔 로컬 추천 코스",
+        "summary": (
+            f"{region_label} 중심 · 입력하신 키워드와 맞는 명소를 순서대로 묶었어요."
+            if region_label
+            else "입력하신 키워드와 가장 잘 맞는 강원도 명소를 순서대로 묶었어요."
+        ),
         "recommended_spots": names,
         "route_order": names,
         "route_steps": route_steps,
@@ -465,7 +489,7 @@ def curate_trip(
             "source": "guardrail",
         }
 
-    if is_region_info_prompt(user_message):
+    if is_region_info_only_prompt(user_message):
         reply = build_region_info_reply(user_message, spots)
         region = regions_in_message(user_message)
         title = f"{region[0]} 안내" if region else "지역 안내"
