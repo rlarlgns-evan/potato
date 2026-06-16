@@ -42,6 +42,48 @@ def bootstrap_from_docs() -> None:
 def generate_data_js() -> str:
     spots = json.loads((DATA_DIR / "spots.json").read_text(encoding="utf-8"))
     catalog = json.loads((DATA_DIR / "catalog.json").read_text(encoding="utf-8"))
+    tour_stats_path = DATA_DIR / "tour_visitor_stats.json"
+    tour_stats = (
+        json.loads(tour_stats_path.read_text(encoding="utf-8"))
+        if tour_stats_path.exists()
+        else {"regions": {}, "province": None}
+    )
+    tour_hub_path = DATA_DIR / "tour_hub_spots.json"
+    tour_hub = (
+        json.loads(tour_hub_path.read_text(encoding="utf-8"))
+        if tour_hub_path.exists()
+        else {"regions": {}}
+    )
+    tour_photos_path = DATA_DIR / "tour_region_photos.json"
+    tour_photos = (
+        json.loads(tour_photos_path.read_text(encoding="utf-8"))
+        if tour_photos_path.exists()
+        else {"regions": {}}
+    )
+    tour_eco_path = DATA_DIR / "tour_eco_spots.json"
+    tour_eco = (
+        json.loads(tour_eco_path.read_text(encoding="utf-8"))
+        if tour_eco_path.exists()
+        else {"regions": {}}
+    )
+    tour_kor_spots_path = DATA_DIR / "tour_kor_spots.json"
+    tour_kor_spots = (
+        json.loads(tour_kor_spots_path.read_text(encoding="utf-8"))
+        if tour_kor_spots_path.exists()
+        else {"regions": {}}
+    )
+    tour_kor_fest_path = DATA_DIR / "tour_kor_festivals.json"
+    tour_kor_fest = (
+        json.loads(tour_kor_fest_path.read_text(encoding="utf-8"))
+        if tour_kor_fest_path.exists()
+        else {"items": [], "regions": {}}
+    )
+    sigungu_path = DATA_DIR / "gangwon_sigungu_codes.json"
+    sigungu_codes = (
+        json.loads(sigungu_path.read_text(encoding="utf-8"))
+        if sigungu_path.exists()
+        else {"regions": {}}
+    )
 
     highlights = [
         {**h, "bg": h.get("bg") or h.get("thumb_bg")}
@@ -68,6 +110,13 @@ def generate_data_js() -> str:
         _js_array_block("SUGGESTIONS", catalog["suggestions"]),
         f'const GEMINI_MODEL = {json.dumps(catalog["gemini_model"], ensure_ascii=False)};',
         _js_array_block("TRANSIT_ORIGINS", catalog.get("transit_origins") or {}),
+        f"const TOUR_VISITOR_STATS = {json.dumps(tour_stats, ensure_ascii=False, indent=2)};",
+        f"const TOUR_HUB_SPOTS = {json.dumps(tour_hub, ensure_ascii=False, indent=2)};",
+        f"const TOUR_REGION_PHOTOS = {json.dumps(tour_photos, ensure_ascii=False, indent=2)};",
+        f"const TOUR_ECO_SPOTS = {json.dumps(tour_eco, ensure_ascii=False, indent=2)};",
+        f"const TOUR_KOR_SPOTS = {json.dumps(tour_kor_spots, ensure_ascii=False, indent=2)};",
+        f"const TOUR_KOR_FESTIVALS = {json.dumps(tour_kor_fest, ensure_ascii=False, indent=2)};",
+        f"const GANGWON_SIGUNGU_CODES = {json.dumps(sigungu_codes, ensure_ascii=False, indent=2)};",
     ]
 
     runtime = """

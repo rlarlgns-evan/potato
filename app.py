@@ -181,7 +181,8 @@ if st.session_state.screen == "home":
     from content_loader import load_suggestions
 
     welcome = (
-        "✦ 안녕하세요! 강원도 여행의 무엇이든 물어보세요.\n\n"
+        "✦ 안녕하세요! 저는 **강원도 관광 전문 AI 가이드**예요.\n\n"
+        "강원도 여행·맛집·축제·동선을 KTO 공식 데이터를 바탕으로 안내해 드려요. "
         "출발지·교통·일정·동행·테마를 알려주시면 맞춤 동선과 지도를 만들어 드릴게요."
     )
     suggestions = load_suggestions()[:4]

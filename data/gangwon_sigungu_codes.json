@@ -1,0 +1,25 @@
+{
+  "source": "한국관광공사_TourAPI_관광지_시군구_코드정보_v1.0",
+  "areaCd": 51,
+  "areaNm": "강원특별자치도",
+  "regions": {
+    "춘천시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51110, "signguNm": "춘천시" },
+    "원주시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51130, "signguNm": "원주시" },
+    "강릉시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51150, "signguNm": "강릉시" },
+    "동해시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51170, "signguNm": "동해시" },
+    "태백시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51190, "signguNm": "태백시" },
+    "속초시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51210, "signguNm": "속초시" },
+    "삼척시": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51230, "signguNm": "삼척시" },
+    "홍천군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51720, "signguNm": "홍천군" },
+    "횡성군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51730, "signguNm": "횡성군" },
+    "영월군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51750, "signguNm": "영월군" },
+    "평창군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51760, "signguNm": "평창군" },
+    "정선군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51770, "signguNm": "정선군" },
+    "철원군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51780, "signguNm": "철원군" },
+    "화천군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51790, "signguNm": "화천군" },
+    "양구군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51800, "signguNm": "양구군" },
+    "인제군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51810, "signguNm": "인제군" },
+    "고성군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51820, "signguNm": "고성군" },
+    "양양군": { "areaCd": 51, "areaNm": "강원특별자치도", "signguCd": 51830, "signguNm": "양양군" }
+  }
+}

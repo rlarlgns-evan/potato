@@ -1,4 +1,4 @@
-// 강원 온도(ON道) · canonical data lives in data/*.json
+// VoyageAI · 강원 — canonical data lives in data/*.json
 // // === CANONICAL DATA (auto-generated from data/*.json) ===
 // Regenerate: python scripts/sync_content.py generate
 "use strict";
@@ -199,24 +199,66 @@ const SPOTS = [
 ];
 
 const GANGWON_CITIES = [
-  { "city": "춘천", "lat": 37.8813, "lng": 127.73, "pop_rank": 1 },
-  { "city": "원주", "lat": 37.3422, "lng": 127.9202, "pop_rank": 2 },
-  { "city": "강릉", "lat": 37.7519, "lng": 129.2022, "pop_rank": 3 },
-  { "city": "동해", "lat": 37.5247, "lng": 129.1144, "pop_rank": 4 },
-  { "city": "태백", "lat": 37.1641, "lng": 128.9856, "pop_rank": 5 },
-  { "city": "속초", "lat": 38.207, "lng": 128.5918, "pop_rank": 6 },
-  { "city": "삼척", "lat": 37.4498, "lng": 129.1652, "pop_rank": 7 },
-  { "city": "홍천", "lat": 37.697, "lng": 127.8887, "pop_rank": 8 },
-  { "city": "횡성", "lat": 37.4918, "lng": 127.9852, "pop_rank": 9 },
-  { "city": "영월", "lat": 37.1838, "lng": 128.4617, "pop_rank": 10 },
-  { "city": "평창", "lat": 37.3705, "lng": 128.39, "pop_rank": 11 },
-  { "city": "정선", "lat": 37.3807, "lng": 128.6608, "pop_rank": 12 },
-  { "city": "철원", "lat": 38.1465, "lng": 127.3132, "pop_rank": 13 },
-  { "city": "화천", "lat": 38.1064, "lng": 127.7082, "pop_rank": 14 },
-  { "city": "양구", "lat": 38.1097, "lng": 127.9892, "pop_rank": 15 },
-  { "city": "인제", "lat": 38.0697, "lng": 128.1706, "pop_rank": 16 },
-  { "city": "고성", "lat": 38.3779, "lng": 128.4675, "pop_rank": 17 },
-  { "city": "양양", "lat": 38.0754, "lng": 128.6191, "pop_rank": 18 }
+  {
+    "city": "원주",
+    "lat": 37.3422,
+    "lng": 127.9202,
+    "pop_rank": 1
+  },
+  {
+    "city": "춘천",
+    "lat": 37.8747,
+    "lng": 127.7342,
+    "pop_rank": 2
+  },
+  {
+    "city": "강릉",
+    "lat": 37.7519,
+    "lng": 129.2022,
+    "pop_rank": 3
+  },
+  {
+    "city": "동해",
+    "lat": 37.5247,
+    "lng": 129.1144,
+    "pop_rank": 4
+  },
+  {
+    "city": "속초",
+    "lat": 38.207,
+    "lng": 128.5918,
+    "pop_rank": 5
+  },
+  {
+    "city": "삼척",
+    "lat": 37.4498,
+    "lng": 129.1652,
+    "pop_rank": 6
+  },
+  {
+    "city": "홍천",
+    "lat": 37.697,
+    "lng": 127.8887,
+    "pop_rank": 7
+  },
+  {
+    "city": "태백",
+    "lat": 37.1641,
+    "lng": 128.9856,
+    "pop_rank": 8
+  },
+  {
+    "city": "정선",
+    "lat": 37.3807,
+    "lng": 128.6608,
+    "pop_rank": 9
+  },
+  {
+    "city": "평창",
+    "lat": 37.3705,
+    "lng": 128.39,
+    "pop_rank": 10
+  }
 ];
 
 const FESTIVALS = [
@@ -525,43 +567,43 @@ const FESTIVAL_ICONS = [
 
 const WEATHER_ICONS = {
   "sunny": {
-    "icon": "☀️",
+    "icon": "☀",
     "label": "맑음",
     "bg": "linear-gradient(135deg,#FDE68A,#FBBF24)",
     "thumb_bg": "linear-gradient(135deg,#FDE68A,#FBBF24)"
   },
   "partly_cloudy": {
-    "icon": "⛅",
+    "icon": "◐",
     "label": "구름 조금",
     "bg": "linear-gradient(135deg,#BAE6FD,#7DD3FC)",
     "thumb_bg": "linear-gradient(135deg,#BAE6FD,#7DD3FC)"
   },
   "cloudy": {
-    "icon": "☁️",
+    "icon": "☁",
     "label": "흐림",
     "bg": "linear-gradient(135deg,#E2E8F0,#94A3B8)",
     "thumb_bg": "linear-gradient(135deg,#E2E8F0,#94A3B8)"
   },
   "fog": {
-    "icon": "🌫️",
+    "icon": "≡",
     "label": "안개",
     "bg": "linear-gradient(135deg,#CBD5E1,#94A3B8)",
     "thumb_bg": "linear-gradient(135deg,#CBD5E1,#94A3B8)"
   },
   "rain": {
-    "icon": "🌧️",
+    "icon": "☂",
     "label": "비",
     "bg": "linear-gradient(135deg,#93C5FD,#3B82F6)",
     "thumb_bg": "linear-gradient(135deg,#93C5FD,#3B82F6)"
   },
   "snow": {
-    "icon": "🌨️",
+    "icon": "❄",
     "label": "눈",
     "bg": "linear-gradient(135deg,#E0F2FE,#BAE6FD)",
     "thumb_bg": "linear-gradient(135deg,#E0F2FE,#BAE6FD)"
   },
   "thunder": {
-    "icon": "⛈️",
+    "icon": "⚡",
     "label": "뇌우",
     "bg": "linear-gradient(135deg,#C4B5FD,#7C3AED)",
     "thumb_bg": "linear-gradient(135deg,#C4B5FD,#7C3AED)"
@@ -723,6 +765,166 @@ const TRANSIT_ORIGINS = {
         "note": "출발지에 따라 청량리·수원·동탄역 선택"
       }
     ]
+  }
+};
+
+const TOUR_VISITOR_STATS = {
+  "source": "TourAPI DataLab",
+  "updated_at": null,
+  "period": null,
+  "province": null,
+  "regions": {}
+};
+
+const TOUR_HUB_SPOTS = {
+  "source": "TourAPI LocgoHubTarService1 areaBasedList1",
+  "updated_at": "2026-06-16",
+  "baseYm": "202605",
+  "regions": {}
+};
+
+const TOUR_REGION_PHOTOS = {
+  "source": "TourAPI PhotoGalleryService1 gallerySearchList1",
+  "updated_at": "2026-06-16",
+  "regions": {}
+};
+
+const TOUR_ECO_SPOTS = {
+  "source": "TourAPI GreenTourService1 areaBasedList1",
+  "updated_at": null,
+  "ecoAreaCode": 32,
+  "regions": {}
+};
+
+const TOUR_KOR_SPOTS = {
+  "source": "TourAPI KorService2 areaBasedList2",
+  "updated_at": null,
+  "lDongRegnCd": null,
+  "regions": {}
+};
+
+const TOUR_KOR_FESTIVALS = {
+  "source": "TourAPI KorService2 searchFestival2",
+  "updated_at": null,
+  "year": null,
+  "lDongRegnCd": null,
+  "regions": {},
+  "items": []
+};
+
+const GANGWON_SIGUNGU_CODES = {
+  "source": "한국관광공사_TourAPI_관광지_시군구_코드정보_v1.0",
+  "areaCd": 51,
+  "areaNm": "강원특별자치도",
+  "regions": {
+    "춘천시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51110,
+      "signguNm": "춘천시"
+    },
+    "원주시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51130,
+      "signguNm": "원주시"
+    },
+    "강릉시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51150,
+      "signguNm": "강릉시"
+    },
+    "동해시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51170,
+      "signguNm": "동해시"
+    },
+    "태백시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51190,
+      "signguNm": "태백시"
+    },
+    "속초시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51210,
+      "signguNm": "속초시"
+    },
+    "삼척시": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51230,
+      "signguNm": "삼척시"
+    },
+    "홍천군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51720,
+      "signguNm": "홍천군"
+    },
+    "횡성군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51730,
+      "signguNm": "횡성군"
+    },
+    "영월군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51750,
+      "signguNm": "영월군"
+    },
+    "평창군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51760,
+      "signguNm": "평창군"
+    },
+    "정선군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51770,
+      "signguNm": "정선군"
+    },
+    "철원군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51780,
+      "signguNm": "철원군"
+    },
+    "화천군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51790,
+      "signguNm": "화천군"
+    },
+    "양구군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51800,
+      "signguNm": "양구군"
+    },
+    "인제군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51810,
+      "signguNm": "인제군"
+    },
+    "고성군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51820,
+      "signguNm": "고성군"
+    },
+    "양양군": {
+      "areaCd": 51,
+      "areaNm": "강원특별자치도",
+      "signguCd": 51830,
+      "signguNm": "양양군"
+    }
   }
 };
 function enrichSpot(raw) {

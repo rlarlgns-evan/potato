@@ -5,6 +5,7 @@ from typing import Any
 
 import config  # noqa: F401 — .env 로드
 
+from gangwon_agent_prompt import build_agent_system_prompt, out_of_gangwon_reply
 from trip_intent import attach_origin_step, build_trip_hints, detect_themes, needs_ai_curation
 
 MAX_SPOTS_IN_PROMPT = 12
@@ -61,13 +62,13 @@ def _build_system_prompt(
 ) -> str:
     catalog = _compact_spot_catalog(spots, user_message)
     hints = build_trip_hints(user_message) if user_message.strip() else ""
-    base = (
-        "Gangwon trip planner.Pick from catalog.Korean output.\n"
-        f"Catalog name|region|theme:\n{catalog or '(none)'}"
+    return build_agent_system_prompt(
+        catalog=catalog,
+        hints=hints,
+        for_curation=for_curation,
+        curation_schema=CURATION_SCHEMA if for_curation else "",
+        user_message=user_message,
     )
-    if hints:
-        base = f"{base}\n{hints}"
-    return f"{base}\n{CURATION_SCHEMA}" if for_curation else base
 
 
 def _spots_from_names(spots: list[dict[str, Any]], names: list[str]) -> list[dict[str, Any]]:
@@ -447,6 +448,17 @@ def curate_trip(
     chat_history: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     history = chat_history or []
+    refusal = out_of_gangwon_reply(user_message)
+    if refusal:
+        return {
+            "itinerary_title": "강원도 전용 안내",
+            "summary": refusal,
+            "message": refusal,
+            "curated_spots": [],
+            "route_steps": [],
+            "source": "guardrail",
+        }
+
     provider = os.getenv("AI_PROVIDER", "openai").lower()
 
     if not _should_call_ai(user_message, spots):

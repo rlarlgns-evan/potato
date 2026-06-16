@@ -3,7 +3,7 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ["docs/**", "data/**", "scripts/sync_content.py", ".github/workflows/pages.yml"]
+    paths: ["docs/**", "data/**", "scripts/sync_*.py", "scripts/import_sigungu_codes.py", "tour_api.py", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -28,8 +28,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Generate docs/data.js from canonical JSON
-        run: python scripts/sync_content.py generate
+      - name: Sync TourAPI + generate data.js
+        run: |
+          if [ -n "$TOUR_API_SERVICE_KEY" ]; then
+            python scripts/sync_tour_all.py
+          else
+            echo "TOUR_API_SERVICE_KEY not set — using committed JSON only"
+            python scripts/sync_content.py generate
+          fi
+        env:
+          TOUR_API_SERVICE_KEY: ${{ secrets.TOUR_API_SERVICE_KEY }}
 
       - name: Verify docs/data.js matches canonical JSON
         run: python scripts/sync_content.py --check
