@@ -112,6 +112,31 @@ def fetch_for_all_sigungu(
     return ApiCallResult(data=payload, failed_regions=failed)
 
 
+def fetch_for_all_gangwon_regions(
+    fetch_one: Callable[[str], list[dict[str, Any]]],
+    *,
+    throttle_sec: float = 0.12,
+    extra_meta: dict[str, Any] | None = None,
+) -> ApiCallResult:
+    """Region-name keyed fetch (photos etc.) with partial failure tracking."""
+    regions: dict[str, list[dict[str, Any]]] = {}
+    failed: list[str] = []
+    for region in GANGWON_REGIONS:
+        try:
+            rows = fetch_one(region)
+            if rows:
+                regions[region] = rows
+        except TourApiError as exc:
+            failed.append(region)
+            logger.warning("TourAPI fetch failed for %s: %s", region, exc)
+        if throttle_sec > 0:
+            time.sleep(throttle_sec)
+    payload: dict[str, Any] = {"updated_at": date.today().isoformat(), "regions": regions}
+    if extra_meta:
+        payload.update(extra_meta)
+    return ApiCallResult(data=payload, failed_regions=failed)
+
+
 def get_service_key() -> str:
     key = os.getenv("TOUR_API_SERVICE_KEY") or os.getenv("DATA_GO_KR_SERVICE_KEY", "")
     if not key.strip():
@@ -624,37 +649,32 @@ def fetch_gangwon_relate_spots(
     throttle_sec: float = 0.12,
 ) -> dict[str, Any]:
     key = service_key or get_service_key()
-    codes = load_gangwon_sigungu_codes()
     base = base_ym or _default_base_ym()
-    regions: dict[str, list[dict[str, Any]]] = {}
+
+    def _one(region: str, meta: dict[str, Any]) -> list[dict[str, Any]]:
+        return fetch_relate_spots_for_sigungu(
+            area_cd=int(meta["areaCd"]),
+            signgu_cd=int(meta["signguCd"]),
+            base_ym=base,
+            service_key=key,
+            top_n_per_anchor=top_n_per_anchor,
+        )
+
+    result = fetch_for_all_sigungu(
+        _one,
+        throttle_sec=throttle_sec,
+        extra_meta={
+            "source": "TourAPI TarRlteTarService1 areaBasedList1",
+            "baseYm": base,
+        },
+    )
     by_anchor: dict[str, dict[str, list[dict[str, Any]]]] = {}
-
-    for region, meta in codes.get("regions", {}).items():
-        if region not in GANGWON_REGIONS:
-            continue
-        try:
-            pairs = fetch_relate_spots_for_sigungu(
-                area_cd=int(meta["areaCd"]),
-                signgu_cd=int(meta["signguCd"]),
-                base_ym=base,
-                service_key=key,
-                top_n_per_anchor=top_n_per_anchor,
-            )
-            if pairs:
-                regions[region] = pairs
-                by_anchor[region] = _group_relate_by_anchor(pairs, top_n=top_n_per_anchor)
-        except TourApiError:
-            continue
-        if throttle_sec > 0:
-            time.sleep(throttle_sec)
-
-    return {
-        "source": "TourAPI TarRlteTarService1 areaBasedList1",
-        "updated_at": date.today().isoformat(),
-        "baseYm": base,
-        "regions": regions,
-        "by_anchor": by_anchor,
-    }
+    for region, pairs in result.data.get("regions", {}).items():
+        by_anchor[region] = _group_relate_by_anchor(pairs, top_n=top_n_per_anchor)
+    result.data["by_anchor"] = by_anchor
+    if result.failed_regions:
+        result.data["failed_regions"] = result.failed_regions
+    return result.data
 
 
 # ---------- PhotoGallery (관광사진) ----------
@@ -703,28 +723,22 @@ def fetch_gangwon_region_photos(
     throttle_sec: float = 0.12,
 ) -> dict[str, Any]:
     key = service_key or get_service_key()
-    regions: dict[str, list[dict[str, Any]]] = {}
 
-    for region in GANGWON_REGIONS:
-        keyword = _photo_keyword_for_region(region)
-        try:
-            photos = search_gallery_photos(
-                keyword,
-                num_of_rows=per_region,
-                service_key=key,
-            )
-            if photos:
-                regions[region] = photos
-        except TourApiError:
-            continue
-        if throttle_sec > 0:
-            time.sleep(throttle_sec)
+    def _one(region: str) -> list[dict[str, Any]]:
+        return search_gallery_photos(
+            _photo_keyword_for_region(region),
+            num_of_rows=per_region,
+            service_key=key,
+        )
 
-    return {
-        "source": "TourAPI PhotoGalleryService1 gallerySearchList1",
-        "updated_at": date.today().isoformat(),
-        "regions": regions,
-    }
+    result = fetch_for_all_gangwon_regions(
+        _one,
+        throttle_sec=throttle_sec,
+        extra_meta={"source": "TourAPI PhotoGalleryService1 gallerySearchList1"},
+    )
+    if result.failed_regions:
+        result.data["failed_regions"] = result.failed_regions
+    return result.data
 
 
 # ---------- Code enrichment (법정동·생태관광 시군구) ----------
@@ -869,35 +883,30 @@ def fetch_gangwon_eco_spots(
 ) -> dict[str, Any]:
     key = service_key or get_service_key()
     codes = load_gangwon_sigungu_codes()
-    regions: dict[str, list[dict[str, Any]]] = {}
 
-    for region, meta in codes.get("regions", {}).items():
-        if region not in GANGWON_REGIONS:
-            continue
+    def _one(region: str, meta: dict[str, Any]) -> list[dict[str, Any]]:
         area_code = meta.get("ecoAreaCode")
         sigungu_code = meta.get("ecoSigunguCode")
         if area_code is None or sigungu_code is None:
-            continue
-        try:
-            spots = fetch_eco_spots_for_sigungu(
-                area_code=int(area_code),
-                sigungu_code=int(sigungu_code),
-                service_key=key,
-                top_n=top_n,
-            )
-            if spots:
-                regions[region] = spots
-        except TourApiError:
-            continue
-        if throttle_sec > 0:
-            time.sleep(throttle_sec)
+            return []
+        return fetch_eco_spots_for_sigungu(
+            area_code=int(area_code),
+            sigungu_code=int(sigungu_code),
+            service_key=key,
+            top_n=top_n,
+        )
 
-    return {
-        "source": "TourAPI GreenTourService1 areaBasedList1",
-        "updated_at": date.today().isoformat(),
-        "ecoAreaCode": codes.get("ecoAreaCode", ECO_GANGWON_AREA_CODE),
-        "regions": regions,
-    }
+    result = fetch_for_all_sigungu(
+        _one,
+        throttle_sec=throttle_sec,
+        extra_meta={
+            "source": "TourAPI GreenTourService1 areaBasedList1",
+            "ecoAreaCode": codes.get("ecoAreaCode", ECO_GANGWON_AREA_CODE),
+        },
+    )
+    if result.failed_regions:
+        result.data["failed_regions"] = result.failed_regions
+    return result.data
 
 
 # ---------- KorService2 (국문 관광정보) ----------
@@ -1008,35 +1017,30 @@ def fetch_gangwon_kor_spots(
 ) -> dict[str, Any]:
     key = service_key or get_service_key()
     codes = load_gangwon_sigungu_codes()
-    regions: dict[str, list[dict[str, Any]]] = {}
 
-    for region, meta in codes.get("regions", {}).items():
-        if region not in GANGWON_REGIONS:
-            continue
+    def _one(region: str, meta: dict[str, Any]) -> list[dict[str, Any]]:
         regn = meta.get("lDongRegnCd")
         signgu = meta.get("lDongSignguCd")
         if not regn or not signgu:
-            continue
-        try:
-            spots = fetch_kor_spots_for_sigungu(
-                ldong_regn_cd=str(regn),
-                ldong_signgu_cd=str(signgu),
-                service_key=key,
-                top_n=top_n,
-            )
-            if spots:
-                regions[region] = spots
-        except TourApiError:
-            continue
-        if throttle_sec > 0:
-            time.sleep(throttle_sec)
+            return []
+        return fetch_kor_spots_for_sigungu(
+            ldong_regn_cd=str(regn),
+            ldong_signgu_cd=str(signgu),
+            service_key=key,
+            top_n=top_n,
+        )
 
-    return {
-        "source": "TourAPI KorService2 areaBasedList2",
-        "updated_at": date.today().isoformat(),
-        "lDongRegnCd": codes.get("lDongRegnCd"),
-        "regions": regions,
-    }
+    result = fetch_for_all_sigungu(
+        _one,
+        throttle_sec=throttle_sec,
+        extra_meta={
+            "source": "TourAPI KorService2 areaBasedList2",
+            "lDongRegnCd": codes.get("lDongRegnCd"),
+        },
+    )
+    if result.failed_regions:
+        result.data["failed_regions"] = result.failed_regions
+    return result.data
 
 
 def fetch_gangwon_kor_festivals(
@@ -1048,45 +1052,40 @@ def fetch_gangwon_kor_festivals(
     key = service_key or get_service_key()
     codes = load_gangwon_sigungu_codes()
     yr = year or date.today().year
-    by_region: dict[str, list[dict[str, Any]]] = {}
-    items: list[dict[str, Any]] = []
-    seen: set[str] = set()
 
-    for region, meta in codes.get("regions", {}).items():
-        if region not in GANGWON_REGIONS:
-            continue
+    def _one(region: str, meta: dict[str, Any]) -> list[dict[str, Any]]:
         regn = meta.get("lDongRegnCd")
         signgu = meta.get("lDongSignguCd")
         if not regn or not signgu:
-            continue
-        try:
-            festivals = fetch_kor_festivals_for_sigungu(
-                ldong_regn_cd=str(regn),
-                ldong_signgu_cd=str(signgu),
-                region=region,
-                year=yr,
-                service_key=key,
-            )
-            if festivals:
-                by_region[region] = festivals
-                for fest in festivals:
-                    fid = fest.get("id") or fest.get("title")
-                    if fid in seen:
-                        continue
-                    seen.add(fid)
-                    items.append(fest)
-        except TourApiError:
-            continue
-        if throttle_sec > 0:
-            time.sleep(throttle_sec)
+            return []
+        return fetch_kor_festivals_for_sigungu(
+            ldong_regn_cd=str(regn),
+            ldong_signgu_cd=str(signgu),
+            region=region,
+            year=yr,
+            service_key=key,
+        )
 
+    result = fetch_for_all_sigungu(
+        _one,
+        throttle_sec=throttle_sec,
+        extra_meta={
+            "source": "TourAPI KorService2 searchFestival2",
+            "year": yr,
+            "lDongRegnCd": codes.get("lDongRegnCd"),
+        },
+    )
+    items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for festivals in result.data.get("regions", {}).values():
+        for fest in festivals:
+            fid = fest.get("id") or fest.get("title")
+            if fid in seen:
+                continue
+            seen.add(str(fid))
+            items.append(fest)
     items.sort(key=lambda x: (x.get("eventStartDate") or "", x.get("title") or ""))
-
-    return {
-        "source": "TourAPI KorService2 searchFestival2",
-        "updated_at": date.today().isoformat(),
-        "year": yr,
-        "lDongRegnCd": codes.get("lDongRegnCd"),
-        "regions": by_region,
-        "items": items,
-    }
+    result.data["items"] = items
+    if result.failed_regions:
+        result.data["failed_regions"] = result.failed_regions
+    return result.data

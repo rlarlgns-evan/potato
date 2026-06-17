@@ -407,7 +407,10 @@ class KtoAggregationService:
                 regions[region] = [s.to_catalog_entry() for s in spots]
         return {
             "updated_at": date.today().isoformat(),
-            "source_status": {k: {"ok": v.ok, "error": v.error} for k, v in self.source_status.items()},
+            "source_status": {
+                k: {"ok": v.ok, "error": v.error}
+                for k, v in sorted(self.source_status.items())
+            },
             "regions": regions,
         }
 

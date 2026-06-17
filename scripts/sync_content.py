@@ -40,12 +40,10 @@ def _title_matches_spot(title: str, spot_name: str) -> bool:
 
 def build_spot_tour_images(
     spots: list[dict],
-    tour_kor: dict,
-    tour_eco: dict,
+    tour_aggregated: dict,
     tour_photos: dict,
 ) -> dict[str, str]:
-    kor_r = tour_kor.get("regions") or {}
-    eco_r = tour_eco.get("regions") or {}
+    agg_r = tour_aggregated.get("regions") or {}
     photo_r = tour_photos.get("regions") or {}
     out: dict[str, str] = {}
     for spot in spots:
@@ -54,15 +52,12 @@ def build_spot_tour_images(
         if not name or not region:
             continue
         url: str | None = None
-        for item in kor_r.get(region, []):
-            if _title_matches_spot(str(item.get("title") or ""), name) and item.get("image"):
-                url = str(item["image"])
+        for entry in agg_r.get(region, []):
+            entry_name = str(entry.get("name") or "")
+            entry_url = str(entry.get("imageUrl") or "")
+            if entry_url and _title_matches_spot(entry_name, name):
+                url = entry_url
                 break
-        if not url:
-            for item in eco_r.get(region, []):
-                if _title_matches_spot(str(item.get("title") or ""), name) and item.get("image"):
-                    url = str(item["image"])
-                    break
         if not url:
             reg_photos = photo_r.get(region) or []
             if reg_photos and reg_photos[0].get("image"):
@@ -104,12 +99,6 @@ def generate_data_js() -> str:
         if tour_stats_path.exists()
         else {"regions": {}, "province": None}
     )
-    tour_hub_path = DATA_DIR / "tour_hub_spots.json"
-    tour_hub = (
-        json.loads(tour_hub_path.read_text(encoding="utf-8"))
-        if tour_hub_path.exists()
-        else {"regions": {}}
-    )
     tour_relate_path = DATA_DIR / "tour_relate_spots.json"
     tour_relate = (
         json.loads(tour_relate_path.read_text(encoding="utf-8"))
@@ -122,18 +111,6 @@ def generate_data_js() -> str:
         if tour_photos_path.exists()
         else {"regions": {}}
     )
-    tour_eco_path = DATA_DIR / "tour_eco_spots.json"
-    tour_eco = (
-        json.loads(tour_eco_path.read_text(encoding="utf-8"))
-        if tour_eco_path.exists()
-        else {"regions": {}}
-    )
-    tour_kor_spots_path = DATA_DIR / "tour_kor_spots.json"
-    tour_kor_spots = (
-        json.loads(tour_kor_spots_path.read_text(encoding="utf-8"))
-        if tour_kor_spots_path.exists()
-        else {"regions": {}}
-    )
     tour_kor_fest_path = DATA_DIR / "tour_kor_festivals.json"
     tour_kor_fest = (
         json.loads(tour_kor_fest_path.read_text(encoding="utf-8"))
@@ -144,8 +121,6 @@ def generate_data_js() -> str:
         k: {**v, "bg": v.get("bg") or v.get("thumb_bg")}
         for k, v in catalog["weather_icons"].items()
     }
-    spot_tour_images = build_spot_tour_images(spots, tour_kor_spots, tour_eco, tour_photos)
-    region_tour_photos = build_region_tour_photos(tour_photos)
 
     # 6-source AI aggregation (hub+kor+eco+relate+photos+stats)
     sys.path.insert(0, str(ROOT))
@@ -154,6 +129,9 @@ def generate_data_js() -> str:
     tour_aggregated = KtoAggregationService(DATA_DIR).build_aggregated_export()
     agg_path = DATA_DIR / "kto_aggregated_spots.json"
     agg_path.write_text(json.dumps(tour_aggregated, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    spot_tour_images = build_spot_tour_images(spots, tour_aggregated, tour_photos)
+    region_tour_photos = build_region_tour_photos(tour_photos)
 
     prompts_path = DATA_DIR / "prompts.json"
     tour_prompts = (
@@ -175,10 +153,7 @@ def generate_data_js() -> str:
         f'const GEMINI_MODEL = {json.dumps(catalog["gemini_model"], ensure_ascii=False)};',
         _js_array_block("TRANSIT_ORIGINS", catalog.get("transit_origins") or {}),
         f"const TOUR_VISITOR_STATS = {json.dumps(tour_stats, ensure_ascii=False, indent=2)};",
-        f"const TOUR_HUB_SPOTS = {json.dumps(tour_hub, ensure_ascii=False, indent=2)};",
         f"const TOUR_RELATE_SPOTS = {json.dumps(tour_relate, ensure_ascii=False, indent=2)};",
-        f"const TOUR_ECO_SPOTS = {json.dumps(tour_eco, ensure_ascii=False, indent=2)};",
-        f"const TOUR_KOR_SPOTS = {json.dumps(tour_kor_spots, ensure_ascii=False, indent=2)};",
         f"const TOUR_KOR_FESTIVALS = {json.dumps(tour_kor_fest, ensure_ascii=False, indent=2)};",
         f"const TOUR_AGGREGATED_SPOTS = {json.dumps(tour_aggregated, ensure_ascii=False, indent=2)};",
         f"const TOUR_PROMPTS = {json.dumps(tour_prompts, ensure_ascii=False, indent=2)};",

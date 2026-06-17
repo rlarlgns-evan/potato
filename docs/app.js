@@ -123,13 +123,6 @@ function regionEmptyFallbackMessage() {
   return KTO_FALLBACK_INTRO;
 }
 
-function ktoThemeFromCategory(category) {
-  const cat = String(category || "");
-  if (/자연|생태|산|숲/.test(cat)) return "nature";
-  if (/레저|스포츠|체험/.test(cat)) return "experience";
-  return "culture";
-}
-
 function collectKtoCatalogEntries(region) {
   const agg = TOUR_AGGREGATED_SPOTS?.regions?.[region];
   if (!agg?.length) {
@@ -185,7 +178,8 @@ function ktoThemeDisplayLabel(entry) {
   return "문화/예술";
 }
 
-function ktoSpotVisitorCount(region, rank) {
+function ktoSpotVisitorCount(region, rank, entry) {
+  if (entry?.visitorCount != null && entry.visitorCount !== "—") return entry.visitorCount;
   const stats = typeof TOUR_VISITOR_STATS !== "undefined" ? TOUR_VISITOR_STATS?.regions?.[region] : null;
   const base = stats?.avg_daily || stats?.total || 0;
   if (!base) return "—";
@@ -350,7 +344,7 @@ function ktoRowsForRegion(region, prompt, maxRows = 6, { isTransit = false } = {
       name: xmlName,
       sourceName: entry.name,
       category: ktoCategoryForXml(entry, prompt),
-      visitors: ktoSpotVisitorCount(region, entry.rank),
+      visitors: ktoSpotVisitorCount(region, entry.rank, entry),
       entry,
     });
   }
@@ -412,7 +406,7 @@ function synthesizeRestaurantRow(region, prompt) {
     return {
       name: ktoXmlSpotName(market, region, prompt),
       category: "음식/먹거리",
-      visitors: ktoSpotVisitorCount(region, market.rank),
+      visitors: ktoSpotVisitorCount(region, market.rank, market),
       entry: market,
     };
   }
@@ -511,79 +505,35 @@ function buildThemePromptBlock(prompt) {
   );
 }
 
-function formatKtoTableXml(tag, rows) {
-  if (!rows.length) return `<${tag}>\n</${tag}>`;
-  const header = "| 지역 | 관광지명 | 생태/테마 | 방문자수(빅데이터) |";
-  const sep = "|---|---|---|---|";
-  const body = rows.map((r) => `| ${r.region} | ${r.name} | ${r.theme} | ${r.visitors} |`).join("\n");
-  return `<${tag}>\n${header}\n${sep}\n${body}\n</${tag}>`;
-}
-
-function buildKtoDataXml(prompt, maxRows = 12, compact = true) {
+function buildKtoDataXml(prompt, maxRows = 12) {
   const regions = regionsInPrompt(prompt);
   const provinceWide = isProvinceWidePrompt(prompt);
   const targetRegions = regions.length ? regions : GANGWON_REGION_NAMES;
   const cap = provinceWide ? Math.max(maxRows, 18) : maxRows;
-
-  if (compact) {
-    const lines = ["<kto_data>"];
-    let count = 0;
-    const regionList = provinceWide && !regions.length ? targetRegions : targetRegions;
-    for (const region of regionList) {
+  const lines = ["<kto_data>"];
+  let count = 0;
+  const regionList = provinceWide && !regions.length ? targetRegions : targetRegions;
+  for (const region of regionList) {
+    if (count >= cap) break;
+    for (const entry of collectKtoCatalogEntries(region)) {
       if (count >= cap) break;
-      for (const entry of collectKtoCatalogEntries(region)) {
-        if (count >= cap) break;
-        const theme = ktoThemeDisplayLabel(entry);
-        const visitors = entry.visitorCount ?? ktoSpotVisitorCount(region, entry.rank);
-        const related = (entry.related || []).slice(0, 3).join(", ");
-        const attrs = [
-          `name="${String(entry.name).replace(/"/g, "&quot;")}"`,
-          `region="${region.replace(/(시|군)$/, "")}"`,
-          `theme="${theme}"`,
-          `visitors="${visitors}"`,
-        ];
-        if (entry.imageUrl) attrs.push(`image="${String(entry.imageUrl).replace(/"/g, "&quot;")}"`);
-        if (related) attrs.push(`related="${related.replace(/"/g, "&quot;")}"`);
-        lines.push(`  <spot ${attrs.join(" ")}/>`);
-        count++;
-      }
-    }
-    lines.push("</kto_data>");
-    return count ? lines.join("\n") : "<kto_data>\n</kto_data>";
-  }
-
-  const rows = [];
-  if (provinceWide && !regions.length) {
-    for (const region of targetRegions) {
-      if (rows.length >= cap) break;
-      const top = collectKtoCatalogEntries(region)[0];
-      if (!top) continue;
-      rows.push({
-        region: region.replace(/(시|군)$/, ""),
-        name: top.name,
-        theme: ktoThemeDisplayLabel(top),
-        visitors: ktoSpotVisitorCount(region, top.rank),
-      });
-    }
-  } else {
-    for (const region of targetRegions) {
-      for (const entry of collectKtoCatalogEntries(region)) {
-        if (rows.length >= cap) break;
-        rows.push({
-          region: region.replace(/(시|군)$/, ""),
-          name: entry.name,
-          theme: ktoThemeDisplayLabel(entry),
-          visitors: ktoSpotVisitorCount(region, entry.rank),
-        });
-      }
-      if (rows.length >= cap) break;
+      const theme = ktoThemeDisplayLabel(entry);
+      const visitors = ktoSpotVisitorCount(region, entry.rank, entry);
+      const related = (entry.related || []).slice(0, 3).join(", ");
+      const attrs = [
+        `name="${String(entry.name).replace(/"/g, "&quot;")}"`,
+        `region="${region.replace(/(시|군)$/, "")}"`,
+        `theme="${theme}"`,
+        `visitors="${visitors}"`,
+      ];
+      if (entry.imageUrl) attrs.push(`image="${String(entry.imageUrl).replace(/"/g, "&quot;")}"`);
+      if (related) attrs.push(`related="${related.replace(/"/g, "&quot;")}"`);
+      lines.push(`  <spot ${attrs.join(" ")}/>`);
+      count++;
     }
   }
-  if (!rows.length) return "<kto_data>\n</kto_data>";
-  const header = "| 지역 | 관광지명 | 생태/테마 | 방문자수(빅데이터) |";
-  const sep = "|---|---|---|---|";
-  const body = rows.map((r) => `| ${r.region} | ${r.name} | ${r.theme} | ${r.visitors} |`).join("\n");
-  return `<kto_data>\n${header}\n${sep}\n${body}\n</kto_data>`;
+  lines.push("</kto_data>");
+  return count ? lines.join("\n") : "<kto_data>\n</kto_data>";
 }
 
 function hubRankMap(region) {
@@ -682,27 +632,30 @@ function formatRelateContextHint(region, relate, maxAnchors = 2) {
     .join(" · ");
 }
 
+function ktoEntriesBySource(region, sourceLabel) {
+  return collectKtoCatalogEntries(region).filter((e) =>
+    String(e.source || "").includes(sourceLabel)
+  );
+}
+
 function buildKtoApiContext(prompt) {
   const regions = regionsInPrompt(prompt);
   const pool = regions.length ? regions : GANGWON_REGION_NAMES.slice(0, 6);
   const stats = typeof TOUR_VISITOR_STATS !== "undefined" ? TOUR_VISITOR_STATS : null;
-  const hubs = typeof TOUR_HUB_SPOTS !== "undefined" ? TOUR_HUB_SPOTS : null;
   const relate = typeof TOUR_RELATE_SPOTS !== "undefined" ? TOUR_RELATE_SPOTS : null;
-  const kor = typeof TOUR_KOR_SPOTS !== "undefined" ? TOUR_KOR_SPOTS : null;
-  const eco = typeof TOUR_ECO_SPOTS !== "undefined" ? TOUR_ECO_SPOTS : null;
   const fest = typeof TOUR_KOR_FESTIVALS !== "undefined" ? TOUR_KOR_FESTIVALS : null;
   const lines = ["# KTO API CONTEXT (Gangwon only)"];
   for (const region of pool.slice(0, 6)) {
     const parts = [];
     const vis = stats?.regions?.[region];
     if (vis?.label) parts.push(`방문 ${vis.label}`);
-    const hubNames = (hubs?.regions?.[region] || []).slice(0, 2).map((h) => h.name).filter(Boolean);
+    const hubNames = ktoEntriesBySource(region, "중심").slice(0, 2).map((h) => h.name).filter(Boolean);
     if (hubNames.length) parts.push(`중심관광지 ${hubNames.join(", ")}`);
     const relateHint = formatRelateContextHint(region, relate, 2);
     if (relateHint) parts.push(`연관관광지 ${relateHint}`);
-    const korNames = (kor?.regions?.[region] || []).slice(0, 2).map((k) => k.title).filter(Boolean);
+    const korNames = ktoEntriesBySource(region, "공식").slice(0, 2).map((k) => k.name).filter(Boolean);
     if (korNames.length) parts.push(`공식관광지 ${korNames.join(", ")}`);
-    const ecoNames = (eco?.regions?.[region] || []).slice(0, 2).map((e) => e.title).filter(Boolean);
+    const ecoNames = ktoEntriesBySource(region, "생태").slice(0, 2).map((e) => e.name).filter(Boolean);
     if (ecoNames.length) parts.push(`생태관광 ${ecoNames.join(", ")}`);
     const f0 = fest?.regions?.[region]?.[0];
     if (f0?.title) parts.push(`축제 ${f0.title}${f0.period ? ` (${f0.period})` : ""}`);
@@ -3401,9 +3354,8 @@ function landingRegionVisitors(region) {
 }
 
 function landingRegionHubSpots(region) {
-  const hubs = typeof TOUR_HUB_SPOTS !== "undefined" ? TOUR_HUB_SPOTS?.regions?.[region] : null;
-  if (!hubs?.length) return null;
-  return hubs.slice(0, 3);
+  const hubs = ktoEntriesBySource(region, "중심");
+  return hubs.length ? hubs.slice(0, 3).map((h) => ({ name: h.name, rank: h.rank })) : null;
 }
 
 function landingRegionRelatePairs(region, maxAnchors = 3) {
@@ -3421,32 +3373,17 @@ function landingRegionRelatePairs(region, maxAnchors = 3) {
 }
 
 function landingRegionKorSpots(region) {
-  const spots = typeof TOUR_KOR_SPOTS !== "undefined" ? TOUR_KOR_SPOTS?.regions?.[region] : null;
-  if (!spots?.length) return null;
-  return spots.slice(0, 3);
+  const spots = ktoEntriesBySource(region, "공식");
+  return spots.length ? spots.slice(0, 3).map((k) => ({ title: k.name, image: k.imageUrl })) : null;
 }
 
 function landingRegionEcoSpots(region) {
-  const spots = typeof TOUR_ECO_SPOTS !== "undefined" ? TOUR_ECO_SPOTS?.regions?.[region] : null;
-  if (!spots?.length) return null;
-  return spots.slice(0, 2);
+  const spots = ktoEntriesBySource(region, "생태");
+  return spots.length ? spots.slice(0, 2).map((e) => ({ title: e.name, image: e.imageUrl })) : null;
 }
 
 function normSpotTitle(s) {
   return String(s || "").replace(/\s/g, "");
-}
-
-function tourSpotImage(items, spotName) {
-  if (!items?.length) return null;
-  if (spotName) {
-    const n = normSpotTitle(spotName);
-    const hit = items.find((item) => {
-      const t = normSpotTitle(item.title || item.name);
-      return t && (t.includes(n) || n.includes(t));
-    });
-    if (hit?.image) return hit.image;
-  }
-  return items[0]?.image || null;
 }
 
 function landingRegionPhoto(region) {
@@ -3458,12 +3395,17 @@ function regionTourPhoto(region, spotName) {
   if (typeof SPOT_TOUR_IMAGES !== "undefined" && spotName && SPOT_TOUR_IMAGES[spotName]) {
     return SPOT_TOUR_IMAGES[spotName];
   }
-  const kor = typeof TOUR_KOR_SPOTS !== "undefined" ? TOUR_KOR_SPOTS?.regions?.[region] : null;
-  const fromKor = tourSpotImage(kor, spotName);
-  if (fromKor) return fromKor;
-  const eco = typeof TOUR_ECO_SPOTS !== "undefined" ? TOUR_ECO_SPOTS?.regions?.[region] : null;
-  const fromEco = tourSpotImage(eco, spotName);
-  if (fromEco) return fromEco;
+  const entries = collectKtoCatalogEntries(region);
+  if (spotName) {
+    const n = normSpotTitle(spotName);
+    const hit = entries.find((entry) => {
+      const t = normSpotTitle(entry.name);
+      return t && (t.includes(n) || n.includes(t));
+    });
+    if (hit?.imageUrl) return hit.imageUrl;
+  }
+  const fallback = entries.find((e) => e.imageUrl);
+  if (fallback?.imageUrl) return fallback.imageUrl;
   return typeof REGION_TOUR_PHOTOS !== "undefined" ? REGION_TOUR_PHOTOS[region] || null : null;
 }
 

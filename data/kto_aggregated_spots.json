@@ -1,23 +1,7 @@
 {
   "updated_at": "2026-06-17",
   "source_status": {
-    "stats": {
-      "ok": true,
-      "error": null
-    },
-    "hub": {
-      "ok": true,
-      "error": null
-    },
-    "relate": {
-      "ok": true,
-      "error": null
-    },
-    "photos": {
-      "ok": true,
-      "error": null
-    },
-    "kor": {
+    "eco": {
       "ok": true,
       "error": null
     },
@@ -25,7 +9,23 @@
       "ok": true,
       "error": null
     },
-    "eco": {
+    "hub": {
+      "ok": true,
+      "error": null
+    },
+    "kor": {
+      "ok": true,
+      "error": null
+    },
+    "photos": {
+      "ok": true,
+      "error": null
+    },
+    "relate": {
+      "ok": true,
+      "error": null
+    },
+    "stats": {
       "ok": true,
       "error": null
     }

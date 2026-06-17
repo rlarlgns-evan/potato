@@ -2,7 +2,7 @@
 
 Source: `stitch_ai_journey_curator/1.md`, `2.md`
 
-See `design_tokens.py` for programmatic tokens.
+See `docs/styles.css` CSS variables (`--primary`, `--primary-container`, glass surfaces).
 
 Primary actions use `#006a61`; containers and chips use `#66bcb0` (primary-container).
 

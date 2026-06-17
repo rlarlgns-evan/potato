@@ -33,8 +33,7 @@ main                          ← 프로덕션 (GitHub Pages 배포)
 
 | 브랜치 | 용도 |
 |--------|------|
-| `main` | Pages 배포·최신 기능 |
-| `streamlit-backup` | Streamlit 앱 백업 (레거시, 위 트리 외) |
+| `main` | GitHub Pages 정적 앱 (`docs/`) · 프로덕션 |
 
 `develop` 및 `release/*`, `feature/*`, `hotfix/*` 는 필요 시 `main`에서 분기해 생성합니다.
 
