@@ -14,11 +14,13 @@ from gangwon_agent_prompt import (
     is_multi_intent_prompt,
     is_region_info_only_prompt,
     out_of_gangwon_reply,
+    pick_main_destination,
     pick_province_wide_spots,
     pick_regional_spots,
     region_empty_fallback_message,
     regions_in_message,
     resolve_kto_spot_by_name,
+    resolve_transit_area,
 )
 from trip_intent import attach_origin_step, build_trip_hints, detect_themes, needs_ai_curation
 
@@ -558,7 +560,109 @@ def _finalize_kto_json_curation(
     }
 
 
+def _finalize_two_track_curation(
+    parsed: dict[str, Any],
+    spots: list[dict[str, Any]],
+    user_message: str,
+) -> dict[str, Any]:
+    main = pick_main_destination(user_message) or ""
+    transit = resolve_transit_area(main) or ""
+    intro = str(parsed.get("intro") or parsed.get("introduction") or "")
+
+    def build_option(opt: dict[str, Any] | None, regions_hint: list[str] | None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        if not opt:
+            return [], []
+        itinerary = opt.get("itinerary") or []
+        names = [str(item.get("spot_name") or "") for item in itinerary if item.get("spot_name")]
+        curated = _spots_from_names(spots, names, regions=regions_hint)
+        if not curated and names:
+            curated = _spots_from_names(spots, names, regions=None)
+        if not curated and regions_hint:
+            curated = pick_regional_spots(spots, regions_hint, limit=min(3, max(len(names), 2)))
+        by_name = {item.get("spot_name"): item for item in itinerary}
+        route_steps = []
+        for idx, spot in enumerate(curated, start=1):
+            item = by_name.get(spot["name"], {})
+            for name in names:
+                if name in spot["name"] or spot["name"] in name:
+                    item = by_name.get(name, item)
+                    break
+            route_steps.append(
+                {
+                    "order": item.get("step") or idx,
+                    "day": 1,
+                    "spot_name": spot["name"],
+                    "region": spot["region"],
+                    "theme": spot["theme"],
+                    "stay_minutes": 60,
+                    "why": (item.get("reason") or spot.get("description", "")).strip(),
+                    "move_to_next": "",
+                }
+            )
+        return curated, route_steps
+
+    main_regions = [main] if main else None
+    hybrid_regions = [r for r in [transit, main] if r] or None
+    curated_1, steps_1 = build_option(parsed.get("option_1"), main_regions)
+    curated_2, steps_2 = build_option(parsed.get("option_2"), hybrid_regions)
+
+    if parsed.get("option_2", {}).get("storytelling") and steps_2:
+        steps_2[0]["why"] = f"{parsed['option_2']['storytelling']} {steps_2[0]['why']}".strip()
+
+    lines = [intro, ""]
+    opt1 = parsed.get("option_1") or {}
+    opt2 = parsed.get("option_2") or {}
+    if curated_1:
+        lines.append(f"## {opt1.get('title', '1안')}")
+        lines.append(" → ".join(s["spot_name"] for s in steps_1))
+        lines.append("")
+    if curated_2:
+        lines.append(f"## {opt2.get('title', '2안')}")
+        if opt2.get("storytelling"):
+            lines.append(opt2["storytelling"])
+        lines.append(" → ".join(s["spot_name"] for s in steps_2))
+
+    active_curated = curated_2 or curated_1
+    active_steps = steps_2 or steps_1
+    title = f"{main.rstrip('시군')} 여행 2가지 코스" if main else "강원도 여행 2가지 코스"
+
+    return {
+        "itinerary_title": title,
+        "summary": intro,
+        "message": "\n".join(lines).strip(),
+        "curated_spots": active_curated,
+        "route_steps": active_steps,
+        "map_tip": "지도에서 번호 순으로 동선을 확인하세요." if active_steps else "",
+        "total_duration": "반나절~당일" if active_steps else "",
+        "trip_intent": {},
+        "transit_plan": {},
+        "accommodation": {},
+        "day_plans": [],
+        "course_options": [
+            {
+                "key": "option_1",
+                "title": opt1.get("title", "1안: 목적지 집중 코스"),
+                "summary": "",
+                "route_steps": steps_1,
+                "curated_spots": curated_1,
+            },
+            {
+                "key": "option_2",
+                "title": opt2.get("title", "2안: 지역 상생 하이브리드 코스"),
+                "summary": opt2.get("storytelling", ""),
+                "route_steps": steps_2,
+                "curated_spots": curated_2,
+            },
+        ],
+        "active_course_option": "option_2" if curated_2 else "option_1",
+        "source": "",
+    }
+
+
 def _finalize_curation(parsed: dict[str, Any], spots: list[dict[str, Any]], user_message: str = "") -> dict[str, Any]:
+    if parsed.get("option_1") is not None or parsed.get("option_2") is not None:
+        return _finalize_two_track_curation(parsed, spots, user_message)
+
     if (
         parsed.get("fallback_triggered") is not None
         or "introduction" in parsed

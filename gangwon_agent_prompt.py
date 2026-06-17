@@ -12,9 +12,97 @@ from tour_api import GANGWON_REGIONS
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
 
-GANGWON_AGENT_ROLE = """# ROLE
+MAIN_DESTINATION_REGIONS: tuple[str, ...] = (
+    "강릉시",
+    "속초시",
+    "춘천시",
+    "원주시",
+    "동해시",
+    "삼척시",
+    "양양군",
+    "홍천군",
+)
+
+POPULATION_DECLINE_REGIONS: tuple[str, ...] = (
+    "고성군",
+    "양구군",
+    "화천군",
+    "인제군",
+    "정선군",
+    "태백시",
+    "평창군",
+    "횡성군",
+    "영월군",
+    "철원군",
+)
+
+TRANSIT_BY_DESTINATION: dict[str, str] = {
+    "강릉시": "평창군",
+    "속초시": "고성군",
+    "양양군": "고성군",
+    "동해시": "태백시",
+    "삼척시": "정선군",
+    "춘천시": "화천군",
+    "원주시": "횡성군",
+    "홍천군": "인제군",
+}
+
+GANGWON_AGENT_ROLE_TWO_TRACK = """# ROLE & MISSION
+You are the "Gangwon-do Tourism Expert AI." Your core mission is to promote tourism in Gangwon-do while strategically supporting population-decline areas (인구감소지역).
+**ALWAYS reply in polite Korean (해요체/하십시오체).**
+
+# INPUT CONTEXT FORMAT
+You will receive KTO API data enclosed in specific XML tags:
+- <main_destination>: Data for the popular city the user requested (e.g., Gangneung).
+- <transit_area>: Data for a population-decline area located on the way (e.g., Pyeongchang, Hoengseong).
+
+# STRICT 2-TRACK WORKFLOW
+When the user asks for a travel itinerary to a specific destination, you MUST generate exactly TWO options using ONLY the provided XML data.
+
+**Option 1: Direct Route (1안: 목적지 집중 코스)**
+- Create an itinerary using ONLY the spots from the <main_destination> data.
+- Tailor it to the user's requested theme (e.g., ocean, food).
+
+**Option 2: Value-Added Transit Route (2안: 지역 상생 하이브리드 코스)**
+- Create a hybrid itinerary that combines spots from BOTH <transit_area> and <main_destination>.
+- Structure the flow logically (e.g., stopping by the transit area first, then heading to the main destination).
+- Include persuasive storytelling explaining WHY stopping at the transit area makes the trip better (e.g., avoiding crowds, hidden local gems, experiencing authentic eco-tourism).
+
+# DATA RULES
+1. Use ONLY spot names listed inside the XML tags. No pre-trained knowledge.
+2. spot_name MUST match 관광지명 in the XML character-for-character.
+3. Each option itinerary MUST have at least 2 steps.
+
+# OUT-OF-BOUNDS (Gangwon-only)
+If the user asks about locations outside Gangwon-do: set intro to a polite refusal+pivot in Korean and return empty itinerary arrays.
+"""
+
+KTO_TWO_TRACK_OUTPUT_FORMAT = """# OUTPUT FORMAT (STRICT JSON)
+You must output ONLY valid JSON. No markdown code blocks.
+
+{
+  "intro": "강원도 여행을 계획 중이시군요! 요청하신 목적지 집중 코스와, 가는 길에 들르기 좋은 특별한 코스 두 가지를 준비했습니다.",
+  "option_1": {
+    "title": "1안: [목적지] 집중 코스",
+    "itinerary": [
+      {"step": 1, "spot_name": "...", "reason": "..."}
+    ]
+  },
+  "option_2": {
+    "title": "2안: [경유지]의 매력 발견, 상생 여행 코스",
+    "storytelling": "강릉으로 가시는 길에 [경유지]에 들러 한적한 자연을 만끽해 보세요...",
+    "itinerary": [
+      {"step": 1, "type": "transit", "spot_name": "...", "reason": "..."},
+      {"step": 2, "type": "destination", "spot_name": "...", "reason": "..."}
+    ]
+  }
+}
+"""
+
+GANGWON_AGENT_ROLE = GANGWON_AGENT_ROLE_SINGLE = """# ROLE
 You are "Gangwon-do Tourism Expert AI", an official guide for Gangwon-do, South Korea.
 Your responses must be entirely based on the injected KTO (Korea Tourism Organization) data provided within the <kto_data> XML tags.
+**ALWAYS reply in polite Korean (해요체/하십시오체).**
 
 # INPUT CONTEXT
 You will receive context data enclosed in <kto_data> tags. This data is strictly filtered and formatted.
@@ -36,7 +124,7 @@ If the user asks about locations outside Gangwon-do: set fallback_triggered to t
 introduction to a polite refusal+pivot in Korean, itinerary to [].
 """
 
-KTO_OUTPUT_FORMAT = """# FALLBACK PROTOCOL
+KTO_OUTPUT_FORMAT = KTO_SINGLE_OUTPUT_FORMAT = """# FALLBACK PROTOCOL
 If the <kto_data> block is empty, or does not contain spots matching the user's requested region:
 Set "fallback_triggered" to true in your JSON output, and set the "introduction" to EXACTLY:
 "현재 KTO API 상에 요청하신 지역의 상세 정보가 부족합니다. 데이터 기반 방문자 수가 높은 다른 강원도 지역을 추천해 드릴까요?"
@@ -199,6 +287,81 @@ def _kto_spot_visitor_count(region: str, rank: int) -> str | int:
         return "—"
     weight = (6 - min(rank, 5)) / 15 if rank <= 5 else 1 / (rank + 5)
     return max(100, int(round(base * weight)))
+
+
+def pick_main_destination(user_message: str) -> str | None:
+    regions = regions_in_message(user_message)
+    if not regions:
+        return None
+    for region in regions:
+        if region in MAIN_DESTINATION_REGIONS:
+            return region
+    return regions[0]
+
+
+def resolve_transit_area(main_region: str | None) -> str | None:
+    if not main_region:
+        return None
+    if main_region in TRANSIT_BY_DESTINATION:
+        return TRANSIT_BY_DESTINATION[main_region]
+    if main_region in POPULATION_DECLINE_REGIONS:
+        for dest, transit in TRANSIT_BY_DESTINATION.items():
+            if transit == main_region:
+                return dest
+    return None
+
+
+def should_use_two_track_workflow(user_message: str) -> bool:
+    msg = (user_message or "").strip()
+    if not msg:
+        return False
+    if not (has_trip_plan_intent(msg) or _TRIP_PLAN.search(msg)):
+        return False
+    main = pick_main_destination(msg)
+    if not main:
+        return False
+    transit = resolve_transit_area(main)
+    return bool(transit and transit != main)
+
+
+def _kto_rows_for_region(region: str, *, max_rows: int = 6) -> list[tuple[str, str, str, str | int]]:
+    rows: list[tuple[str, str, str, str | int]] = []
+    for entry in collect_kto_catalog_entries(region):
+        if len(rows) >= max_rows:
+            break
+        rows.append(
+            (
+                region.rstrip("시군"),
+                entry["name"],
+                _kto_theme_display(entry),
+                _kto_spot_visitor_count(region, int(entry.get("rank") or 999)),
+            )
+        )
+    return rows
+
+
+def _format_kto_table_xml(tag: str, rows: list[tuple[str, str, str, str | int]]) -> str:
+    if not rows:
+        return f"<{tag}>\n</{tag}>"
+    lines = [
+        f"<{tag}>",
+        "| 지역 | 관광지명 | 생태/테마 | 방문자수(빅데이터) |",
+        "|---|---|---|---|",
+    ]
+    lines.extend(f"| {r} | {n} | {t} | {v} |" for r, n, t, v in rows)
+    lines.append(f"</{tag}>")
+    return "\n".join(lines)
+
+
+def build_two_track_kto_xml(main_region: str, transit_region: str, *, max_rows: int = 6) -> str:
+    main_rows = _kto_rows_for_region(main_region, max_rows=max_rows)
+    transit_rows = _kto_rows_for_region(transit_region, max_rows=max_rows)
+    return "\n\n".join(
+        [
+            _format_kto_table_xml("main_destination", main_rows),
+            _format_kto_table_xml("transit_area", transit_rows),
+        ]
+    )
 
 
 def build_kto_data_xml(user_message: str = "", *, max_rows: int = 12) -> str:
@@ -496,12 +659,24 @@ def build_agent_system_prompt(
     curation_schema: str = "",
     user_message: str = "",
 ) -> str:
-    kto_xml = build_kto_data_xml(user_message)
-    parts = [GANGWON_AGENT_ROLE, kto_xml, KTO_OUTPUT_FORMAT]
-    if for_curation and user_message.strip():
-        focus = region_focus_prompt_block(user_message)
-        if focus:
-            parts.append(focus)
+    two_track = for_curation and should_use_two_track_workflow(user_message)
+    if two_track:
+        main = pick_main_destination(user_message) or ""
+        transit = resolve_transit_area(main) or ""
+        kto_xml = build_two_track_kto_xml(main, transit)
+        parts = [
+            GANGWON_AGENT_ROLE_TWO_TRACK,
+            kto_xml,
+            KTO_TWO_TRACK_OUTPUT_FORMAT,
+            f"# ROUTE CONTEXT\n- main_destination: {main}\n- transit_area: {transit} (인구감소·상생 경유지)",
+        ]
+    else:
+        kto_xml = build_kto_data_xml(user_message)
+        parts = [GANGWON_AGENT_ROLE, kto_xml, KTO_OUTPUT_FORMAT]
+        if for_curation and user_message.strip():
+            focus = region_focus_prompt_block(user_message)
+            if focus:
+                parts.append(focus)
     if hints:
         parts.append(hints)
     if for_curation and curation_schema:

@@ -24,13 +24,60 @@ function insightLabel(src) {
 const AGENT_WELCOME =
   "안녕하세요! 저는 **강원도 관광 전문 AI 가이드**예요.\n\n" +
   "강원도 여행·맛집·축제·동선을 한국관광공사(KTO) 공식 데이터를 바탕으로 안내해 드려요. " +
-  "「춘천시 소개해줘」「정선군 설명해줘」처럼 시·군 질문도 환영해요. " +
+  "목적지 일정을 요청하시면 **1안(목적지 집중)** 과 **2안(인구감소지역 경유·상생 코스)** 두 가지를 제안해요. " +
+  "「춘천시 소개해줘」「강릉 바다 코스」처럼 시·군·테마 질문도 환영해요. " +
   "강원도 밖 지역은 안내하지 않으며, 궁금한 것을 편하게 물어보세요.";
+
+const GANGWON_AGENT_ROLE_TWO_TRACK =
+  "# ROLE & MISSION\n" +
+  'You are the "Gangwon-do Tourism Expert AI." Your core mission is to promote tourism in Gangwon-do while strategically supporting population-decline areas (인구감소지역).\n' +
+  "**ALWAYS reply in polite Korean (해요체/하십시오체).**\n\n" +
+  "# INPUT CONTEXT FORMAT\n" +
+  "You will receive KTO API data enclosed in specific XML tags:\n" +
+  "- <main_destination>: Data for the popular city the user requested (e.g., Gangneung).\n" +
+  "- <transit_area>: Data for a population-decline area located on the way (e.g., Pyeongchang, Hoengseong).\n\n" +
+  "# STRICT 2-TRACK WORKFLOW\n" +
+  "When the user asks for a travel itinerary to a specific destination, you MUST generate exactly TWO options using ONLY the provided XML data.\n\n" +
+  "**Option 1: Direct Route (1안: 목적지 집중 코스)**\n" +
+  "- Create an itinerary using ONLY the spots from the <main_destination> data.\n" +
+  "- Tailor it to the user's requested theme (e.g., ocean, food).\n\n" +
+  "**Option 2: Value-Added Transit Route (2안: 지역 상생 하이브리드 코스)**\n" +
+  "- Create a hybrid itinerary that combines spots from BOTH <transit_area> and <main_destination>.\n" +
+  "- Structure the flow logically (e.g., stopping by the transit area first, then heading to the main destination).\n" +
+  "- Include persuasive storytelling explaining WHY stopping at the transit area makes the trip better (e.g., avoiding crowds, hidden local gems, experiencing authentic eco-tourism).\n\n" +
+  "# DATA RULES\n" +
+  "1. Use ONLY spot names listed inside the XML tags. No pre-trained knowledge.\n" +
+  "2. spot_name MUST match 관광지명 in the XML character-for-character.\n" +
+  "3. Each option itinerary MUST have at least 2 steps.\n\n" +
+  "# OUT-OF-BOUNDS (Gangwon-only)\n" +
+  "If the user asks about locations outside Gangwon-do: set intro to a polite refusal+pivot in Korean and return empty itinerary arrays.";
+
+const KTO_TWO_TRACK_OUTPUT_FORMAT =
+  "# OUTPUT FORMAT (STRICT JSON)\n" +
+  "You must output ONLY valid JSON. No markdown code blocks.\n\n" +
+  "{\n" +
+  '  "intro": "강원도 여행을 계획 중이시군요! 요청하신 목적지 집중 코스와, 가는 길에 들르기 좋은 특별한 코스 두 가지를 준비했습니다.",\n' +
+  '  "option_1": {\n' +
+  '    "title": "1안: [목적지] 집중 코스",\n' +
+  '    "itinerary": [\n' +
+  '      {"step": 1, "spot_name": "...", "reason": "..."}\n' +
+  "    ]\n" +
+  "  },\n" +
+  '  "option_2": {\n' +
+  '    "title": "2안: [경유지]의 매력 발견, 상생 여행 코스",\n' +
+  '    "storytelling": "강릉으로 가시는 길에 [경유지]에 들러 한적한 자연을 만끽해 보세요...",\n' +
+  '    "itinerary": [\n' +
+  '      {"step": 1, "type": "transit", "spot_name": "...", "reason": "..."},\n' +
+  '      {"step": 2, "type": "destination", "spot_name": "...", "reason": "..."}\n' +
+  "    ]\n" +
+  "  }\n" +
+  "}";
 
 const GANGWON_AGENT_ROLE =
   "# ROLE\n" +
   'You are "Gangwon-do Tourism Expert AI", an official guide for Gangwon-do, South Korea.\n' +
-  "Your responses must be entirely based on the injected KTO (Korea Tourism Organization) data provided within the <kto_data> XML tags.\n\n" +
+  "Your responses must be entirely based on the injected KTO (Korea Tourism Organization) data provided within the <kto_data> XML tags.\n" +
+  "**ALWAYS reply in polite Korean (해요체/하십시오체).**\n\n" +
   "# INPUT CONTEXT\n" +
   "You will receive context data enclosed in <kto_data> tags. This data is strictly filtered and formatted.\n" +
   "Example format:\n" +
@@ -74,6 +121,51 @@ const GANGWON_REGION_NAMES = [
   "강릉시", "고성군", "동해시", "삼척시", "속초시", "양구군", "양양군", "영월군",
   "원주시", "인제군", "정선군", "철원군", "춘천시", "태백시", "홍천군", "화천군", "횡성군", "평창군",
 ];
+
+const MAIN_DESTINATION_REGIONS = [
+  "강릉시", "속초시", "춘천시", "원주시", "동해시", "삼척시", "양양군", "홍천군",
+];
+
+const POPULATION_DECLINE_REGIONS = [
+  "고성군", "양구군", "화천군", "인제군", "정선군", "태백시",
+  "평창군", "횡성군", "영월군", "철원군",
+];
+
+const TRANSIT_BY_DESTINATION = {
+  강릉시: "평창군",
+  속초시: "고성군",
+  양양군: "고성군",
+  동해시: "태백시",
+  삼척시: "정선군",
+  춘천시: "화천군",
+  원주시: "횡성군",
+  홍천군: "인제군",
+};
+
+function pickMainDestination(prompt) {
+  const regions = regionsInPrompt(prompt);
+  if (!regions.length) return null;
+  for (const region of regions) {
+    if (MAIN_DESTINATION_REGIONS.includes(region)) return region;
+  }
+  return regions[0];
+}
+
+function resolveTransitArea(mainRegion) {
+  if (!mainRegion) return null;
+  if (TRANSIT_BY_DESTINATION[mainRegion]) return TRANSIT_BY_DESTINATION[mainRegion];
+  return null;
+}
+
+function shouldUseTwoTrackWorkflow(prompt) {
+  const msg = String(prompt || "").trim();
+  if (!msg) return false;
+  if (!hasTripPlanIntent(msg) && !needsComplexAi(msg)) return false;
+  const main = pickMainDestination(msg);
+  if (!main) return false;
+  const transit = resolveTransitArea(main);
+  return Boolean(transit && transit !== main);
+}
 
 function regionsInPrompt(msg) {
   const found = [];
@@ -249,6 +341,37 @@ function pickProvinceWideSpots(limit = 3) {
     }
   }
   return out;
+}
+
+function ktoRowsForRegion(region, maxRows = 6) {
+  const rows = [];
+  for (const entry of collectKtoCatalogEntries(region)) {
+    if (rows.length >= maxRows) break;
+    rows.push({
+      region: region.replace(/(시|군)$/, ""),
+      name: entry.name,
+      theme: ktoThemeDisplayLabel(entry),
+      visitors: ktoSpotVisitorCount(region, entry.rank),
+    });
+  }
+  return rows;
+}
+
+function formatKtoTableXml(tag, rows) {
+  if (!rows.length) return `<${tag}>\n</${tag}>`;
+  const header = "| 지역 | 관광지명 | 생태/테마 | 방문자수(빅데이터) |";
+  const sep = "|---|---|---|---|";
+  const body = rows.map((r) => `| ${r.region} | ${r.name} | ${r.theme} | ${r.visitors} |`).join("\n");
+  return `<${tag}>\n${header}\n${sep}\n${body}\n</${tag}>`;
+}
+
+function buildTwoTrackKtoXml(prompt, maxRows = 6) {
+  const main = pickMainDestination(prompt) || GANGWON_REGION_NAMES[0];
+  const transit = resolveTransitArea(main) || POPULATION_DECLINE_REGIONS[0];
+  return [
+    formatKtoTableXml("main_destination", ktoRowsForRegion(main, maxRows)),
+    formatKtoTableXml("transit_area", ktoRowsForRegion(transit, maxRows)),
+  ].join("\n\n");
 }
 
 function buildKtoDataXml(prompt, maxRows = 12) {
@@ -539,11 +662,27 @@ function ensureAgentWelcome() {
 }
 
 function buildAgentReply(result) {
-  const lines = [
+  const lines = [];
+  if (result.courseOptions?.length > 1) {
+    lines.push(`**${result.title}**`, result.summary, `${sourceLabel(result.source)}`);
+    for (const opt of result.courseOptions) {
+      if (!opt.steps?.length) continue;
+      lines.push("", `**${opt.title}** · ${opt.steps.length}곳`);
+      if (opt.summary) lines.push(opt.summary);
+      lines.push(opt.steps.map((s) => s.spot.name).join(" → "));
+    }
+    const active = result.courseOptions.find((o) => o.key === result.activeCourseOption);
+    if (active?.steps?.length) {
+      lines.push("", `지도에는 **${active.title}** 이 표시됩니다. 플래너에서 1안/2안을 바꿀 수 있어요.`);
+      lines.push("아래 **일정·지도 열기** 버튼으로 확인하세요.");
+    }
+    return lines.join("\n");
+  }
+  lines.push(
     `**${result.title}**`,
     result.summary,
-    `${sourceLabel(result.source)} · ${result.steps.length}곳`,
-  ];
+    `${sourceLabel(result.source)} · ${result.steps.length}곳`
+  );
   const names = result.steps.map((s) => s.spot.name).join(" → ");
   if (names) lines.push(names);
   const intent = result.tripIntent || {};
@@ -1712,8 +1851,109 @@ function resolveSpotWithRegionalFallback(name, regions, usedNames) {
   return alt || spot;
 }
 
+function itineraryToSteps(itinerary, prompt, intro, allowedRegions = []) {
+  if (!itinerary?.length) return [];
+  const usedNames = new Set();
+  const steps = [];
+  for (let i = 0; i < itinerary.length; i++) {
+    const item = itinerary[i];
+    const rawName = String(item.spot_name || "").trim();
+    if (!rawName) continue;
+    let spot =
+      resolveSpotByName(rawName, allowedRegions) ||
+      resolveKtoSpotByName(rawName, allowedRegions.length ? allowedRegions : GANGWON_REGION_NAMES);
+    if (!spot || usedNames.has(spot.name)) continue;
+    if (allowedRegions.length && !allowedRegions.includes(spot.region)) continue;
+    usedNames.add(spot.name);
+    steps.push({
+      order: item.step ?? i + 1,
+      day: 1,
+      spot,
+      stay: spot.stay_min ?? 60,
+      why: (item.reason || `${spot.description}. ${spot.tip || ""}`).trim(),
+      move_to_next: "",
+    });
+  }
+  if (!steps.length && allowedRegions.length) {
+    return pickRegionalSpots(allowedRegions, 3).map((spot, i) => ({
+      order: i + 1,
+      day: 1,
+      spot,
+      stay: spot.stay_min ?? 60,
+      why: `${spot.description}. ${spot.tip || ""}`.trim(),
+      move_to_next: "",
+    }));
+  }
+  return steps;
+}
+
+function parseTwoTrackCuration(parsed, prompt) {
+  const main = pickMainDestination(prompt) || "";
+  const transit = resolveTransitArea(main) || "";
+  const intro = parsed.intro || parsed.introduction || "";
+
+  const opt1Raw = parsed.option_1 || {};
+  const opt2Raw = parsed.option_2 || {};
+  const steps1 = itineraryToSteps(opt1Raw.itinerary, prompt, intro, main ? [main] : []);
+  let steps2 = itineraryToSteps(
+    opt2Raw.itinerary,
+    prompt,
+    intro,
+    [transit, main].filter(Boolean)
+  );
+  if (opt2Raw.storytelling && steps2.length) {
+    steps2 = steps2.map((s, i) =>
+      i === 0 ? { ...s, why: `${opt2Raw.storytelling} ${s.why}`.trim() } : s
+    );
+  }
+
+  const courseOptions = [];
+  if (opt1Raw.itinerary || steps1.length) {
+    courseOptions.push({
+      key: "option_1",
+      title: opt1Raw.title || (main ? `1안: ${main.replace(/[시군]$/, "")} 집중 코스` : "1안: 목적지 집중 코스"),
+      summary: "",
+      steps: steps1,
+    });
+  }
+  if (opt2Raw.itinerary || steps2.length) {
+    courseOptions.push({
+      key: "option_2",
+      title: opt2Raw.title || (transit ? `2안: ${transit.replace(/[시군]$/, "")} 상생 하이브리드 코스` : "2안: 지역 상생 하이브리드 코스"),
+      summary: opt2Raw.storytelling || "",
+      steps: steps2,
+    });
+  }
+
+  const activeKey =
+    courseOptions.find((o) => o.key === "option_2" && o.steps.length)?.key ||
+    courseOptions.find((o) => o.steps.length)?.key ||
+    "option_1";
+  const active = courseOptions.find((o) => o.key === activeKey);
+  const steps = active?.steps || [];
+  const legs = steps.length ? computeLegs(steps) : null;
+  const sum = legs ? routeSummary(steps, legs) : null;
+
+  return {
+    title: main ? `${main.replace(/[시군]$/, "")} 여행 2가지 코스` : "강원도 여행 2가지 코스",
+    summary: intro,
+    duration: sum ? (sum.totalMin <= 300 ? "반나절 코스" : "당일 코스") : "",
+    steps,
+    courseOptions,
+    activeCourseOption: activeKey,
+    source: "gemini",
+    tripIntent: { mainDestination: main, transitArea: transit },
+    transitPlan: {},
+    accommodation: {},
+    dayPlans: [],
+  };
+}
+
 function parseGeminiCuration(raw, prompt) {
   const parsed = parseJsonFromGemini(raw);
+  if (parsed.option_1 != null || parsed.option_2 != null) {
+    return parseTwoTrackCuration(parsed, prompt);
+  }
   const regions = regionsInPrompt(prompt);
   const intro = parsed.introduction || KTO_FALLBACK_INTRO;
 
@@ -1866,18 +2106,24 @@ function localCuration(prompt, source = "local") {
 /* ==================== Curation ==================== */
 async function geminiCuration(prompt, key) {
   await waitGeminiSlot();
-  const ktoXml = buildKtoDataXml(prompt);
-  const regionFocus = regionFocusPromptBlock(prompt);
-  const provinceBlock = isProvinceWidePrompt(prompt)
-    ? "# PROVINCE-WIDE QUERY\n" +
-      "User asks about Gangwon-do broadly (no single city/county).\n" +
-      "- Pick one region from <kto_data> and focus introduction + itinerary there.\n" +
-      "- itinerary MUST list 2-3 spots with EXACT names from <kto_data>.\n"
+  const twoTrack = shouldUseTwoTrackWorkflow(prompt);
+  const ktoXml = twoTrack ? buildTwoTrackKtoXml(prompt) : buildKtoDataXml(prompt);
+  const regionFocus = twoTrack ? "" : regionFocusPromptBlock(prompt);
+  const provinceBlock =
+    !twoTrack && isProvinceWidePrompt(prompt)
+      ? "# PROVINCE-WIDE QUERY\n" +
+        "User asks about Gangwon-do broadly (no single city/county).\n" +
+        "- Pick one region from <kto_data> and focus introduction + itinerary there.\n" +
+        "- itinerary MUST list 2-3 spots with EXACT names from <kto_data>.\n"
+      : "";
+  const routeContext = twoTrack
+    ? `# ROUTE CONTEXT\n- main_destination: ${pickMainDestination(prompt)}\n- transit_area: ${resolveTransitArea(pickMainDestination(prompt))} (인구감소·상생 경유지)\n`
     : "";
   const sys =
-    GANGWON_AGENT_ROLE + "\n\n" +
+    (twoTrack ? GANGWON_AGENT_ROLE_TWO_TRACK : GANGWON_AGENT_ROLE) + "\n\n" +
     ktoXml + "\n\n" +
-    KTO_OUTPUT_FORMAT +
+    (twoTrack ? KTO_TWO_TRACK_OUTPUT_FORMAT : KTO_OUTPUT_FORMAT) +
+    (routeContext ? "\n\n" + routeContext : "") +
     (provinceBlock ? "\n\n" + provinceBlock : "") +
     (regionFocus ? "\n\n" + regionFocus : "");
   const body = {
@@ -1928,6 +2174,21 @@ function pushAgentFailure(text) {
   renderAgentChat();
 }
 
+function switchCourseOption(key) {
+  const opts = state.meta.courseOptions || [];
+  const picked = opts.find((o) => o.key === key && o.steps?.length);
+  if (!picked) return;
+  state.meta.activeCourseOption = key;
+  state.meta.title = picked.title;
+  if (picked.summary && state.meta.courseOptions.length > 1) {
+    state.meta.summary = `${state.meta._intro || state.meta.summary}\n\n${picked.summary}`.trim();
+  }
+  state.steps = attachOriginStep(picked.steps, state.meta, state.query);
+  state.focusOrder = 1;
+  resetMapState();
+  renderPlanner();
+}
+
 function applyCurationResult(prompt, result, opts = {}) {
   const { skipChat = false, chatPrefix = "" } = opts;
   if (!skipChat) {
@@ -1940,12 +2201,15 @@ function applyCurationResult(prompt, result, opts = {}) {
   state.meta = {
     title: result.title,
     summary: result.summary,
+    _intro: result.summary,
     duration: result.duration,
     source: result.source || "local",
     tripIntent: result.tripIntent || {},
     transitPlan: result.transitPlan || {},
     accommodation: result.accommodation || {},
     dayPlans: result.dayPlans || [],
+    courseOptions: result.courseOptions || [],
+    activeCourseOption: result.activeCourseOption || null,
   };
   state.steps = attachOriginStep(result.steps, state.meta, prompt);
   state.focusOrder = 1;
@@ -2280,6 +2544,29 @@ function renderTripPlan(meta) {
   el.innerHTML = html;
 }
 
+function renderCourseOptionTabs() {
+  const host = $("course-option-tabs");
+  if (!host) return;
+  const opts = (state.meta.courseOptions || []).filter((o) => o.steps?.length);
+  if (opts.length < 2) {
+    host.innerHTML = "";
+    host.classList.add("hidden");
+    return;
+  }
+  host.classList.remove("hidden");
+  const active = state.meta.activeCourseOption || opts[0].key;
+  host.innerHTML = opts
+    .map(
+      (o) =>
+        `<button type="button" class="course-option-tab${o.key === active ? " on" : ""}" data-course-option="${o.key}">` +
+        `${esc(o.title)} <span class="course-option-count">${o.steps.length}곳</span></button>`
+    )
+    .join("");
+  host.querySelectorAll("[data-course-option]").forEach((btn) => {
+    btn.addEventListener("click", () => switchCourseOption(btn.dataset.courseOption));
+  });
+}
+
 function renderPlanner() {
   $("btn-save-trip")?.classList.remove("hidden");
   mapNote("");
@@ -2291,6 +2578,7 @@ function renderPlanner() {
   $("chip-source").textContent = sourceLabel(meta.source);
   $("chip-stops").textContent =
     `${destinationSteps(steps).length}곳` + (steps.some((s) => s.kind === "origin") ? " + 출발" : "");
+  renderCourseOptionTabs();
   const legs = computeLegs(steps);
   renderTripPlan(meta);
   renderRouteSummary(legs);
@@ -2307,6 +2595,8 @@ function renderPlannerEmpty() {
   $("plan-query").textContent = "";
   $("chip-duration").textContent = "⏱ —";
   $("chip-source").textContent = "◆ —";
+  $("course-option-tabs")?.classList.add("hidden");
+  $("course-option-tabs") && ($("course-option-tabs").innerHTML = "");
   $("chip-stops").textContent = "0곳";
   $("chip-route").textContent = "";
   $("route-summary").innerHTML = "";
