@@ -30,8 +30,10 @@ jobs:
 
       - name: Sync TourAPI + generate data.js
         run: |
+          strip_val() { printf '%s' "$1" | sed 's/^[Vv][Aa][Ll][Uu][Ee]:[[:space:]]*//'; }
+          export TOUR_API_SERVICE_KEY="$(strip_val "$TOUR_API_SERVICE_KEY")"
           if [ -n "$TOUR_API_SERVICE_KEY" ]; then
-            python scripts/sync_tour_all.py
+            python scripts/sync_tour_all.py || python scripts/sync_content.py generate
           else
             echo "TOUR_API_SERVICE_KEY not set — using committed JSON only"
             python scripts/sync_content.py generate

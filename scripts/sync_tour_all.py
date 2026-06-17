@@ -18,9 +18,12 @@ def run(script: str, *args: str) -> int:
 
 
 def main() -> int:
-    # Kor/Eco 시군구 코드는 선행 필수
+    # Kor/Eco 시군구 코드는 선행 권장 — 실패해도 커밋된 codes.json으로 배포 계속
     if run("sync_tour_ldong.py") != 0:
-        return 1
+        print(
+            "Warning: ldong/eco code sync skipped; using committed gangwon_sigungu_codes.json",
+            file=sys.stderr,
+        )
 
     # 6 KTO API 병렬 fetch → JSON + aggregation
     if run("sync_tour_parallel_fetch.py") != 0:
