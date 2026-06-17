@@ -201,6 +201,46 @@ function inferRegionsForCuration(prompt, intro = "") {
   return regionsInPrompt(intro);
 }
 
+/** User-requested region(s); prompt always wins over AI intro text. */
+function strictRegionsForCuration(prompt, intro = "") {
+  const fromPrompt = regionsInPrompt(prompt);
+  if (fromPrompt.length) return fromPrompt;
+  if (intro) return regionsInPrompt(intro);
+  return [];
+}
+
+function primaryRegionForPrompt(prompt, intro = "") {
+  const regions = strictRegionsForCuration(prompt, intro);
+  return regions[0] || null;
+}
+
+function hasKtoCatalogForRegion(region) {
+  return collectKtoCatalogEntries(region).length > 0;
+}
+
+function regionalFallbackSpots(regions, limit = 3) {
+  if (!regions?.length) return [];
+  return pickRegionalSpots(regions, limit);
+}
+
+function emptyRegionalCurationShell(regions, { summary, source = "gemini", title } = {}) {
+  const region = regions?.[0] || "";
+  const msg =
+    summary ||
+    (region && !hasKtoCatalogForRegion(region) ? regionEmptyFallbackMessage() : KTO_FALLBACK_INTRO);
+  return {
+    title: title || (region ? `${region} 안내` : "강원도 안내"),
+    summary: msg,
+    duration: "",
+    steps: [],
+    source,
+    tripIntent: {},
+    transitPlan: {},
+    accommodation: {},
+    dayPlans: [],
+  };
+}
+
 const KTO_XML_SPOT_ALIASES = {
   경포대: ["경포해변", "강릉 경포대", "경포대"],
   "안목해변 카페거리": ["안목해변", "강릉 안목해변 커피거리", "안목해변 카페거리"],
@@ -470,7 +510,10 @@ function formatTwoTrackRegionXml(tag, region, prompt, split) {
 }
 
 function buildTwoTrackKtoXml(prompt, maxEach = 5) {
-  const main = pickMainDestination(prompt) || GANGWON_REGION_NAMES[0];
+  const main = pickMainDestination(prompt);
+  if (!main) {
+    return "<kto_data>\n<!-- region_required: include 시·군 name -->\n</kto_data>";
+  }
   const transit = resolveTransitArea(main) || POPULATION_DECLINE_REGIONS[0];
   return [
     formatTwoTrackRegionXml(
@@ -508,7 +551,10 @@ function buildThemePromptBlock(prompt) {
 function buildKtoDataXml(prompt, maxRows = 12) {
   const regions = regionsInPrompt(prompt);
   const provinceWide = isProvinceWidePrompt(prompt);
-  const targetRegions = regions.length ? regions : GANGWON_REGION_NAMES;
+  if (!regions.length && !provinceWide) {
+    return "<kto_data>\n<!-- region_required: include 시·군 name -->\n</kto_data>";
+  }
+  const targetRegions = provinceWide ? GANGWON_REGION_NAMES : regions;
   const cap = provinceWide ? Math.max(maxRows, 18) : maxRows;
   const lines = ["<kto_data>"];
   let count = 0;
@@ -603,20 +649,26 @@ function pickSpotsForPrompt(prompt, limit = 3) {
   return ranked.slice(0, limit).map((r) => r.spot);
 }
 
-function constrainStepsToRegions(steps, regions) {
+function constrainStepsToRegions(steps, regions, { strict = true } = {}) {
   if (!regions?.length || !steps?.length) return steps;
   const kept = steps.filter((s) => s.spot && regions.includes(s.spot.region));
+  const mapSteps = (spotList) =>
+    spotList.slice(0, steps.length).map((spot, i) => ({
+      order: i + 1,
+      day: steps[i]?.day || 1,
+      spot,
+      stay: spot.stay_min ?? 60,
+      why: steps[i]?.why || `${spot.description}. ${spot.tip || ""}`.trim(),
+      move_to_next: steps[i]?.move_to_next || "",
+    }));
+  if (strict && kept.length !== steps.length) {
+    const fallback = regionalFallbackSpots(regions, Math.max(steps.length, 3));
+    return fallback.length ? mapSteps(fallback) : [];
+  }
   if (kept.length) return kept.map((s, i) => ({ ...s, order: i + 1 }));
-  const fallback = pickRegionalSpots(regions, Math.min(steps.length, 3));
+  const fallback = regionalFallbackSpots(regions, Math.min(steps.length, 3));
   if (!fallback.length) return [];
-  return fallback.slice(0, steps.length).map((spot, i) => ({
-    order: i + 1,
-    day: steps[i]?.day || 1,
-    spot,
-    stay: spot.stay_min ?? 60,
-    why: steps[i]?.why || `${spot.description}. ${spot.tip || ""}`.trim(),
-    move_to_next: steps[i]?.move_to_next || "",
-  }));
+  return mapSteps(fallback);
 }
 
 function formatRelateContextHint(region, relate, maxAnchors = 2) {
@@ -1885,14 +1937,16 @@ function resolveSpotByNameInEnriched(name, regions = []) {
   return null;
 }
 
-function resolveSpotByName(name, regions = []) {
+function resolveSpotByName(name, regions = [], { strict = null } = {}) {
   const raw = String(name ?? "").trim();
   if (!raw) return null;
   const scoped = regions.length ? regions : regionsInPrompt(state.query || "");
+  const useStrict = strict !== null ? strict : scoped.length > 0;
   const enriched = resolveSpotByNameInEnriched(raw, scoped);
   if (enriched) return enriched;
   const kto = resolveKtoSpotByName(raw, scoped);
   if (kto) return kto;
+  if (useStrict) return null;
   const globalKto = resolveKtoSpotByName(raw, GANGWON_REGION_NAMES);
   if (globalKto) return globalKto;
   if (scoped.length) {
@@ -1903,18 +1957,16 @@ function resolveSpotByName(name, regions = []) {
 }
 
 function buildStepsFromItinerary(itinerary, prompt, intro = "") {
-  const inferredRegions = inferRegionsForCuration(prompt, intro);
+  const inferredRegions = strictRegionsForCuration(prompt, intro);
   const usedNames = new Set();
   const steps = [];
   for (let i = 0; i < (itinerary || []).length; i++) {
     const item = itinerary[i];
     const rawName = String(item.spot_name || "").trim();
     if (!rawName) continue;
-    let spot =
-      resolveSpotByName(rawName, inferredRegions) ||
-      resolveKtoSpotByName(rawName, GANGWON_REGION_NAMES);
+    let spot = resolveSpotByName(rawName, inferredRegions, { strict: true });
     if (!spot && inferredRegions.length) {
-      spot = pickRegionalSpots(inferredRegions, 5).find((s) => !usedNames.has(s.name));
+      spot = regionalFallbackSpots(inferredRegions, 5).find((s) => !usedNames.has(s.name));
     }
     if (!spot || usedNames.has(spot.name)) continue;
     if (inferredRegions.length && !inferredRegions.includes(spot.region)) continue;
@@ -1934,12 +1986,19 @@ function buildStepsFromItinerary(itinerary, prompt, intro = "") {
 function ensureCurationHasSteps(result, parsed, prompt) {
   if (result.steps?.length) return result;
   const intro = parsed.introduction || result.summary || "";
-  const inferredRegions = inferRegionsForCuration(prompt, intro);
+  const inferredRegions = strictRegionsForCuration(prompt, intro);
 
   if (parsed.itinerary?.length) {
     const steps = buildStepsFromItinerary(parsed.itinerary, prompt, intro);
     if (steps.length) {
       const scoped = constrainStepsToRegions(steps, inferredRegions);
+      if (!scoped.length) {
+        return emptyRegionalCurationShell(inferredRegions, {
+          summary: intro || result.summary,
+          source: result.source || "gemini",
+          title: result.title,
+        });
+      }
       const legs = computeLegs(scoped);
       const sum = routeSummary(scoped, legs);
       return {
@@ -1952,9 +2011,17 @@ function ensureCurationHasSteps(result, parsed, prompt) {
   }
 
   const picks = inferredRegions.length
-    ? pickRegionalSpots(inferredRegions, 3)
-    : pickProvinceWideSpots(3);
-  if (!picks.length) return result;
+    ? regionalFallbackSpots(inferredRegions, 3)
+    : isProvinceWidePrompt(prompt)
+      ? pickProvinceWideSpots(3)
+      : [];
+  if (!picks.length) {
+    return emptyRegionalCurationShell(inferredRegions, {
+      summary: intro || result.summary,
+      source: result.source || "gemini",
+      title: result.title,
+    });
+  }
 
   const steps = picks.map((spot, i) => ({
     order: i + 1,
@@ -1975,13 +2042,12 @@ function ensureCurationHasSteps(result, parsed, prompt) {
 }
 
 function resolveSpotWithRegionalFallback(name, regions, usedNames) {
-  let spot = resolveSpotByName(name, regions);
+  let spot = resolveSpotByName(name, regions, { strict: true });
   if (spot && (!regions.length || regions.includes(spot.region))) {
     if (!usedNames.has(spot.name)) return spot;
   }
-  if (!regions.length) return spot;
-  const alt = pickRegionalSpots(regions, 5).find((s) => !usedNames.has(s.name));
-  return alt || spot;
+  if (!regions.length) return null;
+  return regionalFallbackSpots(regions, 5).find((s) => !usedNames.has(s.name)) || null;
 }
 
 function itineraryToSteps(itinerary, prompt, intro, allowedRegions = []) {
@@ -1992,9 +2058,10 @@ function itineraryToSteps(itinerary, prompt, intro, allowedRegions = []) {
     const item = itinerary[i];
     const rawName = String(item.spot_name || "").trim();
     if (!rawName) continue;
-    let spot =
-      resolveSpotByName(rawName, allowedRegions) ||
-      resolveKtoSpotByName(rawName, allowedRegions.length ? allowedRegions : GANGWON_REGION_NAMES);
+    let spot = resolveSpotByName(rawName, allowedRegions, { strict: true });
+    if (!spot && allowedRegions.length) {
+      spot = regionalFallbackSpots(allowedRegions, 5).find((s) => !usedNames.has(s.name));
+    }
     if (!spot || usedNames.has(spot.name)) continue;
     if (allowedRegions.length && !allowedRegions.includes(spot.region)) continue;
     usedNames.add(spot.name);
@@ -2008,7 +2075,7 @@ function itineraryToSteps(itinerary, prompt, intro, allowedRegions = []) {
     });
   }
   if (!steps.length && allowedRegions.length) {
-    return pickRegionalSpots(allowedRegions, 3).map((spot, i) => ({
+    return regionalFallbackSpots(allowedRegions, 3).map((spot, i) => ({
       order: i + 1,
       day: 1,
       spot,
@@ -2027,11 +2094,7 @@ function isMealTimeSlot(timeSlot) {
 function resolveScheduleSpot(spotName, regions, prompt) {
   const name = String(spotName || "").trim();
   if (!name) return null;
-  return (
-    resolveSpotByName(name, regions) ||
-    resolveKtoSpotByName(name, regions) ||
-    resolveKtoSpotByName(name, GANGWON_REGION_NAMES)
-  );
+  return resolveSpotByName(name, regions, { strict: true });
 }
 
 function syntheticScheduleSpot(name, region, description, isMeal) {
@@ -2053,17 +2116,20 @@ function syntheticScheduleSpot(name, region, description, isMeal) {
   };
 }
 
-function scheduleItemToStep(item, dayNum, order, prompt, regions) {
+function scheduleItemToStep(item, dayNum, order, prompt, regions, usedNames = new Set()) {
   const slot = String(item.time_slot || "").trim();
   const rawName = String(item.spot_name || "").trim();
   const desc = String(item.description || item.reason || "").trim();
   if (!rawName) return null;
   const isMeal = isMealTimeSlot(slot);
   let spot = resolveScheduleSpot(rawName, regions, prompt);
-  if (!spot) {
-    const region = regions[0] || GANGWON_REGION_NAMES[0];
-    spot = syntheticScheduleSpot(rawName, region, desc, isMeal);
-  } else if (isMeal) {
+  if (!spot && regions.length) {
+    const pool = regionalFallbackSpots(regions, 8);
+    spot = pool.find((s) => !usedNames.has(s.name)) || pool[(order - 1) % pool.length];
+  }
+  if (!spot) return null;
+  usedNames.add(spot.name);
+  if (isMeal) {
     spot = { ...spot, theme: "맛집", stay_min: 75 };
   }
   return {
@@ -2077,19 +2143,32 @@ function scheduleItemToStep(item, dayNum, order, prompt, regions) {
 }
 
 function optionToSteps(option, prompt, regions) {
+  const usedNames = new Set();
   if (option?.days?.length) {
     const steps = [];
     let order = 1;
     for (const dayBlock of option.days) {
       const dayNum = dayBlock.day || 1;
       for (const item of dayBlock.schedule || []) {
-        const step = scheduleItemToStep(item, dayNum, order++, prompt, regions);
+        const step = scheduleItemToStep(item, dayNum, order++, prompt, regions, usedNames);
         if (step) steps.push(step);
       }
     }
     if (steps.length) return steps;
   }
-  return itineraryToSteps(option?.itinerary, prompt, "", regions);
+  const fromItinerary = itineraryToSteps(option?.itinerary, prompt, "", regions);
+  if (fromItinerary.length) return fromItinerary;
+  if (regions.length) {
+    return regionalFallbackSpots(regions, 3).map((spot, i) => ({
+      order: i + 1,
+      day: 1,
+      spot,
+      stay: spot.stay_min ?? 60,
+      why: `${spot.description}. ${spot.tip || ""}`.trim(),
+      move_to_next: "",
+    }));
+  }
+  return [];
 }
 
 function buildDayPlansFromOption(option) {
@@ -2196,13 +2275,14 @@ function parseGeminiCuration(raw, prompt) {
   }
 
   if (parsed.introduction != null || Array.isArray(parsed.itinerary)) {
-    const inferredRegions = inferRegionsForCuration(prompt, intro);
+    const inferredRegions = strictRegionsForCuration(prompt, intro);
     let steps = parsed.itinerary?.length
       ? buildStepsFromItinerary(parsed.itinerary, prompt, intro)
       : [];
     steps = constrainStepsToRegions(
       steps,
-      regions.length ? regions : inferredRegions
+      regions.length ? regions : inferredRegions,
+      { strict: true }
     );
     let result = {
       title: regions[0]
@@ -2245,23 +2325,36 @@ function parseGeminiCuration(raw, prompt) {
     })
     .filter(Boolean);
   if (!steps.length) {
-    if (regions.length && !pickRegionalSpots(regions, 1).length) {
-      const msg = regionEmptyFallbackMessage();
+    const scopedRegions = strictRegionsForCuration(prompt, parsed.summary || intro || "");
+    if (scopedRegions.length && !regionalFallbackSpots(scopedRegions, 1).length) {
       return {
-        title: `${regions[0]} 안내`,
-        summary: msg,
-        duration: "",
-        steps: [],
-        source: "gemini",
+        ...emptyRegionalCurationShell(scopedRegions, {
+          summary: regionEmptyFallbackMessage(),
+          source: "gemini",
+        }),
         tripIntent: parsed.trip_intent || {},
         transitPlan: parsed.transit_plan || {},
         accommodation: parsed.accommodation || {},
         dayPlans: parsed.day_plans || [],
       };
     }
-    throw new Error("no spots matched");
+    return ensureCurationHasSteps(
+      {
+        title: regions[0] ? `${regions[0]} AI 추천 코스` : "강원도 AI 추천 코스",
+        summary: parsed.summary || intro || KTO_FALLBACK_INTRO,
+        duration: parsed.total_duration || "",
+        steps: [],
+        source: "gemini",
+        tripIntent: parsed.trip_intent || {},
+        transitPlan: parsed.transit_plan || {},
+        accommodation: parsed.accommodation || {},
+        dayPlans: parsed.day_plans || [],
+      },
+      parsed,
+      prompt
+    );
   }
-  const scoped = constrainStepsToRegions(steps, regions);
+  const scoped = constrainStepsToRegions(steps, regions, { strict: true });
   if (!scoped.length && regions.length) {
     const msg = regionEmptyFallbackMessage();
     return {
@@ -2328,7 +2421,8 @@ async function geminiCuration(prompt, key) {
   await waitGeminiSlot();
   const twoTrack = shouldUseTwoTrackWorkflow(prompt);
   const ktoXml = twoTrack ? buildTwoTrackKtoXml(prompt) : buildKtoDataXml(prompt);
-  const regionFocus = twoTrack ? "" : regionFocusPromptBlock(prompt);
+  const promptRegions = regionsInPrompt(prompt);
+  const regionFocus = regionFocusPromptBlock(prompt);
   const provinceBlock =
     !twoTrack && isProvinceWidePrompt(prompt)
       ? "# PROVINCE-WIDE QUERY\n" +
@@ -2480,7 +2574,11 @@ async function runRegionTrip(prompt, key, complex) {
         pushAgentFailure(buildComplexFailReply(e));
         return;
       }
-      result = localCuration(prompt, "local_api_fail");
+      const regions = strictRegionsForCuration(prompt);
+      result =
+        regions.length && !regionalFallbackSpots(regions, 1).length
+          ? emptyRegionalCurationShell(regions, { source: "local_api_fail" })
+          : localCuration(prompt, "local_api_fail");
     }
   } else {
     if (complex) {
@@ -2508,7 +2606,12 @@ async function tryGeminiCurationWithFallback(prompt, key, complex) {
       pushAgentFailure(buildComplexFailReply(e));
       return;
     }
-    saveCurationAndApply(prompt, localCuration(prompt, "local_api_fail"));
+    const regions = strictRegionsForCuration(prompt);
+    const fallback =
+      regions.length && !regionalFallbackSpots(regions, 1).length
+        ? emptyRegionalCurationShell(regions, { source: "local_api_fail" })
+        : localCuration(prompt, "local_api_fail");
+    saveCurationAndApply(prompt, fallback);
   }
 }
 

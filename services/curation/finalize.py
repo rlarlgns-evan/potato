@@ -51,8 +51,6 @@ def finalize_kto_json_curation(
     curated = spots_from_names(spots, names, regions=regions or None)
     if not curated and regions:
         curated = pick_regional_spots(spots, regions, limit=min(3, max(len(names), 2)))
-    if not curated and names:
-        curated = spots_from_names(spots, names, regions=None)
     if not curated:
         curated = pick_regional_spots(spots, regions, limit=3) if regions else pick_province_wide_spots(spots, limit=3)
 
@@ -115,18 +113,11 @@ def _build_option_from_parsed(
                 if not name:
                     continue
                 hits = spots_from_names(spots, [name], regions=regions_hint)
-                if not hits:
-                    hits = spots_from_names(spots, [name], regions=None)
                 if not hits and regions_hint:
                     hits = pick_regional_spots(spots, regions_hint, limit=1)
-                spot = hits[0] if hits else {
-                    "name": name,
-                    "region": (regions_hint or [""])[0],
-                    "theme": "맛집" if "식사" in str(item.get("time_slot") or "") else "관광",
-                    "description": str(item.get("description") or name),
-                    "lat": 37.5,
-                    "lng": 128.0,
-                }
+                if not hits:
+                    continue
+                spot = hits[0]
                 if spot not in curated:
                     curated.append(spot)
                 slot = str(item.get("time_slot") or "").strip()
@@ -149,8 +140,6 @@ def _build_option_from_parsed(
     itinerary = opt.get("itinerary") or []
     names = [str(item.get("spot_name") or "") for item in itinerary if item.get("spot_name")]
     curated = spots_from_names(spots, names, regions=regions_hint)
-    if not curated and names:
-        curated = spots_from_names(spots, names, regions=None)
     if not curated and regions_hint:
         curated = pick_regional_spots(spots, regions_hint, limit=min(3, max(len(names), 2)))
     by_name = {item.get("spot_name"): item for item in itinerary}

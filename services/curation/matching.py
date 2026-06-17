@@ -12,6 +12,7 @@ def spots_from_names(
     names: list[str],
     *,
     regions: list[str] | None = None,
+    strict_regions: bool = True,
 ) -> list[dict[str, Any]]:
     if not names:
         return []
@@ -33,7 +34,7 @@ def spots_from_names(
     if not result:
         for name in names:
             kto = resolve_kto_spot_by_name(name, regions)
-            if not kto:
+            if not kto and not strict_regions and not regions:
                 kto = resolve_kto_spot_by_name(name, None)
             if kto and kto not in result:
                 result.append(kto)
