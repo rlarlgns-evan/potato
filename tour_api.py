@@ -13,9 +13,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import time
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -69,6 +72,44 @@ TOU_DIV_LABELS = {
 
 class TourApiError(RuntimeError):
     pass
+
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ApiCallResult:
+    """Per-region fetch outcome with graceful partial failure."""
+
+    data: dict[str, Any]
+    failed_regions: list[str] = field(default_factory=list)
+
+
+def fetch_for_all_sigungu(
+    fetch_one: Callable[[str, dict[str, Any]], list[dict[str, Any]]],
+    *,
+    throttle_sec: float = 0.12,
+    extra_meta: dict[str, Any] | None = None,
+) -> ApiCallResult:
+    codes = load_gangwon_sigungu_codes()
+    regions: dict[str, list[dict[str, Any]]] = {}
+    failed: list[str] = []
+    for region, meta in codes.get("regions", {}).items():
+        if region not in GANGWON_REGIONS:
+            continue
+        try:
+            rows = fetch_one(region, meta)
+            if rows:
+                regions[region] = rows
+        except TourApiError as exc:
+            failed.append(region)
+            logger.warning("TourAPI fetch failed for %s: %s", region, exc)
+        if throttle_sec > 0:
+            time.sleep(throttle_sec)
+    payload: dict[str, Any] = {"updated_at": date.today().isoformat(), "regions": regions}
+    if extra_meta:
+        payload.update(extra_meta)
+    return ApiCallResult(data=payload, failed_regions=failed)
 
 
 def get_service_key() -> str:
@@ -443,34 +484,24 @@ def fetch_gangwon_hub_spots(
     throttle_sec: float = 0.12,
 ) -> dict[str, Any]:
     key = service_key or get_service_key()
-    codes = load_gangwon_sigungu_codes()
     base = base_ym or _default_base_ym()
-    regions: dict[str, list[dict[str, Any]]] = {}
 
-    for region, meta in codes.get("regions", {}).items():
-        if region not in GANGWON_REGIONS:
-            continue
-        try:
-            hubs = fetch_hub_spots_for_sigungu(
-                area_cd=int(meta["areaCd"]),
-                signgu_cd=int(meta["signguCd"]),
-                base_ym=base,
-                service_key=key,
-                top_n=top_n,
-            )
-            if hubs:
-                regions[region] = hubs
-        except TourApiError:
-            continue
-        if throttle_sec > 0:
-            time.sleep(throttle_sec)
+    def _one(region: str, meta: dict[str, Any]) -> list[dict[str, Any]]:
+        return fetch_hub_spots_for_sigungu(
+            area_cd=int(meta["areaCd"]),
+            signgu_cd=int(meta["signguCd"]),
+            base_ym=base,
+            service_key=key,
+            top_n=top_n,
+        )
 
-    return {
+    result = fetch_for_all_sigungu(_one, throttle_sec=throttle_sec, extra_meta={
         "source": "TourAPI LocgoHubTarService1 areaBasedList1",
-        "updated_at": date.today().isoformat(),
         "baseYm": base,
-        "regions": regions,
-    }
+    })
+    if result.failed_regions:
+        result.data["failed_regions"] = result.failed_regions
+    return result.data
 
 
 # ---------- TarRlteTar (연관관광지) ----------

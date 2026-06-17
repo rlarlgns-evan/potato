@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 from typing import Any
@@ -14,15 +15,14 @@ from gangwon_agent_prompt import (
     is_multi_intent_prompt,
     is_region_info_only_prompt,
     out_of_gangwon_reply,
-    pick_main_destination,
-    pick_province_wide_spots,
     pick_regional_spots,
     region_empty_fallback_message,
     regions_in_message,
-    resolve_kto_spot_by_name,
-    resolve_transit_area,
 )
+from services.curation import finalize_curation, spots_from_names
 from trip_intent import attach_origin_step, build_trip_hints, detect_themes, needs_ai_curation
+
+logger = logging.getLogger(__name__)
 
 MAX_SPOTS_IN_PROMPT = 12
 MAX_HISTORY_MSGS = 0
@@ -96,41 +96,7 @@ def _spots_from_names(
     *,
     regions: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    if not names:
-        return []
-    pool = spots
-    if regions:
-        pool = [s for s in spots if s.get("region") in regions]
-    order = {name: idx for idx, name in enumerate(names)}
-    by_name = {s["name"]: s for s in pool}
-    result: list[dict[str, Any]] = []
-    for name in names:
-        if name in by_name and by_name[name] not in result:
-            result.append(by_name[name])
-    if not result:
-        for spot in pool:
-            for name in names:
-                if name in spot["name"] or spot["name"] in name:
-                    if spot not in result:
-                        result.append(spot)
-    if not result:
-        for name in names:
-            kto = resolve_kto_spot_by_name(name, regions)
-            if not kto:
-                kto = resolve_kto_spot_by_name(name, None)
-            if kto and kto not in result:
-                result.append(kto)
-    if not result and regions:
-        kto_pool = pick_regional_spots(spots, regions, limit=8)
-        for name in names:
-            for spot in kto_pool:
-                if name in spot["name"] or spot["name"] in name:
-                    if spot not in result:
-                        result.append(spot)
-        if not result:
-            result = kto_pool[: min(len(names), 4)]
-    result.sort(key=lambda s: order.get(s["name"], 999))
-    return result[:4]
+    return spots_from_names(spots, names, regions=regions)
 
 
 def _parse_curation_json(text: str) -> dict[str, Any] | None:
@@ -447,7 +413,8 @@ def _call_openai_curation(
             response_format={"type": "json_object"},
         )
         return _parse_curation_json((response.choices[0].message.content or "").strip())
-    except Exception:
+    except Exception as exc:
+        logger.warning("OpenAI curation failed: %s", exc)
         return None
 
 
@@ -476,234 +443,10 @@ def _call_google_curation(
             ),
         )
         return _parse_curation_json((response.text or "").strip())
-    except Exception:
+    except Exception as exc:
+        logger.warning("Gemini curation failed: %s", exc)
         return None
 
-
-def _finalize_kto_json_curation(
-    parsed: dict[str, Any],
-    spots: list[dict[str, Any]],
-    user_message: str,
-) -> dict[str, Any]:
-    regions = regions_in_message(user_message)
-    intro = str(parsed.get("introduction") or KTO_FALLBACK_INTRO)
-    if not regions:
-        regions = regions_in_message(intro)
-    title = f"{regions[0]} AI 추천 코스" if regions else "강원도 AI 추천 코스"
-
-    if parsed.get("fallback_triggered"):
-        curated = pick_regional_spots(spots, regions, limit=3) if regions else pick_province_wide_spots(spots, limit=3)
-        route_steps = _steps_for_spots(curated, parsed) if curated else []
-        return {
-            "itinerary_title": f"{regions[0]} 안내" if regions else "강원도 안내",
-            "summary": intro,
-            "message": format_itinerary_message({"itinerary_title": title, "summary": intro}, curated) if curated else intro,
-            "curated_spots": curated,
-            "route_steps": route_steps,
-            "map_tip": "지도에서 번호 순으로 동선을 확인하세요." if curated else "",
-            "total_duration": "반나절~당일" if curated else "",
-            "trip_intent": {},
-            "transit_plan": {},
-            "accommodation": {},
-            "day_plans": [],
-            "source": "",
-        }
-
-    itinerary = parsed.get("itinerary") or []
-    names = [str(item.get("spot_name") or "") for item in itinerary if item.get("spot_name")]
-    curated = _spots_from_names(spots, names, regions=regions or None)
-    if not curated and regions:
-        curated = pick_regional_spots(spots, regions, limit=min(3, max(len(names), 2)))
-    if not curated and names:
-        curated = _spots_from_names(spots, names, regions=None)
-    if not curated:
-        curated = pick_regional_spots(spots, regions, limit=3) if regions else pick_province_wide_spots(spots, limit=3)
-
-    by_name = {item.get("spot_name"): item for item in itinerary}
-    route_steps = []
-    for idx, spot in enumerate(curated, start=1):
-        item = by_name.get(spot["name"], {})
-        route_steps.append(
-            {
-                "order": item.get("step") or idx,
-                "day": 1,
-                "spot_name": spot["name"],
-                "region": spot["region"],
-                "theme": spot["theme"],
-                "stay_minutes": 60,
-                "why": (item.get("reason") or spot.get("description", "")).strip(),
-                "move_to_next": "",
-            }
-        )
-
-    legacy = {
-        "itinerary_title": title,
-        "summary": intro,
-        "route_steps": route_steps,
-        "total_duration": "반나절~당일",
-        "map_tip": "지도에서 번호 순으로 동선을 확인하세요.",
-    }
-    message = format_itinerary_message(legacy, curated)
-    return {
-        "itinerary_title": title,
-        "summary": intro,
-        "message": message,
-        "curated_spots": curated,
-        "route_steps": route_steps,
-        "map_tip": legacy["map_tip"],
-        "total_duration": legacy["total_duration"],
-        "trip_intent": {},
-        "transit_plan": {},
-        "accommodation": {},
-        "day_plans": [],
-        "source": "",
-    }
-
-
-def _finalize_two_track_curation(
-    parsed: dict[str, Any],
-    spots: list[dict[str, Any]],
-    user_message: str,
-) -> dict[str, Any]:
-    main = pick_main_destination(user_message) or ""
-    transit = resolve_transit_area(main) or ""
-    intro = str(parsed.get("intro") or parsed.get("introduction") or "")
-
-    def build_option(opt: dict[str, Any] | None, regions_hint: list[str] | None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-        if not opt:
-            return [], []
-        itinerary = opt.get("itinerary") or []
-        names = [str(item.get("spot_name") or "") for item in itinerary if item.get("spot_name")]
-        curated = _spots_from_names(spots, names, regions=regions_hint)
-        if not curated and names:
-            curated = _spots_from_names(spots, names, regions=None)
-        if not curated and regions_hint:
-            curated = pick_regional_spots(spots, regions_hint, limit=min(3, max(len(names), 2)))
-        by_name = {item.get("spot_name"): item for item in itinerary}
-        route_steps = []
-        for idx, spot in enumerate(curated, start=1):
-            item = by_name.get(spot["name"], {})
-            for name in names:
-                if name in spot["name"] or spot["name"] in name:
-                    item = by_name.get(name, item)
-                    break
-            route_steps.append(
-                {
-                    "order": item.get("step") or idx,
-                    "day": 1,
-                    "spot_name": spot["name"],
-                    "region": spot["region"],
-                    "theme": spot["theme"],
-                    "stay_minutes": 60,
-                    "why": (item.get("reason") or spot.get("description", "")).strip(),
-                    "move_to_next": "",
-                }
-            )
-        return curated, route_steps
-
-    main_regions = [main] if main else None
-    hybrid_regions = [r for r in [transit, main] if r] or None
-    curated_1, steps_1 = build_option(parsed.get("option_1"), main_regions)
-    curated_2, steps_2 = build_option(parsed.get("option_2"), hybrid_regions)
-
-    if parsed.get("option_2", {}).get("storytelling") and steps_2:
-        steps_2[0]["why"] = f"{parsed['option_2']['storytelling']} {steps_2[0]['why']}".strip()
-
-    lines = [intro, ""]
-    opt1 = parsed.get("option_1") or {}
-    opt2 = parsed.get("option_2") or {}
-    if curated_1:
-        lines.append(f"## {opt1.get('title', '1안')}")
-        lines.append(" → ".join(s["spot_name"] for s in steps_1))
-        lines.append("")
-    if curated_2:
-        lines.append(f"## {opt2.get('title', '2안')}")
-        if opt2.get("storytelling"):
-            lines.append(opt2["storytelling"])
-        lines.append(" → ".join(s["spot_name"] for s in steps_2))
-
-    active_curated = curated_2 or curated_1
-    active_steps = steps_2 or steps_1
-    title = f"{main.rstrip('시군')} 여행 2가지 코스" if main else "강원도 여행 2가지 코스"
-
-    return {
-        "itinerary_title": title,
-        "summary": intro,
-        "message": "\n".join(lines).strip(),
-        "curated_spots": active_curated,
-        "route_steps": active_steps,
-        "map_tip": "지도에서 번호 순으로 동선을 확인하세요." if active_steps else "",
-        "total_duration": "반나절~당일" if active_steps else "",
-        "trip_intent": {},
-        "transit_plan": {},
-        "accommodation": {},
-        "day_plans": [],
-        "course_options": [
-            {
-                "key": "option_1",
-                "title": opt1.get("title", "1안: 목적지 집중 코스"),
-                "summary": "",
-                "route_steps": steps_1,
-                "curated_spots": curated_1,
-            },
-            {
-                "key": "option_2",
-                "title": opt2.get("title", "2안: 지역 상생 하이브리드 코스"),
-                "summary": opt2.get("storytelling", ""),
-                "route_steps": steps_2,
-                "curated_spots": curated_2,
-            },
-        ],
-        "active_course_option": "option_2" if curated_2 else "option_1",
-        "source": "",
-    }
-
-
-def _finalize_curation(parsed: dict[str, Any], spots: list[dict[str, Any]], user_message: str = "") -> dict[str, Any]:
-    if parsed.get("option_1") is not None or parsed.get("option_2") is not None:
-        return _finalize_two_track_curation(parsed, spots, user_message)
-
-    if (
-        parsed.get("fallback_triggered") is not None
-        or "introduction" in parsed
-        or "itinerary" in parsed
-    ):
-        return _finalize_kto_json_curation(parsed, spots, user_message)
-
-    regions = regions_in_message(user_message)
-    route_names = parsed.get("route_order") or parsed.get("recommended_spots") or []
-    if not route_names:
-        route_names = [
-            s.get("spot_name")
-            for s in (parsed.get("route_steps") or [])
-            if s.get("spot_name")
-        ]
-    rec_names = parsed.get("recommended_spots") or route_names
-    curated = _spots_from_names(
-        spots,
-        list(route_names) if route_names else list(rec_names),
-        regions=regions or None,
-    )
-    if not curated and rec_names:
-        curated = _spots_from_names(spots, list(rec_names), regions=regions or None)
-
-    steps = _steps_for_spots(curated, parsed)
-    message = format_itinerary_message(parsed, curated)
-
-    return {
-        "itinerary_title": parsed.get("itinerary_title", "추천 코스"),
-        "summary": parsed.get("summary", ""),
-        "message": message,
-        "curated_spots": curated,
-        "route_steps": steps,
-        "map_tip": parsed.get("map_tip", "").strip(),
-        "total_duration": parsed.get("total_duration", ""),
-        "trip_intent": parsed.get("trip_intent") or {},
-        "transit_plan": parsed.get("transit_plan") or {},
-        "accommodation": parsed.get("accommodation") or {},
-        "day_plans": parsed.get("day_plans") or [],
-        "source": "",
-    }
 
 
 def _maybe_prepend_region_intro(
@@ -783,7 +526,7 @@ def curate_trip(
             return _ai_required_failure(user_message)
         return _maybe_prepend_region_intro(user_message, spots, _fallback_curation(user_message, spots, source="local_api_fail"))
 
-    result = _finalize_curation(parsed, spots, user_message)
+    result = finalize_curation(parsed, spots, user_message)
     if not result["curated_spots"]:
         if complex:
             return _ai_required_failure(user_message, "AI 응답에서 장소를 찾지 못했습니다.")

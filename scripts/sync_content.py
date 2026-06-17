@@ -147,6 +147,21 @@ def generate_data_js() -> str:
     spot_tour_images = build_spot_tour_images(spots, tour_kor_spots, tour_eco, tour_photos)
     region_tour_photos = build_region_tour_photos(tour_photos)
 
+    # 6-source AI aggregation (hub+kor+eco+relate+photos+stats)
+    sys.path.insert(0, str(ROOT))
+    from kto_aggregation_service import KtoAggregationService
+
+    tour_aggregated = KtoAggregationService(DATA_DIR).build_aggregated_export()
+    agg_path = DATA_DIR / "kto_aggregated_spots.json"
+    agg_path.write_text(json.dumps(tour_aggregated, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    prompts_path = DATA_DIR / "prompts.json"
+    tour_prompts = (
+        json.loads(prompts_path.read_text(encoding="utf-8"))
+        if prompts_path.exists()
+        else {}
+    )
+
     blocks = [
         _js_array_block("SPOTS", spots),
         _js_array_block("GANGWON_CITIES", catalog["cities"]),
@@ -165,6 +180,8 @@ def generate_data_js() -> str:
         f"const TOUR_ECO_SPOTS = {json.dumps(tour_eco, ensure_ascii=False, indent=2)};",
         f"const TOUR_KOR_SPOTS = {json.dumps(tour_kor_spots, ensure_ascii=False, indent=2)};",
         f"const TOUR_KOR_FESTIVALS = {json.dumps(tour_kor_fest, ensure_ascii=False, indent=2)};",
+        f"const TOUR_AGGREGATED_SPOTS = {json.dumps(tour_aggregated, ensure_ascii=False, indent=2)};",
+        f"const TOUR_PROMPTS = {json.dumps(tour_prompts, ensure_ascii=False, indent=2)};",
         f"const SPOT_TOUR_IMAGES = {json.dumps(spot_tour_images, ensure_ascii=False, indent=2)};",
         f"const REGION_TOUR_PHOTOS = {json.dumps(region_tour_photos, ensure_ascii=False, indent=2)};",
     ]

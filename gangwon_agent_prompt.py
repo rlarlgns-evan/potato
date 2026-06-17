@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from tour_api import GANGWON_REGIONS
+from kto_aggregation_service import get_kto_aggregation_service
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
@@ -48,69 +49,52 @@ TRANSIT_BY_DESTINATION: dict[str, str] = {
 }
 
 GANGWON_AGENT_ROLE_TWO_TRACK = """# ROLE & MISSION
-You are the "Gangwon-do Tourism Expert AI." Your core mission is to promote tourism in Gangwon-do while strategically supporting population-decline areas (인구감소지역).
+You are the "Gangwon-do Tourism Expert AI." Your mission is to create a highly detailed, realistic 1-Night-2-Days or 2-Nights-3-Days travel itinerary based STRICTLY on the injected KTO API data.
 **ALWAYS reply in polite Korean (해요체/하십시오체).**
 
-# INPUT CONTEXT FORMAT
-You will receive KTO API data enclosed in specific XML tags:
-- <main_destination name="[시군]">: Popular destination the user requested.
-- <transit_area name="[시군]" type="인구소멸지역">: Population-decline area on the route.
-Each tag contains: | 관광지명 | 카테고리 | 방문자수 |
+# INPUT DATA ASSIGNMENT
+You will receive parsed data from multiple KTO APIs formatted in Markdown tables:
+- <main_destination name="[시군]">: Attractions and Restaurants (음식점) in the requested city.
+- <transit_area name="[시군]" type="인구소멸지역">: Attractions and Restaurants in the population-decline transit city.
 
-Example:
-<main_destination name="강릉">
-| 관광지명 | 카테고리 | 방문자수 |
-|---|---|---|
-| 경포대 | 자연/풍경 | 30000 |
-| 안목해변 카페거리 | 음식/카페 | 25000 |
-</main_destination>
+# ITINERARY REQUIREMENTS (STRICT)
+- **Duration:** Automatically detect if the user wants 1박 2일 or 2박 3일.
+- **Daily Volume:** For EVERY day provide 2-3 attractions and Lunch/Dinner restaurants.
+- **No Shortcuts:** Fill every time slot. Never bundle multiple days into one list.
 
-<transit_area name="평창" type="인구소멸지역">
-| 관광지명 | 카테고리 | 방문자수 |
-|---|---|---|
-| 대관령 양떼목장 | 생태관광 | 12000 |
-| 봉평 메밀꽃밭 | 문화/예술 | 8000 |
-</transit_area>
-
-# STRICT 2-TRACK WORKFLOW
-When the user asks for a travel itinerary to a specific destination, you MUST generate exactly TWO options using ONLY the provided XML data.
-
-**Option 1: Direct Route (1안: 목적지 집중 코스)**
-- Create an itinerary using ONLY the spots from the <main_destination> data.
-- Tailor it to the user's requested theme (e.g., ocean, food).
-
-**Option 2: Value-Added Transit Route (2안: 지역 상생 하이브리드 코스)**
-- Create a hybrid itinerary that combines spots from BOTH <transit_area> and <main_destination>.
-- Structure the flow logically (e.g., stopping by the transit area first, then heading to the main destination).
-- Include persuasive storytelling explaining WHY stopping at the transit area makes the trip better (e.g., avoiding crowds, hidden local gems, experiencing authentic eco-tourism).
+# 2-TRACK OPTIONS
+- **Option 1 (1안):** Focus 100% on the requested destination using <main_destination> data.
+- **Option 2 (2안):** Integrate 1-2 transit attractions and at least 1 transit restaurant for a hybrid route.
 
 # DATA RULES
-1. Use ONLY spot names listed inside the XML tags. No pre-trained knowledge.
-2. spot_name MUST match 관광지명 in the XML character-for-character.
-3. Each option itinerary MUST have at least 2 steps.
-
-# OUT-OF-BOUNDS (Gangwon-only)
-If the user asks about locations outside Gangwon-do: set intro to a polite refusal+pivot in Korean and return empty itinerary arrays.
+1. Use ONLY names from XML tables. spot_name MUST match exactly.
+2. Lunch/Dinner slots use **음식점** rows; sightseeing slots use **관광지** rows.
 """
 
-KTO_TWO_TRACK_OUTPUT_FORMAT = """# OUTPUT FORMAT (STRICT JSON)
-You must output ONLY valid JSON. No markdown code blocks.
+KTO_TWO_TRACK_OUTPUT_FORMAT = """# STYLED OUTPUT FORMAT (STRICT JSON)
+Respond ONLY with raw JSON. No markdown code blocks. Polite Korean.
 
 {
-  "intro": "강원도 여행을 계획 중이시군요! 요청하신 목적지 집중 코스와, 가는 길에 들르기 좋은 특별한 코스 두 가지를 준비했습니다.",
+  "intro": "여행 기간과 테마에 맞춰 꽉 찬 일정을 준비했습니다.",
+  "duration_detected": "2박 3일 (or 1박 2일)",
   "option_1": {
-    "title": "1안: [목적지] 집중 코스",
-    "itinerary": [
-      {"step": 1, "spot_name": "...", "reason": "..."}
+    "title": "1안: [목적지] 알짜배기 집중 코스",
+    "days": [
+      {
+        "day": 1,
+        "schedule": [
+          {"time_slot": "오전 (관광)", "spot_name": "EXACT_NAME_FROM_API", "description": "..."},
+          {"time_slot": "점심 (식사)", "spot_name": "EXACT_RESTAURANT_NAME", "description": "..."},
+          {"time_slot": "오후 (관광)", "spot_name": "EXACT_NAME_FROM_API", "description": "..."},
+          {"time_slot": "저녁 (식사)", "spot_name": "EXACT_RESTAURANT_NAME", "description": "..."}
+        ]
+      }
     ]
   },
   "option_2": {
-    "title": "2안: [경유지]의 매력 발견, 상생 여행 코스",
-    "storytelling": "강릉으로 가시는 길에 [경유지]에 들러 한적한 자연을 만끽해 보세요...",
-    "itinerary": [
-      {"step": 1, "type": "transit", "spot_name": "...", "reason": "..."},
-      {"step": 2, "type": "destination", "spot_name": "...", "reason": "..."}
-    ]
+    "title": "2안: [경유지]와 함께하는 상생 하이브리드 코스",
+    "storytelling": "...",
+    "days": [{"day": 1, "schedule": [...]}]
   }
 }
 """
@@ -124,10 +108,7 @@ Your responses must be entirely based on the injected KTO (Korea Tourism Organiz
 You will receive context data enclosed in <kto_data> tags. This data is strictly filtered and formatted.
 Example format:
 <kto_data>
-| 지역 | 관광지명 | 생태/테마 | 방문자수(빅데이터) |
-|---|---|---|---|
-| 원주 | 소금산 출렁다리 | 자연/풍경 | 15000 |
-| 원주 | 뮤지엄 산 | 문화/예술 | 8000 |
+  <spot name="경포대" region="강릉" theme="자연/풍경" visitors="12000" image="https://..." related="안목해변,주문진"/>
 </kto_data>
 
 # STRICT DIRECTIVES
@@ -162,7 +143,7 @@ You must return your response STRICTLY as a valid JSON object. Do not include ma
 
 # ITINERARY RULES
 - When <kto_data> has rows: "itinerary" MUST be a non-empty array (at least 2 items).
-- Each spot_name MUST copy a 관광지명 from <kto_data> character-for-character.
+- Each spot_name MUST copy a name from <kto_data> (spot name attribute or table row) character-for-character.
 - Never return introduction-only JSON when <kto_data> is non-empty.
 """
 
@@ -170,6 +151,41 @@ KTO_FALLBACK_INTRO = (
     "현재 KTO API 상에 요청하신 지역의 상세 정보가 부족합니다. "
     "데이터 기반 방문자 수가 높은 다른 강원도 지역을 추천해 드릴까요?"
 )
+
+
+def _apply_prompt_config() -> None:
+    """Load SSOT prompts from data/prompts.json when present."""
+    global GANGWON_AGENT_ROLE_TWO_TRACK, KTO_TWO_TRACK_OUTPUT_FORMAT
+    global GANGWON_AGENT_ROLE, GANGWON_AGENT_ROLE_SINGLE, KTO_OUTPUT_FORMAT, KTO_SINGLE_OUTPUT_FORMAT
+    global KTO_FALLBACK_INTRO, MAIN_DESTINATION_REGIONS, POPULATION_DECLINE_REGIONS, TRANSIT_BY_DESTINATION
+    path = DATA / "prompts.json"
+    if not path.exists():
+        return
+    try:
+        cfg = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return
+    for key in (
+        "GANGWON_AGENT_ROLE_TWO_TRACK",
+        "KTO_TWO_TRACK_OUTPUT_FORMAT",
+        "GANGWON_AGENT_ROLE",
+        "KTO_OUTPUT_FORMAT",
+        "KTO_FALLBACK_INTRO",
+    ):
+        if cfg.get(key):
+            globals()[key] = cfg[key]
+    GANGWON_AGENT_ROLE_SINGLE = GANGWON_AGENT_ROLE
+    KTO_SINGLE_OUTPUT_FORMAT = KTO_OUTPUT_FORMAT
+    routing = cfg.get("routing") or {}
+    if routing.get("main_destination_regions"):
+        MAIN_DESTINATION_REGIONS = tuple(routing["main_destination_regions"])
+    if routing.get("population_decline_regions"):
+        POPULATION_DECLINE_REGIONS = tuple(routing["population_decline_regions"])
+    if routing.get("transit_by_destination"):
+        TRANSIT_BY_DESTINATION = dict(routing["transit_by_destination"])
+
+
+_apply_prompt_config()
 
 _OTHER_REGION = re.compile(
     r"(?:부산|제주|제주도|해운대|서울|경주|여수|대전|대구|인천|광주|울산|"
@@ -213,43 +229,43 @@ def regions_in_message(msg: str) -> list[str]:
 
 
 def build_kto_api_context(user_message: str = "", *, max_regions: int = 6) -> str:
-    """TourAPI 동기화 JSON → 프롬프트용 압축 컨텍스트."""
+    """TourAPI 6-source aggregated context (compact, no raw JSON)."""
     regions = regions_in_message(user_message) or list(GANGWON_REGIONS[:max_regions])
     regions = regions[:max_regions]
+    svc = get_kto_aggregation_service()
+    svc.load_sources_parallel()
 
-    stats = _load_json("tour_visitor_stats.json")
-    hubs = _load_json("tour_hub_spots.json")
-    relate = _load_json("tour_relate_spots.json")
-    kor = _load_json("tour_kor_spots.json")
-    eco = _load_json("tour_eco_spots.json")
-    fest = _load_json("tour_kor_festivals.json")
+    lines: list[str] = ["# KTO API CONTEXT (6-source aggregated)"]
+    failed = [k for k, st in svc.source_status.items() if not st.ok]
+    if failed:
+        lines.append(f"- degraded_sources: {', '.join(failed)} (text data still available)")
 
-    lines: list[str] = ["# KTO API CONTEXT (Gangwon only)"]
+    stats = svc.load_sources_parallel().get("stats") or {}
     for region in regions:
         parts: list[str] = []
         vis = (stats.get("regions") or {}).get(region)
         if vis and vis.get("label"):
             parts.append(f"방문 {vis['label']}")
-        hub_names = [h.get("name") for h in (hubs.get("regions") or {}).get(region, [])[:2] if h.get("name")]
-        if hub_names:
-            parts.append(f"중심관광지 {', '.join(hub_names)}")
-        by_anchor = (relate.get("by_anchor") or {}).get(region) or {}
-        relate_bits: list[str] = []
-        for anchor, rows in list(by_anchor.items())[:2]:
-            names = [r.get("name") for r in (rows or [])[:2] if r.get("name")]
-            if names:
-                relate_bits.append(f"{anchor}→{', '.join(names)}")
-        if relate_bits:
-            parts.append(f"연관관광지 {' · '.join(relate_bits)}")
-        kor_names = [k.get("title") for k in (kor.get("regions") or {}).get(region, [])[:2] if k.get("title")]
-        if kor_names:
-            parts.append(f"공식관광지 {', '.join(kor_names)}")
-        eco_names = [e.get("title") for e in (eco.get("regions") or {}).get(region, [])[:2] if e.get("title")]
-        if eco_names:
-            parts.append(f"생태관광 {', '.join(eco_names)}")
-        fests = (fest.get("regions") or {}).get(region, [])
-        if fests:
-            f0 = fests[0]
+        top = svc.aggregate_region(region)[:3]
+        if top:
+            hub_names = [s.name for s in top if "중심관광지" in s.sources]
+            if hub_names:
+                parts.append(f"중심관광지 {', '.join(hub_names[:2])}")
+            relate_bits: list[str] = []
+            for s in top:
+                if s.related:
+                    relate_bits.append(f"{s.name}→{', '.join(s.related[:2])}")
+            if relate_bits:
+                parts.append(f"연관관광지 {' · '.join(relate_bits[:2])}")
+            kor_names = [s.name for s in top if "공식관광지" in s.sources]
+            if kor_names:
+                parts.append(f"공식관광지 {', '.join(kor_names[:2])}")
+            eco_names = [s.name for s in top if "생태관광" in s.sources]
+            if eco_names:
+                parts.append(f"생태관광 {', '.join(eco_names[:2])}")
+        fest = (svc.load_sources_parallel().get("festivals") or {}).get("regions", {}).get(region, [])
+        if fest:
+            f0 = fest[0]
             parts.append(f"축제 {f0.get('title', '')} ({f0.get('period', '')})")
         if parts:
             lines.append(f"- {region}: " + " | ".join(parts))
@@ -292,9 +308,12 @@ def _kto_theme_display(entry: dict[str, Any]) -> str:
     return "문화/예술"
 
 
-def _kto_spot_visitor_count(region: str, rank: int) -> str | int:
-    stats = (_load_json("tour_visitor_stats.json").get("regions") or {}).get(region) or {}
-    base = stats.get("avg_daily") or stats.get("total") or 0
+def _kto_spot_visitor_count(region: str, rank: int, entry: dict[str, Any] | None = None) -> str | int:
+    if entry and entry.get("visitorCount") not in (None, ""):
+        return entry["visitorCount"]
+    stats = (get_kto_aggregation_service().load_sources_parallel().get("stats") or {}).get("regions") or {}
+    region_stats = stats.get(region) or {}
+    base = region_stats.get("avg_daily") or region_stats.get("total") or 0
     try:
         base = float(base)
     except (TypeError, ValueError):
@@ -452,28 +471,126 @@ def _kto_rows_for_region(
             (
                 xml_name,
                 _kto_category_for_xml(entry, user_message),
-                _kto_spot_visitor_count(region, int(entry.get("rank") or 999)),
+                _kto_spot_visitor_count(region, int(entry.get("rank") or 999), entry),
             )
         )
     return rows
 
 
-def _format_two_track_region_xml(tag: str, region: str, rows: list[tuple[str, str, str | int]]) -> str:
+def detect_trip_duration(user_message: str) -> dict[str, Any]:
+    msg = user_message or ""
+    if re.search(r"2\s*박\s*3\s*일|2박\s*3일", msg):
+        return {"nights": 2, "days": 3, "label": "2박 3일"}
+    if re.search(r"당일치기|당일\s*여행|무박", msg) and not re.search(r"1\s*박", msg):
+        return {"nights": 0, "days": 1, "label": "당일"}
+    if re.search(r"1\s*박\s*2\s*일|1박\s*2일", msg):
+        return {"nights": 1, "days": 2, "label": "1박 2일"}
+    return {"nights": 1, "days": 2, "label": "1박 2일"}
+
+
+def build_duration_prompt_block(user_message: str) -> str:
+    d = detect_trip_duration(user_message)
+    return (
+        "# TRIP DURATION (STRICT)\n"
+        f"- Detected/default: **{d['label']}** ({d['days']} days).\n"
+        f'- Each option MUST include exactly {d["days"]} day objects.\n'
+        "- Each day: 오전 관광, 점심 식사, 오후 관광, 저녁 식사.\n"
+    )
+
+
+def _is_restaurant_entry(entry: dict[str, Any]) -> bool:
+    text = f"{entry.get('name', '')} {entry.get('categoryLabel', '')}"
+    return bool(re.search(r"시장|음식|맛집|식당|카페|커피|쇼핑|먹거리|회", text))
+
+
+def _synthesize_restaurant_row(region: str, user_message: str) -> tuple[str, str, str | int]:
+    for entry in collect_kto_catalog_entries(region):
+        if re.search(r"시장", str(entry.get("name") or "")):
+            return (
+                _kto_xml_spot_name(entry, region, user_message),
+                "음식/먹거리",
+                _kto_spot_visitor_count(region, int(entry.get("rank") or 999), entry),
+            )
+    name = f"{region_short_name(region)} 지역 맛집"
+    return name, "음식/먹거리", "—"
+
+
+def _row_is_restaurant(row: tuple[str, str, str | int]) -> bool:
+    name, cat, _ = row
+    return bool(re.search(r"음식|먹거리|카페|시장|식당", f"{name} {cat}"))
+
+
+def _kto_split_rows_for_region(
+    region: str,
+    user_message: str = "",
+    *,
+    max_each: int = 5,
+    is_transit: bool = False,
+) -> tuple[list[tuple[str, str, str | int]], list[tuple[str, str, str | int]]]:
+    pool = _kto_rows_for_region(region, user_message, max_rows=max_each * 3, is_transit=is_transit)
+    attractions = [r for r in pool if not _row_is_restaurant(r)]
+    restaurants = [r for r in pool if _row_is_restaurant(r)]
+    if not restaurants:
+        restaurants = [_synthesize_restaurant_row(region, user_message)]
+    return attractions[:max_each], restaurants[:max_each]
+
+
+def _format_two_track_region_xml(
+    tag: str,
+    region: str,
+    attractions: list[tuple[str, str, str | int]],
+    restaurants: list[tuple[str, str, str | int]],
+) -> str:
     short = region_short_name(region)
-    if tag == "transit_area":
-        open_tag = f'<{tag} name="{short}" type="인구소멸지역">'
-    else:
-        open_tag = f'<{tag} name="{short}">'
-    if not rows:
+    open_tag = (
+        f'<{tag} name="{short}" type="인구소멸지역">'
+        if tag == "transit_area"
+        else f'<{tag} name="{short}">'
+    )
+    parts: list[str] = [open_tag]
+    if attractions:
+        parts.extend(
+            [
+                "**관광지**",
+                "| 관광지명 | 카테고리 | 방문자수 |",
+                "|---|---|---|",
+                *[f"| {n} | {c} | {v} |" for n, c, v in attractions],
+            ]
+        )
+    if restaurants:
+        if attractions:
+            parts.append("")
+        parts.extend(
+            [
+                "**음식점**",
+                "| 음식점명 | 카테고리 | 방문자수 |",
+                "|---|---|---|",
+                *[f"| {n} | {c} | {v} |" for n, c, v in restaurants],
+            ]
+        )
+    if len(parts) == 1:
         return f"{open_tag}\n</{tag}>"
-    lines = [
-        open_tag,
-        "| 관광지명 | 카테고리 | 방문자수 |",
-        "|---|---|---|",
-    ]
-    lines.extend(f"| {n} | {c} | {v} |" for n, c, v in rows)
-    lines.append(f"</{tag}>")
-    return "\n".join(lines)
+    parts.append(f"</{tag}>")
+    return "\n".join(parts)
+
+
+def build_two_track_kto_xml(
+    main_region: str,
+    transit_region: str,
+    user_message: str = "",
+    *,
+    max_each: int = 5,
+) -> str:
+    main_a, main_r = _kto_split_rows_for_region(main_region, user_message, max_each=max_each)
+    trans_a, trans_r = _kto_split_rows_for_region(
+        transit_region, user_message, max_each=max_each, is_transit=True
+    )
+    return "\n\n".join(
+        [
+            _format_two_track_region_xml("main_destination", main_region, main_a, main_r),
+            _format_two_track_region_xml("transit_area", transit_region, trans_a, trans_r),
+        ]
+    )
 
 
 def build_theme_prompt_block(user_message: str) -> str:
@@ -490,139 +607,18 @@ def build_theme_prompt_block(user_message: str) -> str:
     )
 
 
-def build_two_track_kto_xml(
-    main_region: str,
-    transit_region: str,
-    user_message: str = "",
-    *,
-    max_rows: int = 4,
-) -> str:
-    return "\n\n".join(
-        [
-            _format_two_track_region_xml(
-                "main_destination",
-                main_region,
-                _kto_rows_for_region(main_region, user_message, max_rows=max_rows),
-            ),
-            _format_two_track_region_xml(
-                "transit_area",
-                transit_region,
-                _kto_rows_for_region(
-                    transit_region,
-                    user_message,
-                    max_rows=max_rows,
-                    is_transit=True,
-                ),
-            ),
-        ]
-    )
-
-
-def build_kto_data_xml(user_message: str = "", *, max_rows: int = 12) -> str:
+def build_kto_data_xml(user_message: str = "", *, max_rows: int = 12, compact: bool = True) -> str:
     regions = regions_in_message(user_message)
     target = regions or list(GANGWON_REGIONS[:6])
-    rows: list[tuple[str, str, str, str | int]] = []
-    for region in target:
-        for entry in collect_kto_catalog_entries(region):
-            if len(rows) >= max_rows:
-                break
-            rows.append(
-                (
-                    region.rstrip("시군"),
-                    entry["name"],
-                    _kto_theme_display(entry),
-                    _kto_spot_visitor_count(region, int(entry.get("rank") or 999)),
-                )
-            )
-        if len(rows) >= max_rows:
-            break
-    if not rows:
-        return "<kto_data>\n</kto_data>"
-    lines = [
-        "<kto_data>",
-        "| 지역 | 관광지명 | 생태/테마 | 방문자수(빅데이터) |",
-        "|---|---|---|---|",
-    ]
-    lines.extend(f"| {r} | {n} | {t} | {v} |" for r, n, t, v in rows)
-    lines.append("</kto_data>")
-    return "\n".join(lines)
-
-
-def _kto_theme_from_category(category: str) -> str:
-    cat = category or ""
-    if any(x in cat for x in ("자연", "생태", "산", "숲")):
-        return "nature"
-    if any(x in cat for x in ("레저", "스포츠", "체험")):
-        return "experience"
-    return "culture"
+    svc = get_kto_aggregation_service()
+    if compact:
+        return svc.format_ai_xml(target, max_spots=max_rows, compact=True)
+    return svc.format_ai_table_xml(target, max_rows=max_rows, theme_fn=_kto_theme_display)
 
 
 def collect_kto_catalog_entries(region: str) -> list[dict[str, Any]]:
-    """시·군 KTO API 항목 — hub rank 우선, kor/eco 보강."""
-    hubs = _load_json("tour_hub_spots.json")
-    kor = _load_json("tour_kor_spots.json")
-    eco = _load_json("tour_eco_spots.json")
-    seen: set[str] = set()
-    out: list[dict[str, Any]] = []
-
-    def add(
-        name: str,
-        *,
-        rank: int,
-        theme: str,
-        source: str,
-        lat: float | None = None,
-        lng: float | None = None,
-        category_label: str = "",
-    ) -> None:
-        key = name.replace(" ", "")
-        if not name or key in seen:
-            return
-        seen.add(key)
-        out.append(
-            {
-                "name": name,
-                "region": region,
-                "theme": theme,
-                "rank": rank,
-                "source": source,
-                "lat": lat,
-                "lng": lng,
-                "categoryLabel": category_label,
-            }
-        )
-
-    for h in (hubs.get("regions") or {}).get(region, []):
-        add(
-            str(h.get("name") or ""),
-            rank=int(h.get("rank") or 999),
-            theme=_kto_theme_from_category(str(h.get("category") or "")),
-            source="중심관광지",
-            lat=h.get("lat"),
-            lng=h.get("lng"),
-            category_label=str(h.get("category") or h.get("category_m") or ""),
-        )
-    for i, k in enumerate((kor.get("regions") or {}).get(region, [])):
-        title = str(k.get("title") or "")
-        lat = lng = None
-        try:
-            if k.get("mapY") not in (None, ""):
-                lat = float(k["mapY"])
-            if k.get("mapX") not in (None, ""):
-                lng = float(k["mapX"])
-        except (TypeError, ValueError):
-            pass
-        add(title, rank=100 + i, theme="culture", source="공식관광지", lat=lat, lng=lng)
-    for i, e in enumerate((eco.get("regions") or {}).get(region, [])):
-        add(
-            str(e.get("title") or ""),
-            rank=200 + i,
-            theme="nature",
-            source="생태관광",
-        )
-
-    out.sort(key=lambda x: (x["rank"], x["name"]))
-    return out
+    """6-source aggregated catalog — hub rank 우선, kor/eco/photo/relate/stats 병합."""
+    return get_kto_aggregation_service().catalog_entries_for_region(region)
 
 
 def _norm_spot_key(name: str) -> str:
@@ -830,12 +826,15 @@ def build_agent_system_prompt(
         transit = resolve_transit_area(main) or ""
         kto_xml = build_two_track_kto_xml(main, transit, user_message)
         theme = build_theme_prompt_block(user_message)
+        duration = build_duration_prompt_block(user_message)
         parts = [
             GANGWON_AGENT_ROLE_TWO_TRACK,
             kto_xml,
             KTO_TWO_TRACK_OUTPUT_FORMAT,
             f"# ROUTE CONTEXT\n- main_destination: {region_short_name(main)}\n- transit_area: {region_short_name(transit)} (인구감소·상생 경유지)",
         ]
+        if duration:
+            parts.append(duration)
         if theme:
             parts.append(theme)
     else:
