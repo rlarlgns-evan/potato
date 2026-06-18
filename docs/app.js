@@ -2038,6 +2038,7 @@ function matchTransitOrigin(text) {
   return null;
 }
 const GEMINI_MIN_GAP_MS = 8000;
+const GEMINI_USER_PROMPT_MAX_CHARS = 4000;
 const CACHE_STORAGE_KEY = "voyage_curation_v2";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 let lastGeminiAt = 0;
@@ -2241,6 +2242,21 @@ async function waitGeminiSlot() {
   const wait = GEMINI_MIN_GAP_MS - (Date.now() - lastGeminiAt);
   if (wait > 0) await new Promise((res) => setTimeout(res, wait));
   lastGeminiAt = Date.now();
+}
+
+function clampPromptForGemini(prompt) {
+  const raw = String(prompt || "").trim();
+  if (raw.length <= GEMINI_USER_PROMPT_MAX_CHARS) {
+    return { text: raw, truncated: false, originalLength: raw.length };
+  }
+  const head = Math.floor(GEMINI_USER_PROMPT_MAX_CHARS * 0.8);
+  const tail = GEMINI_USER_PROMPT_MAX_CHARS - head - 32;
+  const omitted = Math.max(0, raw.length - head - tail);
+  const text =
+    raw.slice(0, head) +
+    `\n\n[중간 ${omitted}자 생략]\n\n` +
+    raw.slice(-tail);
+  return { text, truncated: true, originalLength: raw.length };
 }
 
 function describeGeminiFailure(e) {
@@ -3073,9 +3089,17 @@ async function geminiCuration(prompt, key) {
       (provinceBlock ? "\n\n" + provinceBlock : "") +
       (regionFocus ? "\n\n" + regionFocus : "");
 
+  const promptPayload = clampPromptForGemini(prompt);
+  if (promptPayload.truncated) {
+    toast(
+      `입력이 길어 Gemini에는 ${GEMINI_USER_PROMPT_MAX_CHARS}자 기준으로 압축 전송했어요.`,
+      { duration: 4200 }
+    );
+  }
+
   const body = {
     systemInstruction: { parts: [{ text: sys }] },
-    contents: [{ role: "user", parts: [{ text: prompt.slice(0, 600) }] }],
+    contents: [{ role: "user", parts: [{ text: promptPayload.text }] }],
   };
   const tripDays = detectTripDuration(prompt).days;
   const maxTokens = geminiOutputTokenBudget(twoTrack, tripDays);
