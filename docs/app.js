@@ -3933,7 +3933,7 @@ function ensureLandingWeatherCache() {
 async function loadLandingHeroSvg() {
   const host = $("landing-map-svg");
   if (!host || landingSvgLoaded) return;
-  const res = await fetch(`assets/gangwon-hero.svg?v=67`);
+  const res = await fetch(`assets/gangwon-hero.svg?v=1`);
   if (!res.ok) throw new Error(`gangwon-hero.svg ${res.status}`);
   host.innerHTML = await res.text();
   const svg = host.querySelector("svg");
