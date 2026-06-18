@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Sync canonical data/*.json → docs/data.js (+ optional DB seed).
+"""Sync canonical data/*.json → docs/data.js.
 
-SSoT: data/spots.json, data/catalog.json
+SSoT: data/spots.json, data/catalog.json, data/prompts.json
 Generated: docs/data.js (do not hand-edit the JSON blocks)
 
 Usage:
-  python scripts/sync_content.py bootstrap   # one-time: extract from docs/data.js
   python scripts/sync_content.py generate    # write docs/data.js
   python scripts/sync_content.py --check     # CI: fail if data.js is stale
 """
@@ -14,7 +13,6 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -77,17 +75,6 @@ def build_region_tour_photos(tour_photos: dict) -> dict[str, str]:
 
 def _js_array_block(name: str, data: object) -> str:
     return f"const {name} = {json.dumps(data, ensure_ascii=False, indent=2)};"
-
-
-def bootstrap_from_docs() -> None:
-    """Extract JSON blocks from legacy docs/data.js into data/*.json."""
-    script = ROOT / "scripts" / "_extract_data.mjs"
-    subprocess.run(
-        ["node", str(script)],
-        check=True,
-        cwd=str(ROOT),
-    )
-    print(f"Bootstrapped {DATA_DIR / 'spots.json'} and catalog.json")
 
 
 def generate_data_js() -> str:
@@ -191,9 +178,8 @@ const ENRICHED_SPOTS = SPOTS.map(enrichSpot);
 
 """
     footer = """
-// Kakao·Gemini 키는 저장소에 두지 않습니다.
-// - 로컬: docs/config.example.js → config.js
-// - 배포: GitHub Actions Secret (KAKAO_JS_KEY, GOOGLE_API_KEY)
+// API 키는 저장소·로컬 파일에 두지 않습니다.
+// GitHub Pages 배포 시 Actions Secret → docs/config.js 자동 생성 (KAKAO_JS_KEY, KAKAO_REST_KEY, GOOGLE_API_KEY)
 """
     return header + "\n\n".join(blocks) + runtime + footer
 
@@ -204,10 +190,6 @@ def main() -> int:
         content = generate_data_js()
         DOCS_DATA.write_text(content, encoding="utf-8")
         print(f"Wrote {DOCS_DATA}")
-        return 0
-    if args[0] == "bootstrap":
-        bootstrap_from_docs()
-        generate_data_js()
         return 0
     if args[0] == "--check":
         if not DOCS_DATA.exists():
@@ -220,7 +202,7 @@ def main() -> int:
             return 1
         print("docs/data.js is up to date")
         return 0
-    print("Usage: bootstrap | generate | --check", file=sys.stderr)
+    print("Usage: generate | --check", file=sys.stderr)
     return 2
 
 

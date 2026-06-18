@@ -25,19 +25,15 @@ TOUR_API_MOBILE_APP=GangwonOndo
 
 ```bash
 python scripts/sync_tour_all.py
+python scripts/sync_content.py generate       # docs/data.js 반영
 ```
 
-개별 실행:
+> **Note:** 개별 API 스크립트(`sync_tour_hub.py` 등)는 제거되었습니다. 부분 재동기화가 필요하면 `sync_tour_parallel_fetch.py`를 참고하거나 `sync_tour_ldong.py`만 단독 실행하세요.
+
+법정동·생태 시군구 코드만 보강:
 
 ```bash
-python scripts/sync_tour_ldong.py              # 법정동·생태 시군구 코드 보강
-python scripts/sync_tour_stats.py --days 7    # 방문자 통계
-python scripts/sync_tour_hub.py               # 중심 관광지
-python scripts/sync_tour_relate.py            # 연관 관광지
-python scripts/sync_tour_photos.py            # 관광 사진
-python scripts/sync_tour_kor.py               # 국문 관광지 + 축제
-python scripts/sync_tour_eco.py               # 생태관광
-python scripts/sync_content.py generate       # docs/data.js 반영
+python scripts/sync_tour_ldong.py
 ```
 
 엑셀에서 시군구 코드 재가져오기:

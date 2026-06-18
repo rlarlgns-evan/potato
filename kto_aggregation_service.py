@@ -62,7 +62,7 @@ class AggregatedSpot:
     category_label: str = ""
 
     def to_catalog_entry(self) -> dict[str, Any]:
-        """Backward-compatible shape for gangwon_agent_prompt / app.js."""
+        """Shape aligned with docs/app.js TOUR_AGGREGATED_SPOTS."""
         theme_key = "nature" if "자연" in self.theme or "생태" in self.theme else (
             "experience" if "레저" in self.theme or "체험" in self.theme else "culture"
         )

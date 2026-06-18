@@ -3,7 +3,7 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ["docs/**", "data/**", "scripts/sync_*.py", "scripts/import_sigungu_codes.py", "tour_api.py", "kto_aggregation_service.py", "services/**", ".github/workflows/pages.yml"]
+    paths: ["docs/**", "data/**", "scripts/sync_*.py", "scripts/import_sigungu_codes.py", "tour_api.py", "kto_aggregation_service.py", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:

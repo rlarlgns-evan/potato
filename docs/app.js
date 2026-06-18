@@ -35,36 +35,14 @@ const GANGWON_AGENT_ROLE_TWO_TRACK = P.GANGWON_AGENT_ROLE_TWO_TRACK || "";
 const KTO_TWO_TRACK_OUTPUT_FORMAT = P.KTO_TWO_TRACK_OUTPUT_FORMAT || "";
 const GANGWON_AGENT_ROLE = P.GANGWON_AGENT_ROLE || "";
 const KTO_OUTPUT_FORMAT = P.KTO_OUTPUT_FORMAT || "";
-const GANGWON_AGENT_ROLE_ROUTING = P.GANGWON_AGENT_ROLE_ROUTING || GANGWON_AGENT_ROLE;
-const KTO_OUTPUT_FORMAT_ROUTING = P.KTO_OUTPUT_FORMAT_ROUTING || KTO_OUTPUT_FORMAT;
-const KTO_FALLBACK_INTRO =
-  P.KTO_FALLBACK_INTRO ||
-  "현재 KTO API 상에 요청하신 지역의 상세 정보가 부족합니다. 데이터 기반 방문자 수가 높은 다른 강원도 지역을 추천해 드릴까요?";
+const GANGWON_AGENT_ROLE_ROUTING = P.GANGWON_AGENT_ROLE_ROUTING || "";
+const KTO_OUTPUT_FORMAT_ROUTING = P.KTO_OUTPUT_FORMAT_ROUTING || "";
+const KTO_FALLBACK_INTRO = P.KTO_FALLBACK_INTRO || "";
 
-const GANGWON_REGION_NAMES = ROUTING.gangwon_region_names || [
-  "강릉시", "고성군", "동해시", "삼척시", "속초시", "양구군", "양양군", "영월군",
-  "원주시", "인제군", "정선군", "철원군", "춘천시", "태백시", "홍천군", "화천군", "횡성군", "평창군",
-];
-
-const MAIN_DESTINATION_REGIONS = ROUTING.main_destination_regions || [
-  "강릉시", "속초시", "춘천시", "원주시", "동해시", "삼척시", "양양군", "홍천군",
-];
-
-const POPULATION_DECLINE_REGIONS = ROUTING.population_decline_regions || [
-  "고성군", "양구군", "화천군", "인제군", "정선군", "태백시",
-  "평창군", "횡성군", "영월군", "철원군",
-];
-
-const TRANSIT_BY_DESTINATION = ROUTING.transit_by_destination || {
-  강릉시: "평창군",
-  속초시: "고성군",
-  양양군: "고성군",
-  동해시: "태백시",
-  삼척시: "정선군",
-  춘천시: "화천군",
-  원주시: "횡성군",
-  홍천군: "인제군",
-};
+const GANGWON_REGION_NAMES = ROUTING.gangwon_region_names || [];
+const MAIN_DESTINATION_REGIONS = ROUTING.main_destination_regions || [];
+const POPULATION_DECLINE_REGIONS = ROUTING.population_decline_regions || [];
+const TRANSIT_BY_DESTINATION = ROUTING.transit_by_destination || {};
 
 function pickMainDestination(prompt) {
   const regions = regionsInPrompt(prompt);

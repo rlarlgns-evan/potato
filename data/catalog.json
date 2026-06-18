@@ -159,43 +159,6 @@
       "pop_rank": 18
     }
   ],
-  "highlights": [
-    {
-      "title": "설악산 단풍",
-      "region": "속초·고성",
-      "icon": "▲",
-      "bg": "linear-gradient(135deg,#0D9488,#14B8A6)",
-      "thumb_bg": "linear-gradient(135deg,#0D9488,#14B8A6)"
-    },
-    {
-      "title": "남이섬·소나무",
-      "region": "춘천",
-      "icon": "♣",
-      "bg": "linear-gradient(135deg,#0891B2,#22D3EE)",
-      "thumb_bg": "linear-gradient(135deg,#0891B2,#22D3EE)"
-    },
-    {
-      "title": "동해 해변 드라이브",
-      "region": "동해·삼척",
-      "icon": "≈",
-      "bg": "linear-gradient(135deg,#0284C7,#38BDF8)",
-      "thumb_bg": "linear-gradient(135deg,#0284C7,#38BDF8)"
-    },
-    {
-      "title": "평창 대관령 드라이브",
-      "region": "평창·횡성",
-      "icon": "◇",
-      "bg": "linear-gradient(135deg,#6366F1,#A78BFA)",
-      "thumb_bg": "linear-gradient(135deg,#6366F1,#A78BFA)"
-    },
-    {
-      "title": "강릉·양양 해변·카페",
-      "region": "강릉·양양",
-      "icon": "◎",
-      "bg": "linear-gradient(135deg,#F59E0B,#FCD34D)",
-      "thumb_bg": "linear-gradient(135deg,#F59E0B,#FCD34D)"
-    }
-  ],
   "suggestions": [
     {
       "label": "1박2일 바다·대중교통",
@@ -515,17 +478,6 @@
       "cls": "badge-drive"
     }
   },
-  "theme_image": {
-    "트레킹": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=640&h=340&fit=crop&q=80",
-    "힐링": "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=640&h=340&fit=crop&q=80",
-    "체험": "https://images.unsplash.com/photo-1551632811-561732d1e306?w=640&h=340&fit=crop&q=80",
-    "야경": "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=640&h=340&fit=crop&q=80",
-    "역사": "https://images.unsplash.com/photo-1548115184-bc6544d06a58?w=640&h=340&fit=crop&q=80",
-    "자전거": "https://images.unsplash.com/photo-1471506480208-91b3a4cc78be?w=640&h=340&fit=crop&q=80"
-  },
-  "default_image": "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=640&h=340&fit=crop&q=80",
-  "region_intro_html": "강원도는 산·바다·계곡이 가까워 <b>당일·반나절 여행</b>에 잘 맞아요. AI가 전역 관광지 중에서 취향에 맞는 동선을 골라 드립니다.",
-  "region_intro_md": "강원도는 산·바다·계곡이 가까워 **당일·반나절 여행**에 잘 맞아요. AI가 전역 관광지 중에서 취향에 맞는 동선을 골라 드립니다.",
   "gemini_model": "gemini-3.5-flash",
   "transit_origins": {
     "의정부시": {
