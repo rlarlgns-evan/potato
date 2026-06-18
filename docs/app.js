@@ -2243,8 +2243,8 @@ function geminiFailToast(e) {
       toast("요청이 많아 잠시 기다려 주세요. (1~2분 후 재시도)");
     return;
   }
-  if (e.status === 503 || /high demand|UNAVAILABLE/i.test(d))
-    toast("AI 서버 혼잡 — 잠시 후 다시 시도해 주세요.");
+  if (e.status === 503 || /high demand|UNAVAILABLE|overloaded/i.test(d))
+    toast("Gemini 3.5 서버 혼잡 — 자동 재시도 후에도 실패했어요. 1~2분 뒤 다시 시도해 주세요.");
   else if (e.status === 403)
     toast("API 키 제한(리퍼러) — Google AI Studio에서 github.io 도메인을 허용했는지 확인하세요.");
   else if (e.status === 400)
@@ -2266,70 +2266,78 @@ function normalizeGeminiRequestBody(body) {
   return out;
 }
 
-async function callGemini(body, key, retries = 1, maxOutputTokens = 4096) {
+function geminiModelId() {
+  const raw = typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "gemini-3.5-flash";
+  const model = String(raw || "gemini-3.5-flash").trim();
+  return model || "gemini-3.5-flash";
+}
+
+function geminiRetryDelayMs(attempt, retryAfterSec = 0) {
+  if (retryAfterSec > 0) return Math.min(retryAfterSec * 1000, 60000);
+  const base = 2000 * 2 ** attempt;
+  const jitter = Math.floor(Math.random() * 1200);
+  return Math.min(base + jitter, 60000);
+}
+
+function isGeminiRetryableStatus(status) {
+  return [408, 429, 500, 502, 503, 504].includes(Number(status));
+}
+
+async function callGemini(body, key, retries = 4, maxOutputTokens = 4096) {
   const normalized = normalizeGeminiRequestBody(body);
-  const primary = typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "gemini-3.5-flash";
-  const models = [
-    ...new Set([
-      primary,
-      "gemini-2.5-flash",
-      "gemini-3-flash-preview",
-      "gemini-3.5-flash",
-    ]),
-  ];
+  const model = geminiModelId();
+  const generationConfig = {
+    temperature: 0.4,
+    maxOutputTokens,
+    responseMimeType: "application/json",
+  };
+  const reqBody = { ...normalized, generationConfig };
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
+    encodeURIComponent(key);
+  const maxAttempts = Math.max(retries + 3, 6);
   let lastErr = null;
-  for (const model of models) {
-    const generationConfig = {
-      temperature: 0.4,
-      maxOutputTokens,
-      responseMimeType: "application/json",
-    };
-    const reqBody = { ...normalized, generationConfig };
-    const url =
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
-      encodeURIComponent(key);
-    const isPrimary = model === primary;
-    const maxAttempts = isPrimary ? Math.max(retries + 2, 3) : retries + 1;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const r = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(reqBody),
-        });
-        if (r.ok) {
-          if (model !== primary) console.warn("Gemini: primary unavailable, used fallback:", model);
-          return r.json();
-        }
-        let detail = "";
-        try {
-          detail = (await r.json())?.error?.message || "";
-        } catch (_) { /* ignore */ }
-        if (r.status === 404 && attempt < maxAttempts - 1) {
-          await new Promise((res) => setTimeout(res, 800 * (attempt + 1)));
-          continue;
-        }
-        if (r.status === 503 && attempt < maxAttempts - 1) {
-          await new Promise((res) => setTimeout(res, 2000 * (attempt + 1)));
-          continue;
-        }
-        const e = new Error("Gemini HTTP " + r.status + (detail ? ": " + detail : ""));
-        e.status = r.status;
-        e.detail = detail;
-        e.model = model;
-        throw e;
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reqBody),
+      });
+      if (r.ok) return r.json();
+
+      let detail = "";
+      try {
+        detail = (await r.json())?.error?.message || "";
+      } catch (_) { /* ignore */ }
+
+      const status = r.status;
+      const retryAfter = Number(r.headers?.get?.("retry-after")) || 0;
+      if (isGeminiRetryableStatus(status) && attempt < maxAttempts - 1) {
+        const wait = geminiRetryDelayMs(attempt, retryAfter);
+        console.warn(
+          `Gemini ${model} HTTP ${status}, retry ${attempt + 1}/${maxAttempts - 1} in ${Math.round(wait / 1000)}s`,
+          detail.slice(0, 160)
+        );
+        await new Promise((res) => setTimeout(res, wait));
+        continue;
       }
+
+      const e = new Error("Gemini HTTP " + status + (detail ? ": " + detail : ""));
+      e.status = status;
+      e.detail = detail;
+      e.model = model;
+      throw e;
     } catch (e) {
       lastErr = e;
-      console.warn("Gemini error", { model, status: e.status, detail: e.detail || e.message });
-      const tryNextModel =
-        e.status === 404 ||
-        e.status === 400 ||
-        e.status === 503 ||
-        /not found|not supported|invalid.*model|unavailable|high demand|thinking|responseMimeType/i.test(
-          String(e.detail || e.message || "")
-        );
-      if (tryNextModel && model !== models[models.length - 1]) continue;
+      if (e.status && !isGeminiRetryableStatus(e.status)) throw e;
+      if (attempt < maxAttempts - 1) {
+        const wait = geminiRetryDelayMs(attempt, 0);
+        console.warn(`Gemini ${model} request failed, retry ${attempt + 1}/${maxAttempts - 1}`, e.message);
+        await new Promise((res) => setTimeout(res, wait));
+        continue;
+      }
       throw e;
     }
   }
@@ -2963,8 +2971,8 @@ async function geminiCuration(prompt, key) {
     contents: [{ role: "user", parts: [{ text: prompt.slice(0, 600) }] }],
   };
   const tripDays = detectTripDuration(prompt).days;
-  const maxTokens = twoTrack ? Math.min(16384, 5000 + tripDays * 1000) : 4096;
-  const d = await callGemini(body, key, 2, maxTokens);
+  const maxTokens = twoTrack ? Math.min(8192, 4000 + tripDays * 800) : 4096;
+  const d = await callGemini(body, key, 5, maxTokens);
   const c = d.candidates?.[0];
   const finish = c?.finishReason || "";
   const text = extractGeminiText(c);
