@@ -334,6 +334,17 @@ button, input, textarea, select { font-family: inherit; }
   color: var(--on-secondary-container);
   border-color: rgba(136, 214, 253, 0.35);
 }
+.chip-endpoint {
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--on-surface);
+  border-color: rgba(102, 188, 176, 0.28);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#chip-from { border-color: rgba(51, 65, 85, 0.22); }
+#chip-to { border-color: rgba(180, 83, 9, 0.28); }
 
 .course-option-tabs {
   display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.85rem;
