@@ -775,6 +775,7 @@ const state = {
   chat: [],
   chatTyping: false,
   communityFilter: "all",
+  communityOpenComments: new Set(),
   spotsFilter: "all",
   pendingView: null,
   kakaoRoute: { path: [], legs: null, stepsKey: "", source: "", loading: false },
@@ -1109,6 +1110,20 @@ document.addEventListener("click", (e) => {
     return;
   }
 
+  const toggleCommentsBtn = e.target.closest("[data-toggle-comments]");
+  if (toggleCommentsBtn) {
+    e.preventDefault();
+    toggleCommunityComments(toggleCommentsBtn.dataset.toggleComments);
+    return;
+  }
+
+  const deleteCommentBtn = e.target.closest("[data-delete-comment]");
+  if (deleteCommentBtn) {
+    e.preventDefault();
+    deleteCommunityComment(deleteCommentBtn.dataset.deleteComment);
+    return;
+  }
+
   const openTripBtn = e.target.closest("[data-open-trip]");
   if (openTripBtn) {
     e.preventDefault();
@@ -1121,6 +1136,16 @@ document.addEventListener("click", (e) => {
     e.preventDefault();
     deleteSavedTrip(deleteTripBtn.dataset.deleteTrip);
   }
+});
+
+document.addEventListener("submit", (e) => {
+  const form = e.target.closest("[data-comment-form]");
+  if (!form) return;
+  e.preventDefault();
+  const postId = form.dataset.postId || "";
+  const input = form.querySelector("textarea");
+  submitCommunityComment(postId, input?.value || "");
+  if (input) input.value = "";
 });
 
 /* ==================== Weather (Open-Meteo) ==================== */
@@ -4545,6 +4570,7 @@ const COMMUNITY_SEED = [];
 const COMMUNITY_LS = {
   likes: "voyageai_community_likes",
   posts: "voyageai_community_posts",
+  comments: "voyageai_community_comments",
   nick: "voyageai_community_nick",
 };
 
@@ -4556,6 +4582,11 @@ function postCreatedAt(post) {
   const m = String(post?.id || "").match(/^user-(\d+)$/);
   if (m) {
     const d = new Date(Number(m[1]));
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  const cmt = String(post?.id || "").match(/^cmt-(\d+)-/);
+  if (cmt) {
+    const d = new Date(Number(cmt[1]));
     if (!Number.isNaN(d.getTime())) return d;
   }
   return null;
@@ -4578,8 +4609,8 @@ function formatRelativeTime(d) {
   return `${year}년 전`;
 }
 
-function formatCommunityPostTime(post) {
-  const d = postCreatedAt(post);
+function formatCommunityItemTime(item) {
+  const d = postCreatedAt(item);
   if (!d) return "시간 정보 없음";
   const now = new Date();
   const sameYear = d.getFullYear() === now.getFullYear();
@@ -4592,6 +4623,10 @@ function formatCommunityPostTime(post) {
     hour12: false,
   });
   return `${recorded} · ${formatRelativeTime(d)}`;
+}
+
+function formatCommunityPostTime(post) {
+  return formatCommunityItemTime(post);
 }
 
 function communityPostTimeTitle(post) {
@@ -4646,6 +4681,146 @@ function loadUserCommunityPosts() {
 
 function saveUserCommunityPosts(posts) {
   localStorage.setItem(COMMUNITY_LS.posts, JSON.stringify(posts.slice(0, 30)));
+}
+
+function loadCommunityComments() {
+  try {
+    const raw = localStorage.getItem(COMMUNITY_LS.comments);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCommunityComments(comments) {
+  localStorage.setItem(COMMUNITY_LS.comments, JSON.stringify(comments.slice(0, 500)));
+}
+
+function commentsForPost(postId) {
+  return loadCommunityComments()
+    .filter((c) => c.postId === postId)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+}
+
+function getCommunityUserId() {
+  const auth = loadAuth();
+  return String(auth.userId || "").trim();
+}
+
+function isOwnCommunityComment(comment) {
+  const uid = getCommunityUserId();
+  return Boolean(uid && comment?.authorId && comment.authorId === uid);
+}
+
+function toggleCommunityComments(postId) {
+  if (state.communityOpenComments.has(postId)) state.communityOpenComments.delete(postId);
+  else state.communityOpenComments.add(postId);
+  renderCommunityFeed();
+}
+
+function submitCommunityComment(postId, text) {
+  if (!canUseCommunity()) {
+    toast("댓글은 Google·카카오 로그인 후 남길 수 있어요.");
+    openLoginModal();
+    return;
+  }
+  const body = String(text || "").trim();
+  if (body.length < 2) {
+    toast("댓글은 2자 이상 입력해 주세요.");
+    return;
+  }
+  if (body.length > 300) {
+    toast("댓글은 300자까지 입력할 수 있어요.");
+    return;
+  }
+  const postExists = allCommunityPosts().some((p) => p.id === postId);
+  if (!postExists) {
+    toast("게시글을 찾지 못했어요.");
+    return;
+  }
+  const now = new Date();
+  const comments = loadCommunityComments();
+  comments.push({
+    id: `cmt-${now.getTime()}-${Math.random().toString(36).slice(2, 7)}`,
+    postId,
+    author: getCommunityAuthorName(),
+    authorId: getCommunityUserId(),
+    body,
+    createdAt: now.toISOString(),
+  });
+  saveCommunityComments(comments);
+  state.communityOpenComments.add(postId);
+  toast("댓글을 남겼어요.");
+  renderCommunityFeed();
+}
+
+function deleteCommunityComment(commentId) {
+  if (!canUseCommunity()) {
+    toast("Google·카카오 로그인 후 삭제할 수 있어요.");
+    openLoginModal();
+    return;
+  }
+  const comments = loadCommunityComments();
+  const target = comments.find((c) => c.id === commentId);
+  if (!target || !isOwnCommunityComment(target)) {
+    toast("삭제할 수 없는 댓글이에요.");
+    return;
+  }
+  if (!confirm("내 댓글을 삭제할까요?")) return;
+  saveCommunityComments(comments.filter((c) => c.id !== commentId));
+  toast("댓글이 삭제되었어요.");
+  renderCommunityFeed();
+}
+
+function renderCommunityCommentsHtml(post) {
+  const comments = commentsForPost(post.id);
+  const open = state.communityOpenComments.has(post.id);
+  const toggleLabel = open
+    ? `💬 댓글 ${comments.length} · 접기`
+    : comments.length
+      ? `💬 댓글 ${comments.length}`
+      : "💬 댓글 달기";
+
+  let html =
+    `<div class="community-comments">` +
+    `<button type="button" class="community-comment-toggle" data-toggle-comments="${esc(post.id)}" aria-expanded="${open}">` +
+    `${esc(toggleLabel)}</button>`;
+
+  if (!open) return html + `</div>`;
+
+  if (comments.length) {
+    html += `<ul class="community-comment-list">`;
+    for (const c of comments) {
+      const delBtn = isOwnCommunityComment(c)
+        ? `<button type="button" class="community-comment-delete" data-delete-comment="${esc(c.id)}" aria-label="댓글 삭제">삭제</button>`
+        : "";
+      html +=
+        `<li class="community-comment">` +
+        `<div class="community-comment-head">` +
+        `<strong>${esc(c.author)}</strong>` +
+        `<time datetime="${esc(c.createdAt || "")}" title="${esc(communityPostTimeTitle(c))}">${esc(formatCommunityItemTime(c))}</time>` +
+        delBtn +
+        `</div>` +
+        `<p class="community-comment-body">${esc(c.body)}</p>` +
+        `</li>`;
+    }
+    html += `</ul>`;
+  } else {
+    html += `<p class="community-comment-empty">첫 댓글을 남겨 보세요.</p>`;
+  }
+
+  if (canUseCommunity()) {
+    html +=
+      `<form class="community-comment-form" data-comment-form data-post-id="${esc(post.id)}">` +
+      `<textarea rows="2" maxlength="300" placeholder="댓글을 입력하세요…" aria-label="댓글 입력"></textarea>` +
+      `<div class="community-comment-form-foot">` +
+      `<button type="submit" class="btn-secondary community-comment-submit">등록</button>` +
+      `</div></form>`;
+  } else {
+    html += `<p class="community-comment-locked">댓글은 <strong>Google·카카오 로그인</strong> 후 남길 수 있어요.</p>`;
+  }
+
+  return html + `</div>`;
 }
 
 function getCommunityAuthorName() {
@@ -4703,6 +4878,8 @@ function deleteCommunityPost(id) {
   }
   if (!confirm("내가 작성한 글을 삭제할까요?")) return;
   saveUserCommunityPosts(posts.filter((p) => p.id !== id));
+  saveCommunityComments(loadCommunityComments().filter((c) => c.postId !== id));
+  state.communityOpenComments.delete(id);
   const liked = loadCommunityLikes();
   if (liked.has(id)) {
     liked.delete(id);
@@ -4768,7 +4945,9 @@ function renderCommunityFeed() {
         (p.aiPrompt
           ? `<button type="button" class="community-ai" data-ai-prompt="${aiPrompt}">✦ AI 코스 만들기</button>`
           : "") +
-        `</div></div></article>`
+        `</div>` +
+        renderCommunityCommentsHtml(p) +
+        `</div></article>`
       );
     })
     .join("");
@@ -4814,6 +4993,7 @@ function submitCommunityPost(e) {
     id: `user-${now.getTime()}`,
     type,
     author: nick,
+    authorId: getCommunityUserId(),
     region: "강원",
     title: text.length > 42 ? `${text.slice(0, 42)}…` : "",
     body: text,

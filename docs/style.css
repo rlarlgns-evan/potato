@@ -2830,6 +2830,107 @@ body.mode-planner .planner-grid {
   border-color: var(--primary);
 }
 
+.community-comments {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--outline-variant);
+}
+.community-comment-toggle {
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--on-surface-variant);
+  background: transparent;
+  border: none;
+  padding: 0.2rem 0;
+  cursor: pointer;
+}
+.community-comment-toggle:hover { color: var(--primary); }
+.community-comment-list {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.community-comment {
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 106, 97, 0.04);
+  border: 1px solid rgba(0, 106, 97, 0.08);
+}
+.community-comment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.78rem;
+}
+.community-comment-head strong {
+  font-size: 0.82rem;
+  color: var(--on-surface);
+}
+.community-comment-head time {
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+.community-comment-delete {
+  margin-left: auto;
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: #dc2626;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.1rem 0.25rem;
+}
+.community-comment-delete:hover { text-decoration: underline; }
+.community-comment-body {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--on-surface);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.community-comment-empty,
+.community-comment-locked {
+  margin: 0.55rem 0 0;
+  font-size: 0.85rem;
+  color: var(--on-surface-variant);
+}
+.community-comment-form {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.community-comment-form textarea {
+  width: 100%;
+  min-height: 3.2rem;
+  resize: vertical;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--outline-variant);
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.community-comment-form textarea:focus {
+  outline: 2px solid rgba(0, 106, 97, 0.25);
+  border-color: var(--primary);
+}
+.community-comment-form-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+.community-comment-submit {
+  font-size: 0.82rem;
+  padding: 0.35rem 0.85rem;
+}
+
 @media (max-width: 640px) {
   .community-card {
     grid-template-columns: 1fr;
