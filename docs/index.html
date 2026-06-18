@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=7" />
   <link rel="icon" type="image/png" href="assets/mascot-icon.png" />
   <link rel="apple-touch-icon" href="assets/mascot-icon.png" />
 </head>
@@ -97,10 +97,6 @@
         <div class="landing-region-tip hidden" id="landing-region-tip" aria-live="polite"></div>
       </div>
       <div class="landing-scrim" aria-hidden="true"></div>
-      <div class="landing-map-badge" aria-hidden="true">
-        <span class="landing-map-badge-pulse"></span>
-        <span>온도 큐레이션 <strong id="landing-spot-count">—</strong>곳</span>
-      </div>
 
       <div class="landing-content">
         <div class="chat-shell chat-landing" id="chat-shell">
@@ -108,7 +104,7 @@
             <span class="chat-dot"></span>
             <div class="chat-shell-title">
               <strong>강원 온도 AI</strong>
-              <span>맞춤 코스 · <span id="spot-count">—</span>곳 큐레이션</span>
+              <span>맞춤 코스 · KTO TourAPI 실시간</span>
             </div>
           </div>
           <div class="chat-body" id="agent-messages" role="log" aria-live="polite"></div>
@@ -133,7 +129,7 @@
         <div class="page-head">
           <div>
             <h1><span class="page-logo vico vico-spots" data-vico="spots"></span> 강원 관광지</h1>
-            <p>큐레이션 데이터 <strong id="spots-total">—</strong>곳 · 탭하면 AI 코스를 만들어요.</p>
+            <p>KTO·TourAPI 연동 관광지 <strong id="spots-total">—</strong>곳 · 탭하면 AI 코스를 만들어요.</p>
           </div>
           <span class="chip">탐색</span>
         </div>
@@ -392,6 +388,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="data.js?v=5"></script>
   <script src="icons.js?v=1"></script>
-  <script src="app.js?v=17"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>

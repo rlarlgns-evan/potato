@@ -103,6 +103,23 @@ function regionEmptyFallbackMessage() {
   return KTO_FALLBACK_INTRO;
 }
 
+function countKtoCatalogSpots() {
+  const regions = TOUR_AGGREGATED_SPOTS?.regions || {};
+  const seen = new Set();
+  let n = 0;
+  for (const list of Object.values(regions)) {
+    for (const entry of list || []) {
+      const name = String(entry?.name || "").trim();
+      if (!name) continue;
+      const key = `${entry.region || ""}:${name}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      n++;
+    }
+  }
+  return n;
+}
+
 function collectKtoCatalogEntries(region) {
   const agg = TOUR_AGGREGATED_SPOTS?.regions?.[region];
   if (!agg?.length) {
@@ -5053,7 +5070,10 @@ function renderSpotsGrid() {
   const filter = state.spotsFilter;
   const spots = ENRICHED_SPOTS.filter((s) => filter === "all" || spotThemeKey(s.theme) === filter);
   const totalEl = $("spots-total");
-  if (totalEl) totalEl.textContent = String(ENRICHED_SPOTS.length);
+  if (totalEl) {
+    const ktoTotal = countKtoCatalogSpots();
+    totalEl.textContent = ktoTotal ? String(ktoTotal) : "—";
+  }
 
   if (!spots.length) {
     grid.innerHTML = `<p class="spots-empty">해당 테마의 명소가 없어요.</p>`;
@@ -6174,18 +6194,16 @@ function initAuth() {
 function init() {
   try {
     initIcons();
-    const n = String(ENRICHED_SPOTS.length);
-    const spotEl = $("spot-count");
-    if (spotEl) spotEl.textContent = n;
-    const landingSpotEl = $("landing-spot-count");
-    if (landingSpotEl) landingSpotEl.textContent = n;
+    const ktoTotal = countKtoCatalogSpots();
     const spotsTotalEl = $("spots-total");
-    if (spotsTotalEl) spotsTotalEl.textContent = n;
+    if (spotsTotalEl) spotsTotalEl.textContent = ktoTotal ? String(ktoTotal) : "—";
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) {
       metaDesc.setAttribute(
         "content",
-        `강원 온도(ON道) — 강원도 맞춤 여행 코스, ${n}곳 큐레이션, AI 일정·지도·날씨·축제를 한곳에서.`
+        ktoTotal
+          ? `강원 온도(ON道) — KTO TourAPI 실시간 ${ktoTotal}곳, AI 일정·지도·날씨·축제를 한곳에서.`
+          : "강원 온도(ON道) — 강원도 맞춤 여행 코스, AI 일정·지도·날씨·축제를 한곳에서."
       );
     }
     $("weather-refresh")?.addEventListener("click", () => {
