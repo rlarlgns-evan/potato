@@ -406,7 +406,7 @@
       "cls": "badge-drive"
     }
   },
-  "gemini_model": "gemini-3.5-flash",
+  "gemini_model": "gemini-3.1-flash-lite",
   "transit_origins": {
     "의정부시": {
       "lat": 37.7381,

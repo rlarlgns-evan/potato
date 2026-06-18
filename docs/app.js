@@ -2284,8 +2284,8 @@ function describeGeminiFailure(e) {
   }
   if (status === 503 || /high demand|UNAVAILABLE|overloaded/i.test(d)) {
     return {
-      reason: "Gemini 3.5 서버가 일시적으로 과부하 상태이기",
-      action: "토큰 한도와 무관하니 1~3분 후 다시 시도해 주세요",
+      reason: "선택한 Gemini 모델 서버가 일시적으로 과부하 상태이기",
+      action: "잠시 후 다시 시도하거나 다른 모델로 자동 전환될 때까지 기다려 주세요",
     };
   }
   if (status === 403) {
@@ -2361,7 +2361,7 @@ function normalizeGeminiRequestBody(body) {
   return out;
 }
 
-const GEMINI_MODEL_FALLBACK_ORDER = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash"];
+const GEMINI_MODEL_FALLBACK_ORDER = ["gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-3.5-flash"];
 const GEMINI_ATTEMPTS_PER_MODEL = 3;
 
 function geminiModelCandidates() {
@@ -2381,6 +2381,12 @@ function geminiRetryDelayMs(attempt, retryAfterSec = 0) {
 
 function isGeminiRetryableStatus(status) {
   return [408, 429, 500, 502, 503, 504].includes(Number(status));
+}
+
+function isGeminiOverloadStatus(status, detail = "") {
+  const s = Number(status);
+  if ([502, 503, 504].includes(s)) return true;
+  return /high demand|UNAVAILABLE|overloaded/i.test(detail);
 }
 
 function geminiOutputTokenBudget(twoTrack, tripDays) {
@@ -2437,6 +2443,18 @@ async function callGeminiWithModel(model, normalized, key, maxAttempts, maxOutpu
       const status = r.status;
       lastStatus = status;
       const retryAfter = Number(r.headers?.get?.("retry-after")) || 0;
+      if (isGeminiOverloadStatus(status, detail)) {
+        const e = new Error("Gemini HTTP " + status + (detail ? ": " + detail : ""));
+        e.status = status;
+        e.detail = detail;
+        e.model = model;
+        e.attemptsMade = attempt + 1;
+        e.maxAttempts = attempts;
+        e.overload = true;
+        e.retryExhausted = true;
+        console.warn(`Gemini ${model} overloaded (${status}) — switching model without retry`);
+        throw e;
+      }
       if (isGeminiRetryableStatus(status) && attempt < attempts - 1) {
         const wait = geminiRetryDelayMs(attempt, retryAfter);
         console.warn(
