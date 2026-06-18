@@ -356,6 +356,66 @@ button, input, textarea, select { font-family: inherit; }
 }
 .course-option-count { opacity: 0.85; font-weight: 500; }
 
+.day-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+.day-tab {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--on-surface-variant);
+  border-radius: 14px;
+  padding: 0.5rem 0.9rem;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  text-align: left;
+  max-width: 100%;
+}
+.day-tab.on {
+  background: rgba(102, 188, 176, 0.16);
+  border-color: rgba(102, 188, 176, 0.45);
+  color: var(--on-primary-container);
+}
+.day-tab-sub {
+  font-size: 0.72rem;
+  font-weight: 500;
+  opacity: 0.85;
+  line-height: 1.35;
+}
+.trip-day-list {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.trip-day-item {
+  padding: 0.45rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.trip-day-item:hover,
+.trip-day-item:focus-visible {
+  background: rgba(102, 188, 176, 0.08);
+  border-color: rgba(102, 188, 176, 0.2);
+  outline: none;
+}
+.trip-day-item.trip-day-on {
+  background: rgba(102, 188, 176, 0.14);
+  border-color: rgba(102, 188, 176, 0.35);
+}
+
 .route-summary-block { margin-bottom: 1rem; }
 .route-endpoints {
   display: flex;

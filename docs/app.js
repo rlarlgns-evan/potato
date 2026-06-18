@@ -9,13 +9,9 @@ const esc = (s) =>
 const SOURCE_LABELS = {
   gemini: "✓ Gemini",
   openai: "✓ OpenAI",
-  local_skip: "◆ 로컬 매칭 (API 절약)",
-  local: "◆ 로컬 AI",
-  local_api_fail: "◆ 로컬 (API 실패)",
-  ai_required_fail: "✕ AI 필요 (실패)",
 };
 function sourceLabel(src) {
-  return SOURCE_LABELS[src] || "◆ 로컬 AI";
+  return SOURCE_LABELS[src] || "✓ AI";
 }
 function insightLabel(src) {
   return src === "gemini" || src === "openai" ? "✦ AI INSIGHT" : sourceLabel(src);
@@ -795,7 +791,18 @@ const state = {
   communityOpenComments: new Set(),
   spotsFilter: "all",
   pendingView: null,
-  kakaoRoute: { path: [], legs: null, stepsKey: "", source: "", loading: false },
+  kakaoRoute: {
+    path: [],
+    legs: null,
+    stepsKey: "",
+    source: "",
+    loading: false,
+    viewKey: "",
+    viewLegs: null,
+    viewPath: [],
+    viewSource: "",
+  },
+  activeDay: null,
 };
 
 const VIEW_IDS = new Set(["explore", "spots", "community", "weather", "festivals", "about", "planner", "trips"]);
@@ -874,7 +881,7 @@ function buildAgentReply(result) {
       lines.push("", `**${opt.title}** · ${opt.steps.length}곳`);
       if (opt.dayPlans?.length) {
         opt.dayPlans.forEach((d) => {
-          lines.push(`- Day ${d.day}: ${d.focus || "일정"}`);
+          lines.push(`- ${d.day}일차: ${d.focus || d.title || "일정"}`);
         });
       } else if (opt.summary) {
         lines.push(opt.summary);
@@ -1797,7 +1804,12 @@ function parseKakaoRoutePlan(spots, kakaoData) {
     const distM = sec.distance || 0;
     const durS = sec.duration || 0;
     const km = distM / 1000;
-    const driveMin = distM < 30 ? 0 : Math.max(1, Math.round(durS / 60));
+    const driveMin =
+      durS > 0
+        ? Math.max(1, Math.round(durS / 60))
+        : distM < 30
+          ? 0
+          : Math.max(1, estimateDriveMinFromKm(km));
     legs.push({
       from_name: spots[i].name,
       to_name: spots[i + 1].name,
@@ -1845,6 +1857,8 @@ async function buildRoutePlan(spots) {
       const plan = parseKakaoRoutePlan(spotList, kakaoData);
       if (plan?.legs?.length) return plan;
     }
+    const chained = await buildKakaoRoutePlanChained(spots);
+    if (chained?.legs?.length) return chained;
   } else {
     const chained = await buildKakaoRoutePlanChained(spots);
     if (chained?.legs?.length) return chained;
@@ -1864,7 +1878,8 @@ function spotsFromSteps(steps) {
 
 let routeRefreshGen = 0;
 
-async function refreshRouteForSteps(steps) {
+async function refreshRouteForSteps() {
+  const steps = state.steps;
   const points = routePointsFromSteps(steps);
   if (points.length < 2) {
     resetKakaoRouteState();
@@ -1872,28 +1887,37 @@ async function refreshRouteForSteps(steps) {
   }
   const key = stepsRouteKey(steps);
   const expectedLegs = points.length - 1;
-  if (
+  const viewSteps = plannerSteps();
+  const viewKey = stepsRouteKey(viewSteps);
+  const fullReady =
     state.kakaoRoute.stepsKey === key &&
     !state.kakaoRoute.loading &&
-    (state.kakaoRoute.legs?.length || 0) >= expectedLegs
-  ) {
+    (state.kakaoRoute.legs?.length || 0) >= expectedLegs;
+
+  if (fullReady) {
+    if (viewKey !== key && state.kakaoRoute.viewKey !== viewKey) {
+      await refreshViewRoute(viewSteps);
+      const legs = getRouteLegs(viewSteps);
+      renderRouteSummary(legs);
+      renderCourses(legs);
+      renderMap();
+    }
     return;
   }
   if (state.kakaoRoute.stepsKey === key && state.kakaoRoute.loading) return;
 
   const gen = ++routeRefreshGen;
   state.kakaoRoute = {
+    ...state.kakaoRoute,
     path: state.kakaoRoute.path || [],
     legs: state.kakaoRoute.legs,
     stepsKey: key,
     source: state.kakaoRoute.source || "",
     loading: true,
   };
-  if (stepsRouteKey(state.steps) === key) {
-    renderRouteSummary([]);
-    const chip = $("chip-route");
-    if (chip) chip.textContent = "🧭 경로 계산 중…";
-  }
+  renderRouteSummary([]);
+  const chip = $("chip-route");
+  if (chip) chip.textContent = "🧭 경로 계산 중…";
 
   const spots = points.map((p) => p.spot);
   let plan = null;
@@ -1909,9 +1933,10 @@ async function refreshRouteForSteps(steps) {
   if (!plan) plan = buildEstimateRoutePlan(spots);
 
   if (plan) {
-    applyRoutePlanToState(plan, state.steps);
+    applyRoutePlanToState(plan, steps);
   } else {
     state.kakaoRoute = {
+      ...state.kakaoRoute,
       path: [],
       legs: [],
       stepsKey: key,
@@ -1920,7 +1945,9 @@ async function refreshRouteForSteps(steps) {
     };
   }
 
-  const legs = getRouteLegs(state.steps);
+  await refreshViewRoute(plannerSteps());
+
+  const legs = getRouteLegs(viewSteps);
   renderRouteSummary(legs);
   renderCourses(legs);
   updateMapChrome();
@@ -1987,12 +2014,89 @@ function legsFromRoutePlan(routePlan, steps) {
   return out;
 }
 
+function extractLegsForSteps(allSteps, allLegs, viewSteps) {
+  const out = [];
+  for (let i = 0; i < viewSteps.length - 1; i++) {
+    const from = viewSteps[i];
+    const to = viewSteps[i + 1];
+    const fi = allSteps.findIndex((s) => s.order === from.order);
+    const leg = fi >= 0 ? allLegs[fi] : null;
+    if (leg && allSteps[fi + 1]?.order === to.order) {
+      out.push(leg);
+      continue;
+    }
+    const km = haversineKm(from.spot.lat, from.spot.lng, to.spot.lat, to.spot.lng);
+    const driveMin = estimateDriveMinFromKm(km);
+    out.push({
+      from,
+      to,
+      km,
+      driveMin,
+      note: `${from.spot.name} → ${to.spot.name} · ${fmtKm(km)} · 약 ${fmtMin(driveMin)} (추정)`,
+      kakao: false,
+      provider: "estimate",
+      transit: from.kind === "origin",
+    });
+  }
+  return out;
+}
+
+function activeRouteGeometry() {
+  const viewSteps = plannerSteps();
+  const viewKey = stepsRouteKey(viewSteps);
+  const fullKey = stepsRouteKey(state.steps);
+  if (viewKey !== fullKey && state.kakaoRoute.viewKey === viewKey && state.kakaoRoute.viewPath?.length >= 2) {
+    return {
+      path: state.kakaoRoute.viewPath,
+      source: state.kakaoRoute.viewSource || state.kakaoRoute.source || "",
+    };
+  }
+  return {
+    path: state.kakaoRoute.path || [],
+    source: state.kakaoRoute.source || "",
+  };
+}
+
+async function refreshViewRoute(viewSteps) {
+  const viewKey = stepsRouteKey(viewSteps);
+  const fullKey = stepsRouteKey(state.steps);
+  if (!viewKey || viewKey === fullKey) {
+    state.kakaoRoute.viewKey = "";
+    state.kakaoRoute.viewLegs = null;
+    state.kakaoRoute.viewPath = [];
+    state.kakaoRoute.viewSource = "";
+    return;
+  }
+  const spots = spotsFromSteps(viewSteps);
+  if (spots.length < 2) {
+    state.kakaoRoute.viewKey = viewKey;
+    state.kakaoRoute.viewLegs = [];
+    state.kakaoRoute.viewPath = [];
+    state.kakaoRoute.viewSource = "";
+    return;
+  }
+  let plan = null;
+  try {
+    plan = await buildRoutePlan(spots);
+  } catch (e) {
+    console.warn("[View route]", e);
+  }
+  if (!plan) plan = buildEstimateRoutePlan(spots);
+  if (plan) {
+    state.kakaoRoute.viewKey = viewKey;
+    state.kakaoRoute.viewLegs = legsFromRoutePlan(plan, viewSteps);
+    state.kakaoRoute.viewPath = plan.polyline || [];
+    state.kakaoRoute.viewSource = plan.provider || "";
+  }
+}
+
 function applyRoutePlanToState(routePlan, steps) {
   if (!routePlan) {
     resetKakaoRouteState();
     return;
   }
   state.kakaoRoute = {
+    ...state.kakaoRoute,
     path: routePlan.polyline || [],
     legs: legsFromRoutePlan(routePlan, steps),
     stepsKey: stepsRouteKey(steps),
@@ -2002,13 +2106,28 @@ function applyRoutePlanToState(routePlan, steps) {
 }
 
 function resetKakaoRouteState() {
-  state.kakaoRoute = { path: [], legs: null, stepsKey: "", source: "", loading: false };
+  state.kakaoRoute = {
+    path: [],
+    legs: null,
+    stepsKey: "",
+    source: "",
+    loading: false,
+    viewKey: "",
+    viewLegs: null,
+    viewPath: [],
+    viewSource: "",
+  };
 }
 
 function getRouteLegs(steps) {
-  const key = stepsRouteKey(steps);
-  if (state.kakaoRoute.stepsKey === key && Array.isArray(state.kakaoRoute.legs)) {
-    return state.kakaoRoute.legs;
+  const fullKey = stepsRouteKey(state.steps);
+  const queryKey = stepsRouteKey(steps);
+  if (state.kakaoRoute.viewKey && queryKey === state.kakaoRoute.viewKey && Array.isArray(state.kakaoRoute.viewLegs)) {
+    return state.kakaoRoute.viewLegs;
+  }
+  if (state.kakaoRoute.stepsKey === fullKey && Array.isArray(state.kakaoRoute.legs)) {
+    if (queryKey === fullKey) return state.kakaoRoute.legs;
+    return extractLegsForSteps(state.steps, state.kakaoRoute.legs, steps);
   }
   return [];
 }
@@ -2114,29 +2233,6 @@ function getPromptSpotContext(prompt) {
   return ctx;
 }
 
-/** O(N) — full sort 없이 상위 점수 요약 */
-function summarizeSpotScores(scores) {
-  let top = 0;
-  let second = 0;
-  let third = 0;
-  let strongHits = 0;
-  for (let i = 0; i < scores.length; i++) {
-    const s = scores[i];
-    if (s >= 2) strongHits++;
-    if (s > top) {
-      third = second;
-      second = top;
-      top = s;
-    } else if (s > second) {
-      third = second;
-      second = s;
-    } else if (s > third) {
-      third = s;
-    }
-  }
-  return { topScore: top, strongHits, top3Sum: top + second + third };
-}
-
 function rankSpotIndices(scores, limit = ENRICHED_SPOTS.length, regionTieBreak = false) {
   const ranked = [];
   for (let i = 0; i < scores.length; i++) {
@@ -2157,9 +2253,17 @@ function matchTransitOrigin(text) {
   if (!raw) return null;
   const origins = typeof TRANSIT_ORIGINS !== "undefined" ? TRANSIT_ORIGINS : {};
   if (origins[raw]) return { label: raw, data: origins[raw] };
+  const compact = raw.replace(/(특별|광역)?(시|도)|특별자치(시|도|군)/g, "").trim();
+  if (compact && compact !== raw && origins[compact]) return { label: compact, data: origins[compact] };
+  for (const key of Object.keys(origins)) {
+    const short = key.replace(/[시군구]/g, "");
+    if (raw.includes(key) || key.includes(raw) || (short.length >= 2 && (raw.includes(short) || compact.includes(short)))) {
+      return { label: key, data: origins[key] };
+    }
+  }
   for (let i = 0; i < TRANSIT_ORIGIN_MATCHES.length; i++) {
     const { name, short } = TRANSIT_ORIGIN_MATCHES[i];
-    if (raw.includes(name) || (short.length >= 2 && raw.includes(short))) {
+    if (raw.includes(name) || (short.length >= 2 && (raw.includes(short) || compact.includes(short)))) {
       return { label: name, data: origins[name] };
     }
   }
@@ -2207,12 +2311,6 @@ function saveCurationCache(prompt, result) {
   persistCacheEntry(k, result);
 }
 
-function scoreLocalMatch(prompt) {
-  const { keywords, scores } = getPromptSpotContext(prompt);
-  if (!keywords.length) return { topScore: 0, strongHits: 0, top3Sum: 0 };
-  return summarizeSpotScores(scores);
-}
-
 const COMPLEX_PROMPT_RE = [
   /1박\s*2일|2박\s*3일|3박\s*4일|당일치기|무박|숙박|\d+박/i,
   /대중교통|KTX|기차|버스|열차|지하철|SRT|ITX|무궁화|고속버스/i,
@@ -2241,6 +2339,17 @@ function detectOrigin(prompt) {
   if (hit) return hit.label;
   const m = prompt.match(/(\S+(?:시|구|군))/);
   return m ? m[1] : "";
+}
+
+function enrichTripIntent(intent, prompt) {
+  const out = { ...(intent || {}) };
+  if (!out.origin) out.origin = detectOrigin(prompt) || "";
+  const main = out.mainDestination || out.destination || pickMainDestination(prompt) || regionsInPrompt(prompt)[0] || "";
+  if (main) {
+    if (!out.mainDestination) out.mainDestination = main;
+    if (!out.destination) out.destination = main;
+  }
+  return out;
 }
 
 function transitHintBlock(origin) {
@@ -2319,33 +2428,26 @@ function pickOutboundHint(data) {
 }
 
 function attachOriginStep(steps, meta, prompt) {
-  const originText = meta.tripIntent?.origin || detectOrigin(prompt || state.query || "");
-  const hit = resolveOriginEntry(originText);
+  const originCandidates = [
+    meta.tripIntent?.origin,
+    detectOrigin(prompt || state.query || ""),
+  ]
+    .map((t) => String(t || "").trim())
+    .filter(Boolean);
+  let hit = null;
+  for (const text of originCandidates) {
+    hit = resolveOriginEntry(text);
+    if (hit) break;
+  }
   if (!hit) return steps;
   const outbound = meta.transitPlan?.outbound || pickOutboundHint(hit.data);
-  const origin = buildOriginStep(
-    hit.label,
-    hit.data,
-    meta.tripIntent?.transport,
-    outbound
-  );
+  const origin = buildOriginStep(hit.label, hit.data, meta.tripIntent?.transport, outbound);
   if (!origin) return steps;
   return [origin, ...steps.map((s, i) => ({ ...s, order: i + 2 }))];
 }
 
 function destinationSteps(steps) {
   return steps.filter((s) => s.kind !== "origin");
-}
-
-function shouldCallGemini(prompt) {
-  if (needsComplexAi(prompt)) return true;
-  const regions = regionsInPrompt(prompt);
-  if (regions.length && hasTripPlanIntent(prompt)) return true;
-  const { topScore, strongHits, top3Sum } = scoreLocalMatch(prompt);
-  if (topScore >= 3) return false;
-  if (topScore >= 2 && strongHits >= 2) return false;
-  if (top3Sum >= 5) return false;
-  return true;
 }
 
 function normalizeGeminiKey(raw) {
@@ -2463,12 +2565,11 @@ function describeGeminiFailure(e) {
   };
 }
 
-function formatGeminiFailureNotice(e, { fallbackHint = false } = {}) {
+function formatGeminiFailureNotice(e) {
   const { reason, action } = describeGeminiFailure(e);
   const attempts = e?.attemptsMade || e?.maxAttempts;
   const prefix = attempts ? `${attempts}번 재시도했지만 실패했어요. ` : "";
-  const suffix = fallbackHint ? " 대신 로컬 일정을 보여드릴게요." : "";
-  return `${prefix}${reason} 때문에 ${action}.${suffix}`;
+  return `${prefix}${reason} 때문에 ${action}.`;
 }
 
 function geminiFailToast(e, opts = {}) {
@@ -2947,9 +3048,70 @@ function buildDayPlansFromOption(option) {
   if (!option?.days?.length) return [];
   return option.days.map((d) => ({
     day: d.day,
-    title: `Day ${d.day}`,
-    focus: (d.schedule || []).map((s) => s.time_slot).filter(Boolean).join(" · "),
+    title: `${d.day}일차`,
+    focus: (d.schedule || [])
+      .map((s) => s.spot_name || s.time_slot)
+      .filter(Boolean)
+      .join(" · "),
   }));
+}
+
+function stepDayNumber(step) {
+  if (step?.kind === "origin") return 1;
+  const d = Number(step?.day);
+  return d > 0 ? d : 1;
+}
+
+function collectTripDays(steps, dayPlans = []) {
+  const days = new Set();
+  for (const s of steps || []) {
+    if (s.kind === "origin") continue;
+    days.add(stepDayNumber(s));
+  }
+  if (days.size > 1) return [...days].sort((a, b) => a - b);
+  for (const p of dayPlans || []) {
+    const n = Number(p.day);
+    if (n > 0) days.add(n);
+  }
+  return days.size ? [...days].sort((a, b) => a - b) : [];
+}
+
+function ensureDayPlans(meta, steps) {
+  const existing = meta?.dayPlans || [];
+  if (existing.length) return existing;
+  const days = collectTripDays(steps, []);
+  if (days.length <= 1) return [];
+  return days.map((day) => ({
+    day,
+    title: `${day}일차`,
+    focus: steps
+      .filter((s) => s.kind !== "origin" && stepDayNumber(s) === day)
+      .map((s) => s.spot.name)
+      .join(" · "),
+  }));
+}
+
+function syncActiveDayForSteps(steps, dayPlans) {
+  const days = collectTripDays(steps, dayPlans);
+  if (days.length <= 1) {
+    state.activeDay = null;
+    return;
+  }
+  if (!state.activeDay || !days.includes(state.activeDay)) {
+    state.activeDay = days[0];
+  }
+}
+
+function stepsForDay(steps, day) {
+  if (!day) return steps;
+  return steps.filter((s) => {
+    if (s.kind === "origin") return day === 1;
+    return stepDayNumber(s) === day;
+  });
+}
+
+function plannerSteps() {
+  return stepsForDay(state.steps, state.activeDay);
 }
 
 function parseTwoTrackCuration(parsed, prompt) {
@@ -3196,45 +3358,6 @@ function parseGeminiCuration(raw, prompt, routePlan = null) {
     dayPlans: parsed.day_plans || [],
   };
 }
-async function localCuration(prompt, source = "local") {
-  const regions = regionsInPrompt(prompt);
-  const picks = pickSpotsForPrompt(prompt, 3);
-  if (!picks.length) {
-    const msg = regions[0] ? regionEmptyFallbackMessage() : "현재 필터에 맞는 장소가 없습니다.";
-    return {
-      title: regions[0] ? `${regions[0]} 안내` : "맞춤 코스",
-      summary: msg,
-      duration: "",
-      steps: [],
-      source,
-    };
-  }
-  const routePlan = picks.length >= 2 ? await buildKakaoRoutePlan(picks) : null;
-  const steps = picks.map((s, i) => ({
-    order: i + 1,
-    spot: s,
-    stay: s.stay_min,
-    why: `${s.description}. ${s.tip}`,
-    move_to_next: routePlan?.legs?.[i]?.summary || "",
-  }));
-  const regionLabel = regions[0] || picks[0]?.region || "";
-  const routeLabel =
-    routePlan?.provider === "kakao" ? "카카오" : routePlan?.provider === "osrm" ? "도로 추정" : "경로";
-  const driveLabel = routePlan?.totals
-    ? `총 ${fmtKm(routePlan.totals.km)} · 차량 ${fmtMin(routePlan.totals.min)} (${routeLabel})`
-    : "";
-  return {
-    title: regionLabel ? `${regionLabel} 맞춤 코스` : "🥔 로컬 추천 코스",
-    summary:
-      (regionLabel ? `${regionLabel} 중심 · ` : "") +
-      (driveLabel || "경로 데이터 없음 — 이동 시간은 지도에서 확인해 주세요."),
-    duration: routePlan ? routeDurationLabel(routePlan.totals) : "당일 코스",
-    steps,
-    routePlan,
-    source,
-  };
-}
-
 /* ==================== Curation ==================== */
 async function geminiCuration(prompt, key) {
   await waitGeminiSlot();
@@ -3313,15 +3436,29 @@ async function geminiCuration(prompt, key) {
   return parseGeminiCuration(text, prompt, routePlan);
 }
 
-function buildComplexFailReply(e) {
+function buildGeminiFailReply(e, { requireAi = false } = {}) {
   const { reason, action } = describeGeminiFailure(e);
   const attempts = e?.attemptsMade || e?.maxAttempts;
   const retryLine = attempts ? `${attempts}번 재시도했지만 실패했어요.\n` : "";
-  return [
-    "**AI 일정을 만들지 못했어요**",
-    "출발·교통·숙박·기간 조건이 포함된 질문은 AI가 필요합니다.",
-    `${retryLine}${reason} 때문에 ${action}.`,
-  ].join("\n");
+  const lines = [
+    requireAi ? "**AI 일정을 만들지 못했어요**" : "**일정을 만들지 못했어요**",
+  ];
+  if (requireAi) {
+    lines.push("출발·교통·숙박·기간 조건이 포함된 질문은 AI가 필요합니다.");
+  }
+  lines.push(`${retryLine}${reason} 때문에 ${action}.`);
+  return lines.join("\n");
+}
+
+function pushGeminiKeyMissingFailure() {
+  toast("AI API 키가 없어 일정을 만들 수 없어요.", { error: true });
+  pushAgentFailure("**AI를 사용할 수 없어요**\nAPI 키가 설정되지 않았습니다. 잠시 후 다시 시도해 주세요.");
+}
+
+function handleCurationFailure(e, { requireAi = false } = {}) {
+  console.warn("Gemini 실패:", e);
+  geminiFailToast(e);
+  pushAgentFailure(buildGeminiFailReply(e, { requireAi }));
 }
 
 function pushAgentFailure(text) {
@@ -3340,9 +3477,20 @@ function switchCourseOption(key) {
     state.meta.summary = `${state.meta._intro || state.meta.summary}\n\n${picked.summary}`.trim();
   }
   state.steps = attachOriginStep(picked.steps, state.meta, state.query);
-  state.focusOrder = 1;
+  state.meta.dayPlans = ensureDayPlans(state.meta, state.steps);
+  syncActiveDayForSteps(state.steps, state.meta.dayPlans);
+  state.focusOrder = stepsForDay(state.steps, state.activeDay)[0]?.order || 1;
   resetMapState();
   resetKakaoRouteState();
+  renderPlanner();
+}
+
+function switchDayTab(day) {
+  state.activeDay = day;
+  const visible = plannerSteps();
+  if (!visible.some((s) => s.order === state.focusOrder)) {
+    state.focusOrder = visible[0]?.order || 1;
+  }
   renderPlanner();
 }
 
@@ -3360,21 +3508,25 @@ function applyCurationResult(prompt, result, opts = {}) {
     summary: result.summary,
     _intro: result.summary,
     duration: result.duration,
-    source: result.source || "local",
-    tripIntent: {
-      ...(result.tripIntent || {}),
-      mainDestination:
-        result.tripIntent?.mainDestination ||
-        pickMainDestination(prompt) ||
-        regionsInPrompt(prompt)[0] ||
-        "",
-      destination:
-        result.tripIntent?.destination ||
-        result.tripIntent?.mainDestination ||
-        pickMainDestination(prompt) ||
-        regionsInPrompt(prompt)[0] ||
-        "",
-    },
+    source: result.source || "gemini",
+    tripIntent: enrichTripIntent(
+      {
+        ...(result.tripIntent || {}),
+        mainDestination:
+          result.tripIntent?.mainDestination ||
+          pickMainDestination(prompt) ||
+          regionsInPrompt(prompt)[0] ||
+          "",
+        destination:
+          result.tripIntent?.destination ||
+          result.tripIntent?.mainDestination ||
+          pickMainDestination(prompt) ||
+          regionsInPrompt(prompt)[0] ||
+          "",
+        origin: result.tripIntent?.origin || detectOrigin(prompt) || "",
+      },
+      prompt
+    ),
     transitPlan: result.transitPlan || {},
     accommodation: result.accommodation || {},
     dayPlans: result.dayPlans || [],
@@ -3382,7 +3534,9 @@ function applyCurationResult(prompt, result, opts = {}) {
     activeCourseOption: result.activeCourseOption || null,
   };
   state.steps = attachOriginStep(result.steps, state.meta, prompt);
-  state.focusOrder = 1;
+  state.meta.dayPlans = ensureDayPlans(state.meta, state.steps);
+  syncActiveDayForSteps(state.steps, state.meta.dayPlans);
+  state.focusOrder = stepsForDay(state.steps, state.activeDay)[0]?.order || 1;
   resetMapState();
   resetKakaoRouteState();
   appendPlannerOpenButton();
@@ -3415,55 +3569,17 @@ async function runRegionTrip(prompt, key, complex) {
     return;
   }
 
-  let result;
-  if (key) {
-    try {
-      result = await geminiCuration(prompt, key);
-    } catch (e) {
-      console.warn("Gemini 실패:", e);
-      geminiFailToast(e, { fallbackHint: !complex });
-      if (complex) {
-        pushAgentFailure(buildComplexFailReply(e));
-        return;
-      }
-      const regions = strictRegionsForCuration(prompt);
-      result =
-        regions.length && !regionalFallbackSpots(regions, 1).length
-          ? emptyRegionalCurationShell(regions, { source: "local_api_fail" })
-          : await localCuration(prompt, "local_api_fail");
-    }
-  } else {
-    if (complex) {
-      pushAgentFailure(
-        "**AI 일정을 만들 수 없어요**\n" +
-          "출발·교통·숙박·기간 조건은 AI 키가 필요합니다. 잠시 후 다시 시도해 주세요."
-      );
-      return;
-    }
-    result = await localCuration(prompt, "local");
+  if (!key) {
+    pushGeminiKeyMissingFailure();
+    return;
   }
 
-  const prefix = multiIntent && result.source !== "gemini" ? buildRegionInfoReply(prompt) : "";
-  saveCurationAndApply(prompt, result, { chatPrefix: prefix });
-}
-
-async function tryGeminiCurationWithFallback(prompt, key, complex) {
   try {
     const result = await geminiCuration(prompt, key);
-    saveCurationAndApply(prompt, result);
+    const prefix = multiIntent && result.source !== "gemini" ? buildRegionInfoReply(prompt) : "";
+    saveCurationAndApply(prompt, result, { chatPrefix: prefix });
   } catch (e) {
-    console.warn("Gemini 실패:", e);
-    geminiFailToast(e, { fallbackHint: !complex });
-    if (complex) {
-      pushAgentFailure(buildComplexFailReply(e));
-      return;
-    }
-    const regions = strictRegionsForCuration(prompt);
-    const fallback =
-      regions.length && !regionalFallbackSpots(regions, 1).length
-        ? emptyRegionalCurationShell(regions, { source: "local_api_fail" })
-        : await localCuration(prompt, "local_api_fail");
-    saveCurationAndApply(prompt, fallback);
+    handleCurationFailure(e, { requireAi: complex });
   }
 }
 
@@ -3499,24 +3615,17 @@ async function runCuration(prompt) {
     const complex = needsComplexAi(prompt);
     const key = getGeminiKey();
 
-    if (!shouldCallGemini(prompt)) {
-      saveCurationAndApply(prompt, await localCuration(prompt, "local_skip"));
-      return;
-    }
-
     if (!key) {
-      if (complex) {
-        pushAgentFailure(
-          "**AI 일정을 만들 수 없어요**\n" +
-            "출발·교통·숙박·기간 조건은 AI 키가 필요합니다. 잠시 후 다시 시도해 주세요."
-        );
-        return;
-      }
-      saveCurationAndApply(prompt, await localCuration(prompt, "local"));
+      pushGeminiKeyMissingFailure();
       return;
     }
 
-    await tryGeminiCurationWithFallback(prompt, key, complex);
+    try {
+      const result = await geminiCuration(prompt, key);
+      saveCurationAndApply(prompt, result);
+    } catch (e) {
+      handleCurationFailure(e, { requireAi: complex });
+    }
   } finally {
     state.chatTyping = false;
     setAgentBusy(false);
@@ -3591,43 +3700,53 @@ function legHtml(leg) {
 }
 
 function routeEndpointInfo(steps, meta = {}) {
-  const points = routePointsFromSteps(steps);
+  const fullSteps = steps?.length ? steps : state.steps;
+  const points = routePointsFromSteps(fullSteps);
   if (!points.length) return null;
   const intent = meta.tripIntent || {};
-  const originStep = steps.find((s) => s.kind === "origin");
-  const fromName = originStep?.spot?.name || intent.origin || points[0]?.name || "";
-  const fromRegion = originStep?.spot?.region || "";
-  const last = points[points.length - 1];
+  const originStep = fullSteps.find((s) => s.kind === "origin");
+
+  let fromName = "";
+  let fromRegion = "";
+  if (originStep) {
+    fromName = String(originStep.spot.name || "").replace(/^출발\s*·\s*/, "");
+    fromRegion = originStep.spot.region || "";
+  } else if (intent.origin) {
+    fromName = String(intent.origin).trim();
+    const hit = matchTransitOrigin(fromName);
+    fromRegion = hit?.label || "";
+  }
+
+  const destSteps = destinationSteps(fullSteps);
+  const lastDest = destSteps[destSteps.length - 1];
   const destRegion =
     intent.destination ||
     intent.mainDestination ||
     regionsInPrompt(state.query || "")[0] ||
-    last?.spot?.region ||
+    lastDest?.spot?.region ||
     "";
-  const toName = last?.name || "";
-  const toRegion = last?.spot?.region || destRegion || "";
+  const toName = lastDest?.spot?.name || destRegion || points[points.length - 1]?.name || "";
+  const toRegion = lastDest?.spot?.region || destRegion || "";
+
   return { fromName, fromRegion, toName, toRegion, destRegion };
 }
 
 function renderRouteSummary(legs) {
-  const sum = routeSummary(state.steps, legs);
+  const viewSteps = plannerSteps();
+  const sum = routeSummary(viewSteps, legs);
   const ep = routeEndpointInfo(state.steps, state.meta);
+  const showFrom = ep?.fromName || ep?.fromRegion;
+  const showTo = ep?.toName || ep?.toRegion || ep?.destRegion;
   const epHtml =
-    ep && (ep.fromName || ep.toName || ep.destRegion)
+    ep && (showFrom || showTo)
       ? `<div class="route-endpoints">` +
-        (ep.fromName
-          ? `<span><b>출발</b> ${esc(ep.fromName)}${ep.fromRegion ? ` · ${esc(ep.fromRegion)}` : ""}</span>`
+        (showFrom
+          ? `<span><b>출발</b> ${esc(ep.fromName || ep.fromRegion)}${ep.fromRegion && ep.fromName !== ep.fromRegion ? ` · ${esc(ep.fromRegion)}` : ""}</span>`
           : "") +
-        (ep.fromName && (ep.toName || ep.destRegion)
-          ? `<span class="route-endpoints-arrow" aria-hidden="true">→</span>`
+        (showFrom && showTo ? `<span class="route-endpoints-arrow" aria-hidden="true">→</span>` : "") +
+        (showTo
+          ? `<span><b>도착</b> ${esc(ep.toName || ep.destRegion)}${ep.toRegion && ep.toName && ep.toRegion !== ep.toName ? ` · ${esc(ep.toRegion)}` : ep.toRegion && !ep.toName ? ` · ${esc(ep.toRegion)}` : ""}</span>`
           : "") +
-        (ep.toName
-          ? `<span><b>도착</b> ${esc(ep.toName)}${ep.toRegion ? ` · ${esc(ep.toRegion)}` : ""}</span>`
-          : !ep.fromName && ep.destRegion
-            ? `<span><b>목적지</b> ${esc(ep.destRegion)}</span>`
-            : ep.destRegion && ep.toRegion !== ep.destRegion
-              ? `<span><b>목적지</b> ${esc(ep.destRegion)}</span>`
-              : "") +
         `</div>`
       : "";
   $("route-summary").innerHTML =
@@ -3642,25 +3761,35 @@ function renderRouteSummary(legs) {
     $("chip-route").textContent = "🧭 경로 계산 중…";
     return;
   }
+  const routeGeom = activeRouteGeometry();
   const routeTag =
-    state.kakaoRoute.source === "kakao"
+    routeGeom.source === "kakao"
       ? "🧭 카카오"
-      : state.kakaoRoute.source === "osrm"
+      : routeGeom.source === "osrm"
         ? "🗺️ 도로 추정"
-        : state.kakaoRoute.source === "estimate"
+        : routeGeom.source === "estimate"
           ? "📏 직선 추정"
-          : "";
+          : state.kakaoRoute.source === "kakao"
+            ? "🧭 카카오"
+            : state.kakaoRoute.source === "osrm"
+              ? "🗺️ 도로 추정"
+              : state.kakaoRoute.source === "estimate"
+                ? "📏 직선 추정"
+                : "";
+  const hasLegs = legs.length > 0;
   const routeLabel = sum.transitMin > 0
     ? `🚆 ${fmtMin(sum.transitMin)}${routeTag ? ` + ${routeTag} ${fmtKm(sum.driveKm)}` : ""}`
     : routeTag
       ? `${routeTag} ${fmtKm(sum.driveKm)}`
       : sum.driveKm > 0
         ? `🚗 ${fmtKm(sum.driveKm)}`
-        : !state.kakaoRoute.loading &&
-            routePointsFromSteps(state.steps).length >= 2 &&
-            state.kakaoRoute.stepsKey === stepsRouteKey(state.steps)
-          ? "경로 계산 실패"
-          : "경로 —";
+        : !state.kakaoRoute.loading && hasLegs
+          ? "경로 추정"
+          : !state.kakaoRoute.loading &&
+              routePointsFromSteps(viewSteps).length >= 2 &&
+              state.kakaoRoute.stepsKey === stepsRouteKey(state.steps)
+            ? "경로 계산 실패"
+            : "경로 —";
   $("chip-route").textContent = `${routeLabel} · ${fmtMin(sum.totalMin)}`;
 }
 
@@ -3715,15 +3844,33 @@ function renderSpotDetail() {
     </div>
     <div class="spot-actions">
       <a class="primary" href="${spotMapUrl(s)}" target="_blank" rel="noopener">🧭 이 장소 열기</a>
-      <a href="${kakaoRouteUrl(state.steps)}" target="_blank" rel="noopener">전체 경로</a>
+      <a href="${kakaoRouteUrl(plannerSteps())}" target="_blank" rel="noopener">${state.activeDay ? `${state.activeDay}일차 경로` : "전체 경로"}</a>
     </div>`;
 }
 
+function legBetweenSteps(allSteps, legs, fromStep, toStep) {
+  const fi = allSteps.indexOf(fromStep);
+  const ti = allSteps.indexOf(toStep);
+  if (fi >= 0 && ti === fi + 1 && legs[fi]) return legs[fi];
+  const note = toStep.move_to_next || fromStep.move_to_next;
+  if (!note) return null;
+  return { from: fromStep, to: toStep, note };
+}
+
 function renderCourses(legs) {
+  const visible = plannerSteps();
+  const fullLegs =
+    state.kakaoRoute.stepsKey === stepsRouteKey(state.steps) ? state.kakaoRoute.legs || [] : [];
   const parts = [];
-  state.steps.forEach((step, i) => {
+  visible.forEach((step, i) => {
     parts.push(courseCardHtml(step, step.order === state.focusOrder, state.meta.source));
-    if (legs[i]) parts.push(legHtml(legs[i]));
+    const next = visible[i + 1];
+    if (!next) return;
+    let leg = legs[i];
+    if (!leg || leg.from?.order !== step.order || leg.to?.order !== next.order) {
+      leg = legBetweenSteps(state.steps, fullLegs.length ? fullLegs : legs, step, next);
+    }
+    if (leg) parts.push(legHtml(leg));
   });
   $("courses").innerHTML = parts.join("");
   $("courses").querySelectorAll(".course-card").forEach((card) => {
@@ -3780,13 +3927,63 @@ function renderTripPlan(meta) {
     html += `</div>`;
   }
   if (days.length) {
-    html += `<div class="trip-block"><b>📅 일정</b><ul>`;
+    html += `<div class="trip-block"><b>📅 일정</b><ul class="trip-day-list">`;
     days.forEach((d) => {
-      html += `<li><b>Day ${d.day || ""}</b> ${esc(d.title || "")}${d.focus ? ` — ${esc(d.focus)}` : ""}</li>`;
+      const dayNum = d.day || "";
+      const active = state.activeDay === dayNum ? " trip-day-on" : "";
+      html +=
+        `<li class="trip-day-item${active}" data-day-jump="${dayNum}" role="button" tabindex="0">` +
+        `<b>${dayNum}일차</b> ${esc(d.title && d.title !== `${dayNum}일차` ? d.title : "")}` +
+        `${d.focus ? ` — ${esc(d.focus)}` : ""}</li>`;
     });
     html += `</ul></div>`;
   }
   el.innerHTML = html;
+  el.querySelectorAll("[data-day-jump]").forEach((row) => {
+    const go = () => {
+      const n = Number(row.dataset.dayJump);
+      if (n > 0 && collectTripDays(state.steps, days).includes(n)) switchDayTab(n);
+    };
+    row.addEventListener("click", go);
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        go();
+      }
+    });
+  });
+}
+
+function renderDayTabs() {
+  const host = $("day-tabs");
+  if (!host) return;
+  const days = collectTripDays(state.steps, state.meta.dayPlans || []);
+  if (days.length <= 1) {
+    host.innerHTML = "";
+    host.classList.add("hidden");
+    return;
+  }
+  host.classList.remove("hidden");
+  const plansByDay = Object.fromEntries((state.meta.dayPlans || []).map((d) => [d.day, d]));
+  host.innerHTML = days
+    .map((day) => {
+      const plan = plansByDay[day];
+      const focus = plan?.focus ? String(plan.focus) : "";
+      const sub =
+        focus.length > 36
+          ? `<span class="day-tab-sub">${esc(focus.slice(0, 36))}…</span>`
+          : focus
+            ? `<span class="day-tab-sub">${esc(focus)}</span>`
+            : "";
+      return (
+        `<button type="button" class="day-tab${day === state.activeDay ? " on" : ""}" data-day="${day}">` +
+        `${day}일차${sub}</button>`
+      );
+    })
+    .join("");
+  host.querySelectorAll("[data-day]").forEach((btn) => {
+    btn.addEventListener("click", () => switchDayTab(Number(btn.dataset.day)));
+  });
 }
 
 function renderCourseOptionTabs() {
@@ -3815,24 +4012,30 @@ function renderCourseOptionTabs() {
 function renderPlanner() {
   $("btn-save-trip")?.classList.remove("hidden");
   mapNote("");
-  const { meta, steps, query } = state;
+  const { meta, query } = state;
+  state.meta.dayPlans = ensureDayPlans(meta, state.steps);
+  syncActiveDayForSteps(state.steps, state.meta.dayPlans);
+  const viewSteps = plannerSteps();
   $("plan-title").textContent = meta.title || "맞춤 여행 코스";
   $("plan-summary").textContent = meta.summary || "";
   $("plan-query").textContent = query ? `🔍 ${query}` : "";
   $("chip-duration").textContent = `⏱ ${meta.duration || meta.tripIntent?.duration || "당일 코스"}`;
   $("chip-source").textContent = sourceLabel(meta.source);
+  const dayLabel = state.activeDay ? ` · ${state.activeDay}일차` : "";
   $("chip-stops").textContent =
-    `${destinationSteps(steps).length}곳` + (steps.some((s) => s.kind === "origin") ? " + 출발" : "");
+    `${destinationSteps(viewSteps).length}곳${dayLabel}` +
+    (viewSteps.some((s) => s.kind === "origin") ? " + 출발" : "");
   renderCourseOptionTabs();
-  const legs = getRouteLegs(steps);
+  renderDayTabs();
+  const legs = getRouteLegs(viewSteps);
   renderTripPlan(meta);
   renderRouteSummary(legs);
   renderCourses(legs);
-  $("kakao-link").href = kakaoRouteUrl(steps);
+  $("kakao-link").href = kakaoRouteUrl(viewSteps);
   updateMapChrome();
   renderSpotDetail();
   renderMap();
-  refreshRouteForSteps(steps).catch((e) => console.warn("refreshRouteForSteps:", e));
+  refreshRouteForSteps().catch((e) => console.warn("refreshRouteForSteps:", e));
 }
 
 function renderPlannerEmpty() {
@@ -3908,10 +4111,11 @@ function centerOf(steps) {
 function drawMapRoutes(mapEngine, map, steps) {
   const origin = steps.find((s) => s.kind === "origin");
   const destSteps = destinationSteps(steps);
-  const kakaoPath = state.kakaoRoute.path || [];
+  const routeGeom = activeRouteGeometry();
+  const kakaoPath = routeGeom.path || [];
   const useRoadPath =
     kakaoPath.length >= 2 &&
-    (state.kakaoRoute.source === "kakao" || state.kakaoRoute.source === "osrm");
+    (routeGeom.source === "kakao" || routeGeom.source === "osrm");
 
   if (mapEngine === "kakao") {
     if (useRoadPath) {
@@ -4075,7 +4279,8 @@ function relayoutKakaoMap(map) {
 function renderKakao() {
   const el = $("map");
   el.innerHTML = "";
-  const [clat, clng] = centerOf(state.steps);
+  const mapSteps = plannerSteps();
+  const [clat, clng] = centerOf(mapSteps);
   const map = new kakao.maps.Map(el, { center: new kakao.maps.LatLng(clat, clng), level: 8 });
   state.map = map;
   map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.LEFT);
@@ -4084,7 +4289,7 @@ function renderKakao() {
   let openIw = null;
   let focusStep = null;
 
-  state.steps.forEach((step) => {
+  mapSteps.forEach((step) => {
     const pos = new kakao.maps.LatLng(step.spot.lat, step.spot.lng);
     bounds.extend(pos);
     const focused = step.order === state.focusOrder;
@@ -4107,7 +4312,7 @@ function renderKakao() {
     if (focused) { iw.open(map); openIw = iw; }
   });
 
-  drawMapRoutes("kakao", map, state.steps);
+  drawMapRoutes("kakao", map, mapSteps);
 
   if (focusStep) {
     map.setCenter(new kakao.maps.LatLng(focusStep.spot.lat, focusStep.spot.lng));
@@ -4122,7 +4327,8 @@ function renderLeaflet() {
   const el = $("map");
   if (state.map) { state.map.remove(); state.map = null; }
   el.innerHTML = "";
-  const [clat, clng] = centerOf(state.steps);
+  const mapSteps = plannerSteps();
+  const [clat, clng] = centerOf(mapSteps);
   const map = L.map(el).setView([clat, clng], 9);
   state.map = map;
   L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
@@ -4131,7 +4337,7 @@ function renderLeaflet() {
 
   const latlngs = [];
   let focusLl = null;
-  state.steps.forEach((step) => {
+  mapSteps.forEach((step) => {
     const ll = [step.spot.lat, step.spot.lng];
     latlngs.push(ll);
     const focused = step.order === state.focusOrder;
@@ -4142,7 +4348,7 @@ function renderLeaflet() {
     const m = L.marker(ll, { icon }).addTo(map).bindPopup(popupHtml(step));
     if (focused) { focusLl = ll; m.openPopup(); }
   });
-  drawMapRoutes("leaflet", map, state.steps);
+  drawMapRoutes("leaflet", map, mapSteps);
   if (focusLl) map.setView(focusLl, 12);
   else if (latlngs.length > 1) map.fitBounds(latlngs, { padding: [44, 44] });
   setTimeout(() => map.invalidateSize(), 150);
@@ -5764,7 +5970,10 @@ async function openSavedTrip(id) {
     return;
   }
   state.query = trip.query || "";
-  state.meta = trip.meta || {};
+  state.meta = {
+    ...(trip.meta || {}),
+    tripIntent: enrichTripIntent(trip.meta?.tripIntent || {}, trip.query || ""),
+  };
   state.steps = trip.steps || [];
   state.focusOrder = trip.focusOrder || 1;
   resetMapState();

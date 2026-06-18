@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=7" />
+  <link rel="stylesheet" href="style.css?v=8" />
   <link rel="icon" type="image/png" href="assets/mascot-icon.png" />
   <link rel="apple-touch-icon" href="assets/mascot-icon.png" />
 </head>
@@ -251,12 +251,13 @@
             </div>
           </div>
           <div class="course-option-tabs hidden" id="course-option-tabs" aria-label="코스 안 선택"></div>
+          <div class="day-tabs hidden" id="day-tabs" aria-label="일차 선택"></div>
           <div class="route-summary-block" id="route-summary"></div>
           <div class="trip-plan hidden" id="trip-plan"></div>
           <div class="split">
             <div>
               <p class="panel-lbl">일정 타임라인</p>
-              <p class="panel-hint">카드를 탭하면 지도·상세 정보가 갱신됩니다</p>
+              <p class="panel-hint">일차 탭으로 나눠 보고, 카드를 탭하면 지도·상세가 갱신됩니다</p>
               <div class="courses" id="courses"></div>
               <button class="btn-secondary" data-nav="explore">✦ AI 여행 시작하기</button>
             </div>
@@ -388,6 +389,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="data.js?v=5"></script>
   <script src="icons.js?v=1"></script>
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>
