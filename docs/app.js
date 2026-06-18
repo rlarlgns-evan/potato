@@ -2361,10 +2361,14 @@ function normalizeGeminiRequestBody(body) {
   return out;
 }
 
-function geminiModelId() {
-  const raw = typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "gemini-3.5-flash";
-  const model = String(raw || "gemini-3.5-flash").trim();
-  return model || "gemini-3.5-flash";
+const GEMINI_MODEL_FALLBACK_ORDER = ["gemini-3.5-flash", "gemini-3.1-flash", "gemini-2.5-flash"];
+
+function geminiModelCandidates() {
+  const preferred = String(typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "").trim();
+  const ordered = preferred
+    ? [preferred, ...GEMINI_MODEL_FALLBACK_ORDER]
+    : [...GEMINI_MODEL_FALLBACK_ORDER];
+  return [...new Set(ordered.filter(Boolean))];
 }
 
 function geminiRetryDelayMs(attempt, retryAfterSec = 0) {
@@ -2385,9 +2389,14 @@ function geminiOutputTokenBudget(twoTrack, tripDays) {
   return 2048;
 }
 
-async function callGemini(body, key, retries = 4, maxOutputTokens = 4096) {
-  const normalized = normalizeGeminiRequestBody(body);
-  const model = geminiModelId();
+function canFallbackToNextGeminiModel(e) {
+  const status = Number(e?.status) || 0;
+  if (!status) return true;
+  if ([400, 401, 403].includes(status)) return false;
+  return true;
+}
+
+async function callGeminiWithModel(model, normalized, key, retries, maxOutputTokens) {
   const maxAttempts = Math.max(retries + 3, 6);
   let lastErr = null;
   let lastStatus = 0;
@@ -2471,6 +2480,46 @@ async function callGemini(body, key, retries = 4, maxOutputTokens = 4096) {
   err.attemptsMade = maxAttempts;
   err.maxAttempts = maxAttempts;
   err.retryExhausted = true;
+  throw err;
+}
+
+async function callGemini(body, key, retries = 4, maxOutputTokens = 4096) {
+  const normalized = normalizeGeminiRequestBody(body);
+  const models = geminiModelCandidates();
+  let lastErr = null;
+  let totalAttempts = 0;
+  let totalMaxAttempts = 0;
+
+  for (let idx = 0; idx < models.length; idx++) {
+    const model = models[idx];
+    try {
+      const result = await callGeminiWithModel(model, normalized, key, retries, maxOutputTokens);
+      if (idx > 0) {
+        console.warn(`[Gemini] fallback model used: ${model}`);
+      }
+      return result;
+    } catch (e) {
+      lastErr = e;
+      totalAttempts += Number(e?.attemptsMade || 0);
+      totalMaxAttempts += Number(e?.maxAttempts || 0);
+      const hasNext = idx < models.length - 1;
+      if (!hasNext || !canFallbackToNextGeminiModel(e)) {
+        e.attemptsMade = totalAttempts || e.attemptsMade;
+        e.maxAttempts = totalMaxAttempts || e.maxAttempts;
+        e.triedModels = models.slice(0, idx + 1);
+        throw e;
+      }
+      console.warn(
+        `[Gemini] ${model} failed (${e.status || "network"}), fallback to ${models[idx + 1]}`
+      );
+    }
+  }
+
+  const err = lastErr || new Error("Gemini call failed");
+  err.attemptsMade = totalAttempts || err.attemptsMade;
+  err.maxAttempts = totalMaxAttempts || err.maxAttempts;
+  err.retryExhausted = true;
+  err.triedModels = models;
   throw err;
 }
 
