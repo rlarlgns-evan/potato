@@ -49,6 +49,9 @@ jobs:
           KAKAO="${KAKAO_JS_KEY#Value: }"
           KAKAO="${KAKAO#value: }"
           KAKAO="$(printf '%s' "$KAKAO" | sed 's/^[Vv][Aa][Ll][Uu][Ee]:[[:space:]]*//')"
+          KAKAO_REST="${KAKAO_REST_KEY#Value: }"
+          KAKAO_REST="${KAKAO_REST#value: }"
+          KAKAO_REST="$(printf '%s' "$KAKAO_REST" | sed 's/^[Vv][Aa][Ll][Uu][Ee]:[[:space:]]*//')"
           GEMINI="${GOOGLE_API_KEY#Value: }"
           GEMINI="${GEMINI#value: }"
           GEMINI="$(printf '%s' "$GEMINI" | sed 's/^[Vv][Aa][Ll][Uu][Ee]:[[:space:]]*//')"
@@ -60,12 +63,14 @@ jobs:
           SB_KEY="$(printf '%s' "$SB_KEY" | sed 's/^[Vv][Aa][Ll][Uu][Ee]:[[:space:]]*//')"
           {
             printf 'window.KAKAO_JS_KEY = "%s";\n' "$KAKAO"
+            printf 'window.KAKAO_REST_KEY = "%s";\n' "$KAKAO_REST"
             printf 'window.GEMINI_API_KEY = "%s";\n' "$GEMINI"
             printf 'window.SUPABASE_URL = "%s";\n' "$SB_URL"
             printf 'window.SUPABASE_ANON_KEY = "%s";\n' "$SB_KEY"
           } > docs/config.js
         env:
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
+          KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}

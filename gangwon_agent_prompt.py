@@ -152,11 +152,50 @@ KTO_FALLBACK_INTRO = (
     "데이터 기반 방문자 수가 높은 다른 강원도 지역을 추천해 드릴까요?"
 )
 
+GANGWON_AGENT_ROLE_ROUTING = """# ROLE
+You are "Gangwon-do Tourism Expert AI" — a **copywriter**, NOT a route planner.
+**ALWAYS reply in polite Korean (해요체/하십시오체).**
+
+# INPUT (IMMUTABLE)
+1. **ROUTING DATA** — Kakao Mobility pre-calculated driving times/distances between stops. NEVER invent or estimate travel duration/distance.
+2. **<kto_data>** — KTO spot themes, visitor counts, descriptions.
+
+# STRICT DIRECTIVES
+- Do NOT reorder stops. Do NOT add/remove stops. spot_name MUST match ROUTING DATA exactly.
+- When mentioning travel between stops, quote ONLY the driving time/distance from ROUTING DATA legs.
+- Use <kto_data> for themes, visitor stats, and recommendation reasons only.
+- OUT-OF-BOUNDS (non-Gangwon): set fallback_triggered true, stop_narratives [].
+"""
+
+KTO_OUTPUT_FORMAT_ROUTING = """# FALLBACK PROTOCOL
+If <kto_data> is empty for the requested region: fallback_triggered true, introduction = KTO fallback message, stop_narratives [].
+
+# OUTPUT FORMAT (STRICT JSON — raw JSON only, no markdown fences)
+{
+  "introduction": "Engaging regional intro using <kto_data> themes/visitor data. Mention total driving time from ROUTING DATA.",
+  "stop_narratives": [
+    {
+      "spot_name": "EXACT name from ROUTING DATA stop order",
+      "why": "Why visit — KTO theme/visitor count. Optional: reference drive time to NEXT stop from ROUTING DATA leg."
+    }
+  ],
+  "map_tip": "One practical map tip (optional)",
+  "fallback_triggered": false
+}
+
+# RULES
+- stop_narratives length MUST equal ROUTING DATA stop count.
+- spot_name MUST match ROUTING DATA character-for-character.
+- Do NOT output itinerary[] — route order is fixed by ROUTING DATA.
+- Do NOT guess minutes or km — use ROUTING DATA legs only.
+"""
+
 
 def _apply_prompt_config() -> None:
     """Load SSOT prompts from data/prompts.json when present."""
     global GANGWON_AGENT_ROLE_TWO_TRACK, KTO_TWO_TRACK_OUTPUT_FORMAT
     global GANGWON_AGENT_ROLE, GANGWON_AGENT_ROLE_SINGLE, KTO_OUTPUT_FORMAT, KTO_SINGLE_OUTPUT_FORMAT
+    global GANGWON_AGENT_ROLE_ROUTING, KTO_OUTPUT_FORMAT_ROUTING
     global KTO_FALLBACK_INTRO, MAIN_DESTINATION_REGIONS, POPULATION_DECLINE_REGIONS, TRANSIT_BY_DESTINATION
     path = DATA / "prompts.json"
     if not path.exists():
@@ -170,6 +209,8 @@ def _apply_prompt_config() -> None:
         "KTO_TWO_TRACK_OUTPUT_FORMAT",
         "GANGWON_AGENT_ROLE",
         "KTO_OUTPUT_FORMAT",
+        "GANGWON_AGENT_ROLE_ROUTING",
+        "KTO_OUTPUT_FORMAT_ROUTING",
         "KTO_FALLBACK_INTRO",
     ):
         if cfg.get(key):
@@ -819,6 +860,7 @@ def build_agent_system_prompt(
     for_curation: bool = False,
     curation_schema: str = "",
     user_message: str = "",
+    routing_context: str = "",
 ) -> str:
     two_track = for_curation and should_use_two_track_workflow(user_message)
     if two_track:
@@ -837,6 +879,18 @@ def build_agent_system_prompt(
             parts.append(duration)
         if theme:
             parts.append(theme)
+    elif for_curation and routing_context:
+        kto_xml = build_kto_data_xml(user_message)
+        parts = [
+            GANGWON_AGENT_ROLE_ROUTING,
+            routing_context,
+            kto_xml,
+            KTO_OUTPUT_FORMAT_ROUTING,
+        ]
+        if user_message.strip():
+            focus = region_focus_prompt_block(user_message)
+            if focus:
+                parts.append(focus)
     else:
         kto_xml = build_kto_data_xml(user_message)
         parts = [GANGWON_AGENT_ROLE, kto_xml, KTO_OUTPUT_FORMAT]

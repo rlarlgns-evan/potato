@@ -15,6 +15,8 @@ from gangwon_agent_prompt import (
 )
 from services.curation.formatters import format_itinerary_message
 from services.curation.matching import spots_from_names, steps_for_spots
+from services.routing.kakao import RoutePlan
+from services.routing.planner import plan_route_for_message
 
 
 def finalize_kto_json_curation(
@@ -81,6 +83,99 @@ def finalize_kto_json_curation(
     return {
         "itinerary_title": title,
         "summary": intro,
+        "message": format_itinerary_message(legacy, curated),
+        "curated_spots": curated,
+        "route_steps": route_steps,
+        "map_tip": legacy["map_tip"],
+        "total_duration": legacy["total_duration"],
+        "trip_intent": {},
+        "transit_plan": {},
+        "accommodation": {},
+        "day_plans": [],
+        "source": "",
+    }
+
+
+def finalize_kto_routing_curation(
+    parsed: dict[str, Any],
+    spots: list[dict[str, Any]],
+    user_message: str,
+    route_plan: RoutePlan | None = None,
+) -> dict[str, Any]:
+    regions = regions_in_message(user_message)
+    intro = str(parsed.get("introduction") or KTO_FALLBACK_INTRO)
+    title = f"{regions[0]} AI 추천 코스" if regions else "강원도 AI 추천 코스"
+
+    if parsed.get("fallback_triggered"):
+        curated = pick_regional_spots(spots, regions, limit=3) if regions else pick_province_wide_spots(spots, limit=3)
+        route_steps = steps_for_spots(curated, parsed) if curated else []
+        return {
+            "itinerary_title": f"{regions[0]} 안내" if regions else "강원도 안내",
+            "summary": intro,
+            "message": format_itinerary_message({"itinerary_title": title, "summary": intro}, curated) if curated else intro,
+            "curated_spots": curated,
+            "route_steps": route_steps,
+            "map_tip": parsed.get("map_tip") or ("지도에서 번호 순으로 동선을 확인하세요." if curated else ""),
+            "total_duration": "반나절~당일" if curated else "",
+            "trip_intent": {},
+            "transit_plan": {},
+            "accommodation": {},
+            "day_plans": [],
+            "source": "",
+        }
+
+    if not route_plan:
+        route_plan = plan_route_for_message(user_message, spots)
+
+    why_by_name = {
+        str(item.get("spot_name") or ""): str(item.get("why") or "")
+        for item in (parsed.get("stop_narratives") or [])
+        if item.get("spot_name")
+    }
+
+    curated: list[dict[str, Any]] = []
+    route_steps: list[dict[str, Any]] = []
+    if route_plan and route_plan.spots:
+        for idx, spot in enumerate(route_plan.spots, start=1):
+            curated.append(spot)
+            leg = route_plan.legs[idx - 1] if idx - 1 < len(route_plan.legs) else None
+            route_steps.append(
+                {
+                    "order": idx,
+                    "day": 1,
+                    "spot_name": spot["name"],
+                    "region": spot.get("region", ""),
+                    "theme": spot.get("theme", ""),
+                    "stay_minutes": spot.get("stay_min") or 60,
+                    "why": why_by_name.get(spot["name"]) or spot.get("description", ""),
+                    "move_to_next": leg.summary if leg else "",
+                }
+            )
+    else:
+        names = [str(n.get("spot_name") or "") for n in (parsed.get("stop_narratives") or []) if n.get("spot_name")]
+        curated = spots_from_names(spots, names, regions=regions or None)
+        route_steps = steps_for_spots(curated, parsed)
+
+    drive_note = ""
+    if route_plan and route_plan.total_duration_s:
+        total_km = route_plan.total_distance_m / 1000
+        total_min = max(1, round(route_plan.total_duration_s / 60))
+        drive_note = f"총 {total_km:.1f}km · 차량 약 {total_min}분 (카카오)"
+
+    summary = intro
+    if drive_note:
+        summary = f"{intro}\n{drive_note}".strip()
+
+    legacy = {
+        "itinerary_title": title,
+        "summary": summary,
+        "route_steps": route_steps,
+        "total_duration": "반나절~당일" if route_steps else "",
+        "map_tip": parsed.get("map_tip") or "지도에서 번호 순으로 동선을 확인하세요.",
+    }
+    return {
+        "itinerary_title": title,
+        "summary": summary,
         "message": format_itinerary_message(legacy, curated),
         "curated_spots": curated,
         "route_steps": route_steps,
@@ -250,6 +345,17 @@ def finalize_two_track_curation(
 def finalize_curation(parsed: dict[str, Any], spots: list[dict[str, Any]], user_message: str = "") -> dict[str, Any]:
     if parsed.get("option_1") is not None or parsed.get("option_2") is not None:
         return finalize_two_track_curation(parsed, spots, user_message)
+
+    route_plan = parsed.get("_route_plan")
+    if isinstance(route_plan, dict):
+        route_plan = None
+
+    if parsed.get("stop_narratives") is not None or (
+        route_plan is not None
+        and "itinerary" not in parsed
+        and parsed.get("option_1") is None
+    ):
+        return finalize_kto_routing_curation(parsed, spots, user_message, route_plan)
 
     if (
         parsed.get("fallback_triggered") is not None

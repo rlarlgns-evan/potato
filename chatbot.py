@@ -18,9 +18,11 @@ from gangwon_agent_prompt import (
     pick_regional_spots,
     region_empty_fallback_message,
     regions_in_message,
+    should_use_two_track_workflow,
 )
 from services.curation import finalize_curation, format_itinerary_message, spots_from_names
 from services.curation.matching import steps_for_spots
+from services.routing import plan_route_for_message, routing_context_for_gemini
 from trip_intent import attach_origin_step, build_trip_hints, detect_themes, needs_ai_curation
 
 logger = logging.getLogger(__name__)
@@ -79,6 +81,7 @@ def _build_system_prompt(
     spots: list[dict[str, Any]],
     for_curation: bool = False,
     user_message: str = "",
+    routing_context: str = "",
 ) -> str:
     catalog = "" if for_curation else _compact_spot_catalog(spots, user_message)
     hints = build_trip_hints(user_message) if user_message.strip() else ""
@@ -88,6 +91,7 @@ def _build_system_prompt(
         for_curation=for_curation,
         curation_schema=CURATION_SCHEMA if for_curation else "",
         user_message=user_message,
+        routing_context=routing_context,
     )
 
 
@@ -314,7 +318,25 @@ def _call_google_curation(
 
         genai.configure(api_key=api_key)
         model_name = os.getenv("GOOGLE_MODEL", "gemini-3.5-flash")
-        sys_prompt = _build_system_prompt(spots, for_curation=True, user_message=user_message)
+
+        routing_context = ""
+        route_plan = None
+        if not should_use_two_track_workflow(user_message):
+            route_plan = plan_route_for_message(user_message, spots)
+            if route_plan:
+                routing_context = routing_context_for_gemini(route_plan)
+            else:
+                routing_context = (
+                    "# ROUTING DATA\n"
+                    "Kakao Directions unavailable. Write copy only; do not invent driving times.\n"
+                )
+
+        sys_prompt = _build_system_prompt(
+            spots,
+            for_curation=True,
+            user_message=user_message,
+            routing_context=routing_context,
+        )
         model = genai.GenerativeModel(model_name, system_instruction=sys_prompt)
         prompt_parts = [user_message[:MAX_USER_CHARS]]
         response = model.generate_content(
@@ -325,7 +347,10 @@ def _call_google_curation(
                 max_output_tokens=4096,
             ),
         )
-        return _parse_curation_json((response.text or "").strip())
+        parsed = _parse_curation_json((response.text or "").strip())
+        if parsed is not None and route_plan is not None:
+            parsed["_route_plan"] = route_plan
+        return parsed
     except Exception as exc:
         logger.warning("Gemini curation failed: %s", exc)
         return None
@@ -409,7 +434,20 @@ def curate_trip(
             return _ai_required_failure(user_message)
         return _maybe_prepend_region_intro(user_message, spots, _fallback_curation(user_message, spots, source="local_api_fail"))
 
+    route_plan = parsed.pop("_route_plan", None)
     result = finalize_curation(parsed, spots, user_message)
+    if route_plan and result.get("route_steps") and not any(
+        s.get("move_to_next") for s in result["route_steps"]
+    ):
+        for i, leg in enumerate(route_plan.legs):
+            if i < len(result["route_steps"]):
+                result["route_steps"][i]["move_to_next"] = leg.summary
+        total_km = route_plan.total_distance_m / 1000
+        total_min = max(1, round(route_plan.total_duration_s / 60))
+        drive_note = f"총 {total_km:.1f}km · 차량 약 {total_min}분 (카카오)"
+        summary = result.get("summary") or ""
+        if drive_note not in summary:
+            result["summary"] = f"{summary}\n{drive_note}".strip() if summary else drive_note
     if not result["curated_spots"]:
         if complex:
             return _ai_required_failure(user_message, "AI 응답에서 장소를 찾지 못했습니다.")

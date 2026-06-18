@@ -35,6 +35,8 @@ const GANGWON_AGENT_ROLE_TWO_TRACK = P.GANGWON_AGENT_ROLE_TWO_TRACK || "";
 const KTO_TWO_TRACK_OUTPUT_FORMAT = P.KTO_TWO_TRACK_OUTPUT_FORMAT || "";
 const GANGWON_AGENT_ROLE = P.GANGWON_AGENT_ROLE || "";
 const KTO_OUTPUT_FORMAT = P.KTO_OUTPUT_FORMAT || "";
+const GANGWON_AGENT_ROLE_ROUTING = P.GANGWON_AGENT_ROLE_ROUTING || GANGWON_AGENT_ROLE;
+const KTO_OUTPUT_FORMAT_ROUTING = P.KTO_OUTPUT_FORMAT_ROUTING || KTO_OUTPUT_FORMAT;
 const KTO_FALLBACK_INTRO =
   P.KTO_FALLBACK_INTRO ||
   "현재 KTO API 상에 요청하신 지역의 상세 정보가 부족합니다. 데이터 기반 방문자 수가 높은 다른 강원도 지역을 추천해 드릴까요?";
@@ -760,6 +762,7 @@ const state = {
   communityFilter: "all",
   spotsFilter: "all",
   pendingView: null,
+  kakaoRoute: { path: [], legs: null, stepsKey: "", source: "", loading: false },
 };
 
 const VIEW_IDS = new Set(["explore", "spots", "community", "weather", "festivals", "about", "planner", "trips"]);
@@ -1372,19 +1375,7 @@ function renderFestivals() {
   initIcons();
 }
 
-/* ==================== Route math ==================== */
-function haversineKm(a, b) {
-  const R = 6371;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const lat1 = (a.lat * Math.PI) / 180;
-  const lat2 = (b.lat * Math.PI) / 180;
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-}
-
+/* ==================== Kakao routing (SSOT — no straight-line math) ==================== */
 function parseDurationMin(text) {
   if (!text) return 0;
   const t = String(text).toLowerCase().replace(/\s+/g, " ");
@@ -1401,29 +1392,6 @@ function parseDurationMin(text) {
   return 0;
 }
 
-function estDriveMin(km) {
-  if (km <= 0) return 0;
-  if (km < 2) return 15;
-  if (km < 10) return Math.round(12 + km * 2.8);
-  const speed = km > 80 ? 58 : km > 40 ? 50 : 45;
-  return Math.round((km / speed) * 60);
-}
-
-function estTransitMin(km, note) {
-  const parsed = parseDurationMin(note);
-  if (parsed > 0) return parsed;
-  if (km >= 150) return 150;
-  if (km >= 100) return 120;
-  if (km >= 60) return 90;
-  return estDriveMin(km);
-}
-
-function legDriveMin(km, note, isTransit) {
-  const parsed = parseDurationMin(note);
-  if (parsed > 0) return parsed;
-  return isTransit ? estTransitMin(km, note) : estDriveMin(km);
-}
-
 function fmtKm(km) {
   return km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(km < 10 ? 1 : 0)}km`;
 }
@@ -1435,47 +1403,224 @@ function fmtMin(m) {
   return r ? `${h}시간 ${r}분` : `${h}시간`;
 }
 
-function computeLegs(steps) {
+function stepsRouteKey(steps) {
+  return steps.map((s) => `${s.spot?.lat},${s.spot?.lng}`).join("|");
+}
+
+function routePointsFromSpots(spots) {
+  return spots
+    .filter((s) => Number.isFinite(s?.lat) && Number.isFinite(s?.lng))
+    .map((s) => ({ spot: s, lng: s.lng, lat: s.lat, name: s.name }));
+}
+
+function routePointsFromSteps(steps) {
+  return steps
+    .filter((s) => Number.isFinite(s.spot?.lat) && Number.isFinite(s.spot?.lng))
+    .map((s) => ({ step: s, lng: s.spot.lng, lat: s.spot.lat, name: s.spot.name }));
+}
+
+function kakaoRestKey() {
+  const raw =
+    typeof window !== "undefined" ? window.KAKAO_REST_KEY || window.KAKAO_NAVI_KEY || "" : "";
+  return normalizeKakaoKey(raw);
+}
+
+async function fetchKakaoDirectionsRaw(points) {
+  const key = kakaoRestKey();
+  if (!key || points.length < 2) return null;
+  if (points.length > 7) {
+    console.warn("[Kakao Directions] 최대 7개 정거장(경유 5)");
+    return null;
+  }
+  const origin = points[0];
+  const destination = points[points.length - 1];
+  const middle = points.slice(1, -1);
+  const params = new URLSearchParams({
+    origin: `${origin.lng},${origin.lat}`,
+    destination: `${destination.lng},${destination.lat}`,
+    priority: "RECOMMEND",
+  });
+  if (middle.length) {
+    params.set("waypoints", middle.map((p) => `${p.lng},${p.lat}`).join("|"));
+  }
+  try {
+    const r = await fetch(`https://apis-navi.kakaomobility.com/v1/directions?${params}`, {
+      headers: { Authorization: `KakaoAK ${key}` },
+    });
+    if (!r.ok) {
+      const detail = await r.text().catch(() => "");
+      console.warn("[Kakao Directions]", r.status, detail.slice(0, 200));
+      return null;
+    }
+    return r.json();
+  } catch (e) {
+    console.warn("[Kakao Directions] fetch failed — REST 키·CORS·모빌리티 API 확인", e);
+    return null;
+  }
+}
+
+function parseKakaoRoutePlan(spots, kakaoData) {
+  const route = kakaoData?.routes?.[0];
+  if (!route) return null;
+
+  const polyline = [];
+  for (const section of route.sections || []) {
+    for (const road of section.roads || []) {
+      const v = road.vertexes || [];
+      for (let i = 0; i + 1 < v.length; i += 2) {
+        polyline.push({ lng: v[i], lat: v[i + 1] });
+      }
+    }
+  }
+
   const legs = [];
-  const routeSteps = destinationSteps(steps);
-  for (let i = 0; i < routeSteps.length - 1; i++) {
-    const from = routeSteps[i].spot;
-    const to = routeSteps[i + 1].spot;
-    const km = haversineKm(from, to);
-    const note = routeSteps[i].move_to_next || "";
-    const driveMin = legDriveMin(km, note, false);
-    if (!note) {
-      routeSteps[i].move_to_next = `${to.name}까지 ${fmtKm(km)} · 차량 약 ${fmtMin(driveMin)}`;
-    }
+  for (let i = 0; i < spots.length - 1; i++) {
+    const sec = route.sections?.[i];
+    if (!sec) break;
+    const distM = sec.distance || 0;
+    const durS = sec.duration || 0;
+    const km = distM / 1000;
+    const driveMin = Math.max(1, Math.round(durS / 60));
     legs.push({
-      from: routeSteps[i],
-      to: routeSteps[i + 1],
-      km,
-      driveMin,
-      note: routeSteps[i].move_to_next,
+      from_name: spots[i].name,
+      to_name: spots[i + 1].name,
+      distance_km: km,
+      distance_m: distM,
+      duration_min: driveMin,
+      duration_s: durS,
+      summary: `${spots[i + 1].name}까지 ${fmtKm(km)} · 차량 약 ${fmtMin(driveMin)} (카카오)`,
     });
   }
-  const origin = steps.find((s) => s.kind === "origin");
-  if (origin && routeSteps.length) {
-    const outbound =
-      origin.move_to_next ||
-      state.meta?.transitPlan?.outbound ||
-      "";
-    const km = haversineKm(origin.spot, routeSteps[0].spot);
-    const driveMin = legDriveMin(km, outbound, true);
-    if (!origin.move_to_next) {
-      origin.move_to_next = outbound || `대중교통 · ${fmtKm(km)} · 약 ${fmtMin(driveMin)}`;
-    }
-    legs.unshift({
-      from: origin,
-      to: routeSteps[0],
-      km,
-      driveMin,
-      note: origin.move_to_next,
-      transit: true,
-    });
+
+  const summary = route.summary || {};
+  return {
+    spots,
+    legs,
+    polyline,
+    totals: {
+      km: (summary.distance || 0) / 1000,
+      min: Math.max(1, Math.round((summary.duration || 0) / 60)),
+      distance_m: summary.distance || 0,
+      duration_s: summary.duration || 0,
+    },
+    provider: "kakao",
+  };
+}
+
+async function buildKakaoRoutePlan(spots) {
+  const points = routePointsFromSpots(spots);
+  if (points.length < 2) return null;
+  const data = await fetchKakaoDirectionsRaw(points);
+  if (!data) return null;
+  return parseKakaoRoutePlan(
+    points.map((p) => p.spot),
+    data
+  );
+}
+
+function formatRoutingContextForGemini(plan) {
+  if (!plan?.legs?.length) {
+    return (
+      "# ROUTING DATA\n" +
+      "Kakao Directions unavailable. Write copy only; do not invent driving times.\n"
+    );
   }
-  return legs;
+  const lines = [
+    "# ROUTING DATA (Kakao Mobility — IMMUTABLE)",
+    "Pre-calculated driving times for Gangwon-do roads. Do NOT invent distance or duration.",
+    "",
+    `Total driving: ${fmtKm(plan.totals.km)}, ${fmtMin(plan.totals.min)}`,
+    "",
+    "Legs:",
+  ];
+  plan.legs.forEach((leg, i) => {
+    lines.push(
+      `${i + 1}. ${leg.from_name} -> ${leg.to_name}: ` +
+        `Driving time ${leg.duration_min} mins, Distance ${fmtKm(leg.distance_km)}`
+    );
+  });
+  lines.push("", "Fixed stop order (spot_name MUST match exactly):");
+  plan.spots.forEach((s, i) => {
+    lines.push(`  ${i + 1}. ${s.name}${s.region ? ` (${s.region})` : ""}`);
+  });
+  return lines.join("\n");
+}
+
+function legsFromRoutePlan(routePlan, steps) {
+  if (!routePlan?.legs?.length) return [];
+  const rows = routePointsFromSteps(steps);
+  return routePlan.legs
+    .map((leg, i) => {
+      const fromStep = rows[i]?.step;
+      const toStep = rows[i + 1]?.step;
+      if (!fromStep || !toStep) return null;
+      fromStep.move_to_next = leg.summary;
+      return {
+        from: fromStep,
+        to: toStep,
+        km: leg.distance_km,
+        driveMin: leg.duration_min,
+        note: leg.summary,
+        kakao: true,
+        transit: fromStep.kind === "origin",
+      };
+    })
+    .filter(Boolean);
+}
+
+function applyRoutePlanToState(routePlan, steps) {
+  if (!routePlan) {
+    resetKakaoRouteState();
+    return;
+  }
+  state.kakaoRoute = {
+    path: routePlan.polyline || [],
+    legs: legsFromRoutePlan(routePlan, steps),
+    stepsKey: stepsRouteKey(steps),
+    source: "kakao",
+    loading: false,
+  };
+}
+
+function resetKakaoRouteState() {
+  state.kakaoRoute = { path: [], legs: null, stepsKey: "", source: "", loading: false };
+}
+
+function getRouteLegs(steps) {
+  const key = stepsRouteKey(steps);
+  if (state.kakaoRoute.stepsKey === key && state.kakaoRoute.legs?.length) {
+    return state.kakaoRoute.legs;
+  }
+  return [];
+}
+
+function routeDurationLabel(totals) {
+  if (!totals?.min) return "";
+  return totals.min <= 300 ? "반나절 코스" : "당일 코스";
+}
+
+function buildStepsFromRoutePlan(routePlan, parsed, prompt) {
+  const regions = strictRegionsForCuration(prompt, parsed.introduction || "");
+  const whyByName = {};
+  for (const item of parsed.stop_narratives || parsed.itinerary || []) {
+    if (item.spot_name) whyByName[item.spot_name] = item.why || item.reason;
+  }
+  return routePlan.spots
+    .map((spot, i) => {
+      const resolved =
+        resolveSpotByName(spot.name, regions, { strict: true }) ||
+        (spot.lat != null ? spot : null);
+      if (!resolved) return null;
+      return {
+        order: i + 1,
+        day: 1,
+        spot: resolved,
+        stay: resolved.stay_min ?? 60,
+        why: whyByName[spot.name] || `${spot.name} — KTO 추천`,
+        move_to_next: routePlan.legs[i]?.summary || "",
+      };
+    })
+    .filter(Boolean);
 }
 
 function routeSummary(steps, legs) {
@@ -1983,8 +2128,14 @@ function buildStepsFromItinerary(itinerary, prompt, intro = "") {
   return steps;
 }
 
-function ensureCurationHasSteps(result, parsed, prompt) {
-  if (result.steps?.length) return result;
+function ensureCurationHasSteps(result, parsed, prompt, routePlan = null) {
+  if (result.steps?.length) {
+    if (routePlan) {
+      result.routePlan = routePlan;
+      result.duration = routeDurationLabel(routePlan.totals);
+    }
+    return result;
+  }
   const intro = parsed.introduction || result.summary || "";
   const inferredRegions = strictRegionsForCuration(prompt, intro);
 
@@ -1999,12 +2150,11 @@ function ensureCurationHasSteps(result, parsed, prompt) {
           title: result.title,
         });
       }
-      const legs = computeLegs(scoped);
-      const sum = routeSummary(scoped, legs);
       return {
         ...result,
         steps: scoped,
-        duration: sum.totalMin <= 300 ? "반나절 코스" : "당일 코스",
+        routePlan,
+        duration: routePlan ? routeDurationLabel(routePlan.totals) : "당일 코스",
         title: inferredRegions[0] ? `${inferredRegions[0]} AI 추천 코스` : result.title,
       };
     }
@@ -2029,14 +2179,13 @@ function ensureCurationHasSteps(result, parsed, prompt) {
     spot,
     stay: spot.stay_min ?? 60,
     why: `${spot.description}. ${spot.tip || ""}`.trim(),
-    move_to_next: "",
+    move_to_next: routePlan?.legs?.[i]?.summary || "",
   }));
-  const legs = computeLegs(steps);
-  const sum = routeSummary(steps, legs);
   return {
     ...result,
     steps,
-    duration: sum.totalMin <= 300 ? "반나절 코스" : "당일 코스",
+    routePlan,
+    duration: routePlan ? routeDurationLabel(routePlan.totals) : "당일 코스",
     title: inferredRegions[0] ? `${inferredRegions[0]} AI 추천 코스` : "강원도 AI 추천 코스",
   };
 }
@@ -2230,13 +2379,11 @@ function parseTwoTrackCuration(parsed, prompt) {
     "option_1";
   const active = courseOptions.find((o) => o.key === activeKey);
   const steps = active?.steps || [];
-  const legs = steps.length ? computeLegs(steps) : null;
-  const sum = legs ? routeSummary(steps, legs) : null;
 
   return {
     title: main ? `${regionShortName(main)} ${durationLabel} · 2가지 코스` : `강원도 ${durationLabel} · 2가지 코스`,
     summary: intro,
-    duration: durationLabel || (sum ? (sum.totalMin <= 300 ? "반나절 코스" : "당일 코스") : ""),
+    duration: durationLabel || "",
     steps,
     courseOptions,
     activeCourseOption: activeKey,
@@ -2248,7 +2395,7 @@ function parseTwoTrackCuration(parsed, prompt) {
   };
 }
 
-function parseGeminiCuration(raw, prompt) {
+function parseGeminiCuration(raw, prompt, routePlan = null) {
   const parsed = parseJsonFromGemini(raw);
   if (parsed.option_1 != null || parsed.option_2 != null) {
     return parseTwoTrackCuration(parsed, prompt);
@@ -2270,7 +2417,56 @@ function parseGeminiCuration(raw, prompt) {
         dayPlans: [],
       },
       parsed,
-      prompt
+      prompt,
+      routePlan
+    );
+  }
+
+  if (routePlan || Array.isArray(parsed.stop_narratives)) {
+    const inferredRegions = strictRegionsForCuration(prompt, intro);
+    let steps = routePlan
+      ? buildStepsFromRoutePlan(routePlan, parsed, prompt)
+      : [];
+    if (!steps.length && parsed.stop_narratives?.length) {
+      steps = buildStepsFromItinerary(
+        parsed.stop_narratives.map((n, i) => ({
+          step: i + 1,
+          spot_name: n.spot_name,
+          reason: n.why,
+        })),
+        prompt,
+        intro
+      );
+    }
+    steps = constrainStepsToRegions(
+      steps,
+      regions.length ? regions : inferredRegions,
+      { strict: true }
+    );
+    const totals = routePlan?.totals;
+    const driveLabel = totals
+      ? `총 ${fmtKm(totals.km)} · 차량 ${fmtMin(totals.min)} (카카오)`
+      : "";
+    return ensureCurationHasSteps(
+      {
+        title: regions[0]
+          ? `${regions[0]} AI 추천 코스`
+          : inferredRegions[0]
+            ? `${inferredRegions[0]} AI 추천 코스`
+            : "강원도 AI 추천 코스",
+        summary: intro + (driveLabel ? `\n${driveLabel}` : ""),
+        duration: routePlan ? routeDurationLabel(routePlan.totals) : "",
+        steps,
+        routePlan,
+        source: "gemini",
+        tripIntent: {},
+        transitPlan: {},
+        accommodation: {},
+        dayPlans: [],
+      },
+      parsed,
+      prompt,
+      routePlan
     );
   }
 
@@ -2299,12 +2495,7 @@ function parseGeminiCuration(raw, prompt) {
       accommodation: {},
       dayPlans: [],
     };
-    if (steps.length) {
-      const legs = computeLegs(steps);
-      const sum = routeSummary(steps, legs);
-      result.duration = sum.totalMin <= 300 ? "반나절 코스" : "당일 코스";
-    }
-    return ensureCurationHasSteps(result, parsed, prompt);
+    return ensureCurationHasSteps(result, parsed, prompt, routePlan);
   }
 
   const usedNames = new Set();
@@ -2369,13 +2560,12 @@ function parseGeminiCuration(raw, prompt) {
       dayPlans: parsed.day_plans || [],
     };
   }
-  const legs = computeLegs(scoped);
-  const sum = routeSummary(scoped, legs);
   return {
     title: parsed.itinerary_title || (regions[0] ? `${regions[0]} AI 추천 코스` : "AI 추천 코스"),
-    summary: parsed.summary || `총 ${fmtKm(sum.driveKm)} · 체류 ${fmtMin(sum.stayMin)} · 이동 ${fmtMin(sum.driveMin)} (추정)`,
-    duration: parsed.total_duration || (sum.totalMin <= 300 ? "반나절 코스" : "당일 코스"),
+    summary: parsed.summary || intro,
+    duration: parsed.total_duration || "당일 코스",
     steps: scoped,
+    routePlan,
     source: "gemini",
     tripIntent: parsed.trip_intent || {},
     transitPlan: parsed.transit_plan || {},
@@ -2383,7 +2573,7 @@ function parseGeminiCuration(raw, prompt) {
     dayPlans: parsed.day_plans || [],
   };
 }
-function localCuration(prompt, source = "local") {
+async function localCuration(prompt, source = "local") {
   const regions = regionsInPrompt(prompt);
   const picks = pickSpotsForPrompt(prompt, 3);
   if (!picks.length) {
@@ -2396,22 +2586,26 @@ function localCuration(prompt, source = "local") {
       source,
     };
   }
+  const routePlan = picks.length >= 2 ? await buildKakaoRoutePlan(picks) : null;
   const steps = picks.map((s, i) => ({
     order: i + 1,
     spot: s,
     stay: s.stay_min,
     why: `${s.description}. ${s.tip}`,
+    move_to_next: routePlan?.legs?.[i]?.summary || "",
   }));
-  const legs = computeLegs(steps);
-  const sum = routeSummary(steps, legs);
   const regionLabel = regions[0] || picks[0]?.region || "";
+  const driveLabel = routePlan?.totals
+    ? `총 ${fmtKm(routePlan.totals.km)} · 차량 ${fmtMin(routePlan.totals.min)} (카카오)`
+    : "";
   return {
     title: regionLabel ? `${regionLabel} 맞춤 코스` : "🥔 로컬 추천 코스",
     summary:
       (regionLabel ? `${regionLabel} 중심 · ` : "") +
-      `총 ${fmtKm(sum.driveKm)} · 체류 ${fmtMin(sum.stayMin)} · 이동 ${fmtMin(sum.driveMin)} (추정)`,
-    duration: sum.totalMin <= 300 ? "반나절 코스" : "당일 코스",
+      (driveLabel || "카카오 경로 데이터 없음 — 이동 시간은 지도에서 확인해 주세요."),
+    duration: routePlan ? routeDurationLabel(routePlan.totals) : "당일 코스",
     steps,
+    routePlan,
     source,
   };
 }
@@ -2421,29 +2615,51 @@ async function geminiCuration(prompt, key) {
   await waitGeminiSlot();
   const twoTrack = shouldUseTwoTrackWorkflow(prompt);
   const ktoXml = twoTrack ? buildTwoTrackKtoXml(prompt) : buildKtoDataXml(prompt);
-  const promptRegions = regionsInPrompt(prompt);
   const regionFocus = regionFocusPromptBlock(prompt);
   const provinceBlock =
     !twoTrack && isProvinceWidePrompt(prompt)
       ? "# PROVINCE-WIDE QUERY\n" +
         "User asks about Gangwon-do broadly (no single city/county).\n" +
-        "- Pick one region from <kto_data> and focus introduction + itinerary there.\n" +
-        "- itinerary MUST list 2-3 spots with EXACT names from <kto_data>.\n"
+        "- Use ROUTING DATA stop order when present.\n" +
+        "- stop_narratives MUST match ROUTING DATA spot names.\n"
       : "";
+
+  let routePlan = null;
+  let routingContext = "";
+  if (!twoTrack) {
+    const picks = pickSpotsForPrompt(prompt, 3);
+    if (picks.length >= 2) {
+      routePlan = await buildKakaoRoutePlan(picks);
+    }
+    routingContext = formatRoutingContextForGemini(routePlan);
+  }
+
   const routeContext = twoTrack
     ? `# ROUTE CONTEXT\n- main_destination: ${regionShortName(pickMainDestination(prompt) || "")}\n- transit_area: ${regionShortName(resolveTransitArea(pickMainDestination(prompt)) || "")} (인구소멸·상생 경유지)\n`
     : "";
   const themeBlock = twoTrack ? buildThemePromptBlock(prompt) : "";
   const durationBlock = twoTrack ? buildDurationPromptBlock(prompt) : "";
-  const sys =
-    (twoTrack ? GANGWON_AGENT_ROLE_TWO_TRACK : GANGWON_AGENT_ROLE) + "\n\n" +
-    ktoXml + "\n\n" +
-    (twoTrack ? KTO_TWO_TRACK_OUTPUT_FORMAT : KTO_OUTPUT_FORMAT) +
-    (routeContext ? "\n\n" + routeContext : "") +
-    (durationBlock ? "\n\n" + durationBlock : "") +
-    (themeBlock ? "\n\n" + themeBlock : "") +
-    (provinceBlock ? "\n\n" + provinceBlock : "") +
-    (regionFocus ? "\n\n" + regionFocus : "");
+
+  const sys = twoTrack
+    ? GANGWON_AGENT_ROLE_TWO_TRACK +
+      "\n\n" +
+      ktoXml +
+      "\n\n" +
+      KTO_TWO_TRACK_OUTPUT_FORMAT +
+      (routeContext ? "\n\n" + routeContext : "") +
+      (durationBlock ? "\n\n" + durationBlock : "") +
+      (themeBlock ? "\n\n" + themeBlock : "") +
+      (regionFocus ? "\n\n" + regionFocus : "")
+    : GANGWON_AGENT_ROLE_ROUTING +
+      "\n\n" +
+      routingContext +
+      "\n\n" +
+      ktoXml +
+      "\n\n" +
+      KTO_OUTPUT_FORMAT_ROUTING +
+      (provinceBlock ? "\n\n" + provinceBlock : "") +
+      (regionFocus ? "\n\n" + regionFocus : "");
+
   const body = {
     system_instruction: { parts: [{ text: sys }] },
     contents: [{ role: "user", parts: [{ text: prompt.slice(0, 600) }] }],
@@ -2459,7 +2675,7 @@ async function geminiCuration(prompt, key) {
   }
   if (finish === "MAX_TOKENS")
     console.warn("Gemini finishReason=MAX_TOKENS — JSON may be truncated");
-  return parseGeminiCuration(text, prompt);
+  return parseGeminiCuration(text, prompt, routePlan);
 }
 
 function buildComplexFailReply(e) {
@@ -2533,6 +2749,11 @@ function applyCurationResult(prompt, result, opts = {}) {
   state.steps = attachOriginStep(result.steps, state.meta, prompt);
   state.focusOrder = 1;
   resetMapState();
+  if (result.routePlan) {
+    applyRoutePlanToState(result.routePlan, state.steps);
+  } else {
+    resetKakaoRouteState();
+  }
   appendPlannerOpenButton();
 }
 
@@ -2578,7 +2799,7 @@ async function runRegionTrip(prompt, key, complex) {
       result =
         regions.length && !regionalFallbackSpots(regions, 1).length
           ? emptyRegionalCurationShell(regions, { source: "local_api_fail" })
-          : localCuration(prompt, "local_api_fail");
+          : await localCuration(prompt, "local_api_fail");
     }
   } else {
     if (complex) {
@@ -2588,7 +2809,7 @@ async function runRegionTrip(prompt, key, complex) {
       );
       return;
     }
-    result = localCuration(prompt, "local");
+    result = await localCuration(prompt, "local");
   }
 
   const prefix = multiIntent && result.source !== "gemini" ? buildRegionInfoReply(prompt) : "";
@@ -2610,7 +2831,7 @@ async function tryGeminiCurationWithFallback(prompt, key, complex) {
     const fallback =
       regions.length && !regionalFallbackSpots(regions, 1).length
         ? emptyRegionalCurationShell(regions, { source: "local_api_fail" })
-        : localCuration(prompt, "local_api_fail");
+        : await localCuration(prompt, "local_api_fail");
     saveCurationAndApply(prompt, fallback);
   }
 }
@@ -2648,7 +2869,7 @@ async function runCuration(prompt) {
     const key = getGeminiKey();
 
     if (!shouldCallGemini(prompt)) {
-      saveCurationAndApply(prompt, localCuration(prompt, "local_skip"));
+      saveCurationAndApply(prompt, await localCuration(prompt, "local_skip"));
       return;
     }
 
@@ -2660,7 +2881,7 @@ async function runCuration(prompt) {
         );
         return;
       }
-      saveCurationAndApply(prompt, localCuration(prompt, "local"));
+      saveCurationAndApply(prompt, await localCuration(prompt, "local"));
       return;
     }
 
@@ -2726,13 +2947,15 @@ function courseCardHtml(step, active, src) {
 function legHtml(leg) {
   const note = leg.note || leg.from.move_to_next;
   const transit = leg.transit || /KTX|버스|열차|지하철|대중교통|역|터미널|환승/i.test(note || "");
-  const icon = transit ? "🚆" : "🚗";
-  const mins = leg.driveMin || parseDurationMin(note) || estDriveMin(leg.km);
+  const icon = leg.kakao ? "🧭" : transit ? "🚆" : "🚗";
+  const mins = leg.driveMin || parseDurationMin(note);
   const text =
     note ||
-    (transit
-      ? `${leg.from.spot.name} → ${leg.to.spot.name} · 대중교통 약 ${fmtMin(mins)}`
-      : `${leg.from.spot.name} → ${leg.to.spot.name} · ${fmtKm(leg.km)} · 약 ${fmtMin(mins)}`);
+    (mins
+      ? transit
+        ? `${leg.from.spot.name} → ${leg.to.spot.name} · 대중교통 약 ${fmtMin(mins)}`
+        : `${leg.from.spot.name} → ${leg.to.spot.name} · ${fmtKm(leg.km || 0)} · 약 ${fmtMin(mins)}`
+      : `${leg.from.spot.name} → ${leg.to.spot.name}`);
   return `<div class="course-leg${transit ? " transit-leg" : ""}">${icon} ${esc(text)}</div>`;
 }
 
@@ -2743,9 +2966,18 @@ function renderRouteSummary(legs) {
     <div class="route-stat"><strong>${fmtKm(sum.driveKm)}</strong><span>총 이동</span></div>
     <div class="route-stat"><strong>${fmtMin(sum.driveMin)}</strong><span>이동 시간</span></div>
     <div class="route-stat"><strong>${fmtMin(sum.totalMin)}</strong><span>예상 소요</span></div>`;
+  if (state.kakaoRoute.loading) {
+    $("chip-route").textContent = "🧭 카카오 경로 계산 중…";
+    return;
+  }
+  const kakaoTag = state.kakaoRoute.source === "kakao" ? "🧭 카카오" : "";
   const routeLabel = sum.transitMin > 0
-    ? `🚆 ${fmtMin(sum.transitMin)} + 🚗 ${fmtMin(sum.driveMin - sum.transitMin)}`
-    : `🚗 ${fmtKm(sum.driveKm)}`;
+    ? `🚆 ${fmtMin(sum.transitMin)}${kakaoTag ? ` + ${kakaoTag} ${fmtKm(sum.driveKm)}` : ""}`
+    : kakaoTag
+      ? `${kakaoTag} ${fmtKm(sum.driveKm)}`
+      : sum.driveKm > 0
+        ? `🚗 ${fmtKm(sum.driveKm)}`
+        : "경로 —";
   $("chip-route").textContent = `${routeLabel} · ${fmtMin(sum.totalMin)}`;
 }
 
@@ -2907,7 +3139,7 @@ function renderPlanner() {
   $("chip-stops").textContent =
     `${destinationSteps(steps).length}곳` + (steps.some((s) => s.kind === "origin") ? " + 출발" : "");
   renderCourseOptionTabs();
-  const legs = computeLegs(steps);
+  const legs = getRouteLegs(steps);
   renderTripPlan(meta);
   renderRouteSummary(legs);
   renderCourses(legs);
@@ -2990,7 +3222,21 @@ function centerOf(steps) {
 function drawMapRoutes(mapEngine, map, steps) {
   const origin = steps.find((s) => s.kind === "origin");
   const destSteps = destinationSteps(steps);
+  const kakaoPath = state.kakaoRoute.path || [];
+  const useKakaoRoad = kakaoPath.length >= 2 && state.kakaoRoute.source === "kakao";
+
   if (mapEngine === "kakao") {
+    if (useKakaoRoad) {
+      const path = kakaoPath.map((p) => new kakao.maps.LatLng(p.lat, p.lng));
+      new kakao.maps.Polyline({
+        path,
+        strokeWeight: 5,
+        strokeColor: "#006a61",
+        strokeOpacity: 0.9,
+        strokeStyle: "solid",
+      }).setMap(map);
+      return;
+    }
     if (origin && destSteps.length) {
       const transitPath = [
         new kakao.maps.LatLng(origin.spot.lat, origin.spot.lng),
@@ -3017,6 +3263,13 @@ function drawMapRoutes(mapEngine, map, steps) {
     return;
   }
   if (mapEngine === "leaflet") {
+    if (useKakaoRoad) {
+      L.polyline(
+        kakaoPath.map((p) => [p.lat, p.lng]),
+        { color: "#006a61", weight: 5, opacity: 0.9, lineCap: "round" }
+      ).addTo(map);
+      return;
+    }
     if (origin && destSteps.length) {
       L.polyline(
         [
@@ -3055,6 +3308,7 @@ function resetMapState() {
   state.mapEngine = "";
   state.map = null;
   mapBooting = false;
+  resetKakaoRouteState();
   mapNote("");
 }
 
