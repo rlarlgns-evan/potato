@@ -2362,6 +2362,7 @@ function normalizeGeminiRequestBody(body) {
 }
 
 const GEMINI_MODEL_FALLBACK_ORDER = ["gemini-3.5-flash", "gemini-3-flash-preview", "gemini-2.5-flash"];
+const GEMINI_ATTEMPTS_PER_MODEL = 3;
 
 function geminiModelCandidates() {
   const preferred = String(typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "").trim();
@@ -2396,12 +2397,12 @@ function canFallbackToNextGeminiModel(e) {
   return true;
 }
 
-async function callGeminiWithModel(model, normalized, key, retries, maxOutputTokens) {
-  const maxAttempts = Math.max(retries + 3, 6);
+async function callGeminiWithModel(model, normalized, key, maxAttempts, maxOutputTokens) {
+  const attempts = Math.max(1, Number(maxAttempts) || GEMINI_ATTEMPTS_PER_MODEL);
   let lastErr = null;
   let lastStatus = 0;
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
     const shrink =
       lastStatus === 503 && attempt >= 2
         ? Math.max(0.55, 1 - (attempt - 1) * 0.12)
@@ -2436,10 +2437,10 @@ async function callGeminiWithModel(model, normalized, key, retries, maxOutputTok
       const status = r.status;
       lastStatus = status;
       const retryAfter = Number(r.headers?.get?.("retry-after")) || 0;
-      if (isGeminiRetryableStatus(status) && attempt < maxAttempts - 1) {
+      if (isGeminiRetryableStatus(status) && attempt < attempts - 1) {
         const wait = geminiRetryDelayMs(attempt, retryAfter);
         console.warn(
-          `Gemini ${model} HTTP ${status}, retry ${attempt + 1}/${maxAttempts - 1} in ${Math.round(wait / 1000)}s` +
+          `Gemini ${model} HTTP ${status}, retry ${attempt + 1}/${attempts - 1} in ${Math.round(wait / 1000)}s` +
             (shrink < 1 ? ` (maxTokens→${effectiveMaxTokens})` : ""),
           detail.slice(0, 160)
         );
@@ -2452,7 +2453,7 @@ async function callGeminiWithModel(model, normalized, key, retries, maxOutputTok
       e.detail = detail;
       e.model = model;
       e.attemptsMade = attempt + 1;
-      e.maxAttempts = maxAttempts;
+      e.maxAttempts = attempts;
       e.retryExhausted = true;
       throw e;
     } catch (e) {
@@ -2460,15 +2461,15 @@ async function callGeminiWithModel(model, normalized, key, retries, maxOutputTok
       if (e.status) lastStatus = e.status;
       if (!e.attemptsMade) {
         e.attemptsMade = attempt + 1;
-        e.maxAttempts = maxAttempts;
+        e.maxAttempts = attempts;
       }
       if (e.status && !isGeminiRetryableStatus(e.status)) {
         e.retryExhausted = true;
         throw e;
       }
-      if (attempt < maxAttempts - 1) {
+      if (attempt < attempts - 1) {
         const wait = geminiRetryDelayMs(attempt, 0);
-        console.warn(`Gemini ${model} request failed, retry ${attempt + 1}/${maxAttempts - 1}`, e.message);
+        console.warn(`Gemini ${model} request failed, retry ${attempt + 1}/${attempts - 1}`, e.message);
         await new Promise((res) => setTimeout(res, wait));
         continue;
       }
@@ -2477,13 +2478,13 @@ async function callGeminiWithModel(model, normalized, key, retries, maxOutputTok
     }
   }
   const err = lastErr || new Error("Gemini call failed");
-  err.attemptsMade = maxAttempts;
-  err.maxAttempts = maxAttempts;
+  err.attemptsMade = attempts;
+  err.maxAttempts = attempts;
   err.retryExhausted = true;
   throw err;
 }
 
-async function callGemini(body, key, retries = 4, maxOutputTokens = 4096) {
+async function callGemini(body, key, attemptsPerModel = GEMINI_ATTEMPTS_PER_MODEL, maxOutputTokens = 4096) {
   const normalized = normalizeGeminiRequestBody(body);
   const models = geminiModelCandidates();
   let lastErr = null;
@@ -2493,7 +2494,7 @@ async function callGemini(body, key, retries = 4, maxOutputTokens = 4096) {
   for (let idx = 0; idx < models.length; idx++) {
     const model = models[idx];
     try {
-      const result = await callGeminiWithModel(model, normalized, key, retries, maxOutputTokens);
+      const result = await callGeminiWithModel(model, normalized, key, attemptsPerModel, maxOutputTokens);
       if (idx > 0) {
         console.warn(`[Gemini] fallback model used: ${model}`);
       }
@@ -3159,7 +3160,7 @@ async function geminiCuration(prompt, key) {
   };
   const tripDays = detectTripDuration(prompt).days;
   const maxTokens = geminiOutputTokenBudget(twoTrack, tripDays);
-  const d = await callGemini(body, key, 5, maxTokens);
+  const d = await callGemini(body, key, GEMINI_ATTEMPTS_PER_MODEL, maxTokens);
   const c = d.candidates?.[0];
   const finish = c?.finishReason || "";
   const text = extractGeminiText(c);
