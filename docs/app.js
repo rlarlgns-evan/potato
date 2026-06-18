@@ -1492,7 +1492,14 @@ async function fetchKakaoViaSupabaseProxy(points) {
     );
     if (!r.ok) {
       const detail = await r.text().catch(() => "");
-      console.warn("[Kakao proxy]", r.status, detail.slice(0, 200));
+      if (r.status === 404) {
+        console.warn(
+          "[Kakao proxy] Edge Function kakao-directions 미배포(404). " +
+            "Supabase에서 `supabase functions deploy kakao-directions --no-verify-jwt` 실행 필요. OSRM 폴백 사용."
+        );
+      } else {
+        console.warn("[Kakao proxy]", r.status, detail.slice(0, 200));
+      }
       return null;
     }
     return r.json();
