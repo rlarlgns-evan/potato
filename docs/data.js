@@ -4778,5 +4778,4 @@ function enrichSpot(raw) {
 
 const ENRICHED_SPOTS = SPOTS.map(enrichSpot);
 
-// API 키는 저장소·로컬 파일에 두지 않습니다.
-// GitHub Pages 배포 시 Actions Secret → docs/config.js 자동 생성 (KAKAO_JS_KEY, KAKAO_REST_KEY, GOOGLE_API_KEY)
+// API 키는 GitHub Actions Secret → docs/config.js (저장소·로컬 파일 없음)

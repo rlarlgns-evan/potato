@@ -1,7 +1,6 @@
-# 환경 변수 / 비밀
+# 환경 변수 / 비밀 (로컬 파일 사용 안 함 — GitHub Secrets만)
 .env
 .env.*
-!.env.example
 
 # Python
 __pycache__/
@@ -19,10 +18,10 @@ env/
 # DB
 *.db
 
-# Streamlit 로컬 secrets
-.streamlit/secrets.toml
+# Streamlit (제거됨 — ignore 잔재)
+.streamlit/
 
-# 정적 사이트 로컬 키 (배포 시 GitHub Actions Secret으로 주입)
+# GitHub Actions 배포 시 Secret으로 주입 (저장소에 커밋 금지)
 docs/config.js
 
 # OS / IDE
