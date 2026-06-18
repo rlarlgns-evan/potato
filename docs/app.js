@@ -371,31 +371,62 @@ function ktoRowsForRegion(region, prompt, maxRows = 6, { isTransit = false } = {
   return rows;
 }
 
+const MAX_TRIP_DAYS = 14;
+const KAKAO_MAX_ROUTE_POINTS = 7;
+
+function clampTripDays(days) {
+  return Math.min(Math.max(Number(days) || 1, 1), MAX_TRIP_DAYS);
+}
+
 function detectTripDuration(prompt) {
   const msg = String(prompt || "");
-  if (/2\s*박\s*3\s*일|2박\s*3일|이박\s*삼일/.test(msg)) {
-    return { nights: 2, days: 3, label: "2박 3일" };
+  const han = { 일: 1, 이: 2, 삼: 3, 사: 4, 오: 5, 육: 6, 칠: 7, 팔: 8, 구: 9, 십: 10 };
+
+  let m = msg.match(/(\d+)\s*박\s*(\d+)\s*일/);
+  if (m) {
+    const nights = Number(m[1]);
+    const days = clampTripDays(Number(m[2]));
+    return { nights, days, label: `${nights}박 ${days}일` };
   }
-  if (/당일치기|당일\s*여행|무박/.test(msg) && !/1\s*박/.test(msg)) {
+  m = msg.match(/([일이삼사오육칠팔구십])\s*박\s*([일이삼사오육칠팔구십])\s*일/);
+  if (m && han[m[1]] && han[m[2]]) {
+    const nights = han[m[1]];
+    const days = clampTripDays(han[m[2]]);
+    return { nights, days, label: `${nights}박 ${days}일` };
+  }
+  if (/당일치기|당일\s*여행|무박/.test(msg) && !/\d+\s*박|[일이삼]박/.test(msg)) {
     return { nights: 0, days: 1, label: "당일" };
   }
-  if (/1\s*박\s*2\s*일|1박\s*2일|일박\s*이일/.test(msg)) {
+  m = msg.match(/(\d+)\s*박/);
+  if (m) {
+    const nights = Number(m[1]);
+    const days = clampTripDays(nights + 1);
+    return { nights, days, label: `${nights}박 ${days}일` };
+  }
+  m = msg.match(/(\d+)\s*일(?:\s*여행|\s*일정)?/);
+  if (m && !/\d+\s*박/.test(msg)) {
+    const days = clampTripDays(Number(m[1]));
+    return {
+      nights: Math.max(0, days - 1),
+      days,
+      label: days === 1 ? "당일" : `${days}일`,
+    };
+  }
+  if (hasTripPlanIntent(msg) || needsComplexAi(msg)) {
     return { nights: 1, days: 2, label: "1박 2일" };
   }
-  if (hasTripPlanIntent(msg) || needsComplexAi(msg) || /\d+\s*박/.test(msg)) {
-    return { nights: 1, days: 2, label: "1박 2일" };
-  }
-  return { nights: 1, days: 2, label: "1박 2일" };
+  return { nights: 0, days: 1, label: "당일" };
 }
 
 function buildDurationPromptBlock(prompt) {
   const d = detectTripDuration(prompt);
   return (
     "# TRIP DURATION (STRICT)\n" +
-    `- Detected/default duration: **${d.label}** (${d.days} days).\n` +
+    `- Detected/default duration: **${d.label}** (${d.days} days, up to ${MAX_TRIP_DAYS} days supported).\n` +
+    `- If the user specifies N박 M일 or N일, use that exactly — do NOT shorten to 1박2일 or 2박3일.\n` +
     `- Each option MUST include exactly **${d.days}** objects in the "days" array (day: 1..${d.days}).\n` +
     "- Each day schedule MUST have 4+ slots: 오전 관광, 점심 식사, 오후 관광, 저녁 식사.\n" +
-    '- Set "duration_detected" to exactly this label in Korean.\n'
+    '- Set "duration_detected" to exactly this label in Korean (e.g. "3박 4일").\n'
   );
 }
 
@@ -411,12 +442,18 @@ function getRegionSpecialty(region) {
   return "지역 먹거리";
 }
 
-function cityCoordsForRegion(region) {
+function cityCoordsForRegion(region, name = "") {
   const short = regionShortName(region);
   const city = (typeof GANGWON_CITIES !== "undefined" ? GANGWON_CITIES : []).find(
     (c) => c.city === short
   );
-  return city ? { lat: city.lat, lng: city.lng } : { lat: 37.5, lng: 128.0 };
+  const base = city ? { lat: city.lat, lng: city.lng } : { lat: 37.5, lng: 128.0 };
+  if (!name) return base;
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  const a = ((Math.abs(h) % 360) * Math.PI) / 180;
+  const r = 0.002 + (Math.abs(h) % 80) / 40000;
+  return { lat: base.lat + Math.sin(a) * r, lng: base.lng + Math.cos(a) * r };
 }
 
 function synthesizeRestaurantRow(region, prompt) {
@@ -432,7 +469,7 @@ function synthesizeRestaurantRow(region, prompt) {
   }
   const specialty = getRegionSpecialty(region).split("·")[0].trim();
   const name = `${regionShortName(region)} ${specialty} 맛집`;
-  const coords = cityCoordsForRegion(region);
+  const coords = cityCoordsForRegion(region, name);
   return {
     name,
     category: "음식/먹거리",
@@ -1467,10 +1504,7 @@ async function fetchKakaoDirectionsDirect(points) {
 
 async function fetchKakaoDirectionsRaw(points) {
   if (points.length < 2) return null;
-  if (points.length > 7) {
-    console.warn("[Kakao Directions] 최대 7개 정거장(경유 5)");
-    return null;
-  }
+  if (points.length > KAKAO_MAX_ROUTE_POINTS) return null;
   return (await fetchKakaoViaSupabaseProxy(points)) || (await fetchKakaoDirectionsDirect(points));
 }
 
@@ -1506,12 +1540,16 @@ function parseOsrmRoutePlan(spots, segments) {
     const distM = seg.distance_m || 0;
     const durS = seg.duration_s || 0;
     const km = distM / 1000;
-    const driveMin = Math.max(1, Math.round(durS / 60));
+    const driveMin = distM < 30 ? 0 : Math.max(1, Math.round(durS / 60));
     totalDist += distM;
     totalDur += durS;
     for (const c of seg.coordinates || []) {
       if (c.length >= 2) polyline.push({ lng: c[0], lat: c[1] });
     }
+    const moveLabel =
+      driveMin > 0
+        ? `${spots[i + 1].name}까지 ${fmtKm(km)} · 차량 약 ${fmtMin(driveMin)} (도로 추정)`
+        : `${spots[i + 1].name}까지 도보권`;
     legs.push({
       from_name: spots[i].name,
       to_name: spots[i + 1].name,
@@ -1519,7 +1557,7 @@ function parseOsrmRoutePlan(spots, segments) {
       distance_m: distM,
       duration_min: driveMin,
       duration_s: durS,
-      summary: `${spots[i + 1].name}까지 ${fmtKm(km)} · 차량 약 ${fmtMin(driveMin)} (도로 추정)`,
+      summary: moveLabel,
     });
   }
   return {
@@ -1528,7 +1566,7 @@ function parseOsrmRoutePlan(spots, segments) {
     polyline,
     totals: {
       km: totalDist / 1000,
-      min: Math.max(1, Math.round(totalDur / 60)),
+      min: Math.round(totalDur / 60),
       distance_m: totalDist,
       duration_s: totalDur,
     },
@@ -1541,6 +1579,7 @@ async function buildOsrmRoutePlan(spots) {
   if (points.length < 2) return null;
   const segments = [];
   for (let i = 0; i < points.length - 1; i++) {
+    if (i > 0 && i % 4 === 0) await new Promise((r) => setTimeout(r, 150));
     const seg = await fetchOsrmLeg(points[i], points[i + 1]);
     if (!seg) return null;
     segments.push(seg);
@@ -1549,6 +1588,57 @@ async function buildOsrmRoutePlan(spots) {
     points.map((p) => p.spot),
     segments
   );
+}
+
+function mergeRoutePolylines(parts) {
+  const out = [];
+  for (const part of parts) {
+    for (const p of part) {
+      const prev = out[out.length - 1];
+      if (prev && prev.lat === p.lat && prev.lng === p.lng) continue;
+      out.push(p);
+    }
+  }
+  return out;
+}
+
+async function buildKakaoRoutePlanChained(spots) {
+  const points = routePointsFromSpots(spots);
+  if (points.length < 2) return null;
+  const spotList = points.map((p) => p.spot);
+  const allLegs = [];
+  const polyParts = [];
+  let totalDist = 0;
+  let totalDur = 0;
+
+  for (let start = 0; start < points.length - 1; start += KAKAO_MAX_ROUTE_POINTS - 1) {
+    const end = Math.min(start + KAKAO_MAX_ROUTE_POINTS - 1, points.length - 1);
+    const chunk = points.slice(start, end + 1);
+    const chunkSpots = chunk.map((p) => p.spot);
+    const data = await fetchKakaoDirectionsRaw(chunk);
+    if (!data) return null;
+    const plan = parseKakaoRoutePlan(chunkSpots, data);
+    if (!plan?.legs?.length) return null;
+    allLegs.push(...plan.legs);
+    polyParts.push(plan.polyline || []);
+    for (const leg of plan.legs) {
+      totalDist += leg.distance_m || 0;
+      totalDur += leg.duration_s || 0;
+    }
+  }
+
+  return {
+    spots: spotList,
+    legs: allLegs,
+    polyline: mergeRoutePolylines(polyParts),
+    totals: {
+      km: totalDist / 1000,
+      min: Math.round(totalDur / 60),
+      distance_m: totalDist,
+      duration_s: totalDur,
+    },
+    provider: "kakao",
+  };
 }
 
 function parseKakaoRoutePlan(spots, kakaoData) {
@@ -1572,7 +1662,7 @@ function parseKakaoRoutePlan(spots, kakaoData) {
     const distM = sec.distance || 0;
     const durS = sec.duration || 0;
     const km = distM / 1000;
-    const driveMin = Math.max(1, Math.round(durS / 60));
+    const driveMin = distM < 30 ? 0 : Math.max(1, Math.round(durS / 60));
     legs.push({
       from_name: spots[i].name,
       to_name: spots[i + 1].name,
@@ -1580,7 +1670,10 @@ function parseKakaoRoutePlan(spots, kakaoData) {
       distance_m: distM,
       duration_min: driveMin,
       duration_s: durS,
-      summary: `${spots[i + 1].name}까지 ${fmtKm(km)} · 차량 약 ${fmtMin(driveMin)} (카카오)`,
+      summary:
+        driveMin > 0
+          ? `${spots[i + 1].name}까지 ${fmtKm(km)} · 차량 약 ${fmtMin(driveMin)} (카카오)`
+          : `${spots[i + 1].name}까지 도보권`,
     });
   }
 
@@ -1591,7 +1684,7 @@ function parseKakaoRoutePlan(spots, kakaoData) {
     polyline,
     totals: {
       km: (summary.distance || 0) / 1000,
-      min: Math.max(1, Math.round((summary.duration || 0) / 60)),
+      min: Math.round((summary.duration || 0) / 60),
       distance_m: summary.distance || 0,
       duration_s: summary.duration || 0,
     },
@@ -1603,16 +1696,90 @@ async function buildRoutePlan(spots) {
   const points = routePointsFromSpots(spots);
   if (points.length < 2) return null;
   const spotList = points.map((p) => p.spot);
-  const kakaoData = await fetchKakaoDirectionsRaw(points);
-  if (kakaoData) {
-    const plan = parseKakaoRoutePlan(spotList, kakaoData);
-    if (plan) return plan;
+
+  if (points.length <= KAKAO_MAX_ROUTE_POINTS) {
+    const kakaoData = await fetchKakaoDirectionsRaw(points);
+    if (kakaoData) {
+      const plan = parseKakaoRoutePlan(spotList, kakaoData);
+      if (plan) return plan;
+    }
+  } else {
+    const chained = await buildKakaoRoutePlanChained(spots);
+    if (chained) return chained;
   }
   return buildOsrmRoutePlan(spots);
 }
 
 async function buildKakaoRoutePlan(spots) {
   return buildRoutePlan(spots);
+}
+
+function spotsFromSteps(steps) {
+  return routePointsFromSteps(steps).map((p) => p.spot);
+}
+
+let routeRefreshGen = 0;
+
+async function refreshRouteForSteps(steps) {
+  const points = routePointsFromSteps(steps);
+  if (points.length < 2) {
+    resetKakaoRouteState();
+    return;
+  }
+  const key = stepsRouteKey(steps);
+  const expectedLegs = points.length - 1;
+  if (
+    state.kakaoRoute.stepsKey === key &&
+    !state.kakaoRoute.loading &&
+    (state.kakaoRoute.legs?.length || 0) >= expectedLegs
+  ) {
+    return;
+  }
+  if (state.kakaoRoute.stepsKey === key && state.kakaoRoute.loading) return;
+
+  const gen = ++routeRefreshGen;
+  state.kakaoRoute = {
+    path: state.kakaoRoute.path || [],
+    legs: state.kakaoRoute.legs,
+    stepsKey: key,
+    source: state.kakaoRoute.source || "",
+    loading: true,
+  };
+  if (stepsRouteKey(state.steps) === key) {
+    renderRouteSummary([]);
+    const chip = $("chip-route");
+    if (chip) chip.textContent = "🧭 경로 계산 중…";
+  }
+
+  const spots = points.map((p) => p.spot);
+  let plan = null;
+  try {
+    plan = await buildRoutePlan(spots);
+  } catch (e) {
+    console.warn("[Route refresh]", e);
+  }
+
+  if (gen !== routeRefreshGen) return;
+  if (stepsRouteKey(state.steps) !== key) return;
+
+  if (plan) {
+    applyRoutePlanToState(plan, state.steps);
+  } else {
+    state.kakaoRoute = {
+      path: [],
+      legs: [],
+      stepsKey: key,
+      source: "",
+      loading: false,
+    };
+  }
+
+  const legs = getRouteLegs(state.steps);
+  renderRouteSummary(legs);
+  renderCourses(legs);
+  updateMapChrome();
+  renderSpotDetail();
+  renderMap();
 }
 
 function formatRoutingContextForGemini(plan) {
@@ -1692,7 +1859,7 @@ function resetKakaoRouteState() {
 
 function getRouteLegs(steps) {
   const key = stepsRouteKey(steps);
-  if (state.kakaoRoute.stepsKey === key && state.kakaoRoute.legs?.length) {
+  if (state.kakaoRoute.stepsKey === key && Array.isArray(state.kakaoRoute.legs)) {
     return state.kakaoRoute.legs;
   }
   return [];
@@ -2365,7 +2532,7 @@ function resolveScheduleSpot(spotName, regions, prompt) {
 }
 
 function syntheticScheduleSpot(name, region, description, isMeal) {
-  const coords = cityCoordsForRegion(region);
+  const coords = cityCoordsForRegion(region, name);
   return {
     name,
     region,
@@ -2784,7 +2951,9 @@ async function geminiCuration(prompt, key) {
     systemInstruction: { parts: [{ text: sys }] },
     contents: [{ role: "user", parts: [{ text: prompt.slice(0, 600) }] }],
   };
-  const d = await callGemini(body, key, 2, twoTrack ? 8192 : 4096);
+  const tripDays = detectTripDuration(prompt).days;
+  const maxTokens = twoTrack ? Math.min(16384, 5000 + tripDays * 1000) : 4096;
+  const d = await callGemini(body, key, 2, maxTokens);
   const c = d.candidates?.[0];
   const finish = c?.finishReason || "";
   const text = extractGeminiText(c);
@@ -2841,6 +3010,7 @@ function switchCourseOption(key) {
   state.steps = attachOriginStep(picked.steps, state.meta, state.query);
   state.focusOrder = 1;
   resetMapState();
+  resetKakaoRouteState();
   renderPlanner();
 }
 
@@ -2869,11 +3039,7 @@ function applyCurationResult(prompt, result, opts = {}) {
   state.steps = attachOriginStep(result.steps, state.meta, prompt);
   state.focusOrder = 1;
   resetMapState();
-  if (result.routePlan) {
-    applyRoutePlanToState(result.routePlan, state.steps);
-  } else {
-    resetKakaoRouteState();
-  }
+  resetKakaoRouteState();
   appendPlannerOpenButton();
 }
 
@@ -3102,7 +3268,11 @@ function renderRouteSummary(legs) {
       ? `${routeTag} ${fmtKm(sum.driveKm)}`
       : sum.driveKm > 0
         ? `🚗 ${fmtKm(sum.driveKm)}`
-        : "경로 —";
+        : !state.kakaoRoute.loading &&
+            routePointsFromSteps(state.steps).length >= 2 &&
+            state.kakaoRoute.stepsKey === stepsRouteKey(state.steps)
+          ? "경로 계산 실패"
+          : "경로 —";
   $("chip-route").textContent = `${routeLabel} · ${fmtMin(sum.totalMin)}`;
 }
 
@@ -3272,6 +3442,7 @@ function renderPlanner() {
   updateMapChrome();
   renderSpotDetail();
   renderMap();
+  refreshRouteForSteps(steps).catch((e) => console.warn("refreshRouteForSteps:", e));
 }
 
 function renderPlannerEmpty() {
@@ -4792,6 +4963,7 @@ async function openSavedTrip(id) {
   state.steps = trip.steps || [];
   state.focusOrder = trip.focusOrder || 1;
   resetMapState();
+  resetKakaoRouteState();
   show("planner");
   renderPlanner();
 }
