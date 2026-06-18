@@ -131,6 +131,17 @@ GET http://apis.data.go.kr/B551011/PhotoGalleryService1/gallerySearchList1
 
 Repository Secret `TOUR_API_SERVICE_KEY` 설정 시 배포 workflow가 자동 동기화합니다.
 
+### 카카오 길찾기 (CORS)
+
+브라우저에서 Kakao Mobility Directions API는 CORS가 막혀 있어 Supabase Edge Function 프록시를 사용합니다.
+
+```
+supabase secrets set KAKAO_REST_KEY=<REST_API_키>
+supabase functions deploy kakao-directions --no-verify-jwt
+```
+
+프록시 실패 시 OSRM(도로 추정)으로 폴백합니다.
+
 ## 보안
 
 인증키는 브라우저에 노출하지 마세요. CI(GitHub Actions)에서만 사용합니다.

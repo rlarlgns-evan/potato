@@ -3,6 +3,11 @@
 -- Redirect: https://rlarlgns-evan.github.io/potato/
 -- Auth: Google / Kakao 활성화 후 실행
 
+-- Edge Function (카카오 길찾기 CORS 프록시):
+--   supabase secrets set KAKAO_REST_KEY=...
+--   supabase functions deploy kakao-directions --no-verify-jwt
+-- 브라우저는 {SUPABASE_URL}/functions/v1/kakao-directions 호출
+
 create table if not exists public.saved_trips (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,

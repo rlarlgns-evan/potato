@@ -1403,13 +1403,7 @@ function kakaoRestKey() {
   return normalizeKakaoKey(raw);
 }
 
-async function fetchKakaoDirectionsRaw(points) {
-  const key = kakaoRestKey();
-  if (!key || points.length < 2) return null;
-  if (points.length > 7) {
-    console.warn("[Kakao Directions] 최대 7개 정거장(경유 5)");
-    return null;
-  }
+function kakaoDirectionsParams(points) {
   const origin = points[0];
   const destination = points[points.length - 1];
   const middle = points.slice(1, -1);
@@ -1421,10 +1415,44 @@ async function fetchKakaoDirectionsRaw(points) {
   if (middle.length) {
     params.set("waypoints", middle.map((p) => `${p.lng},${p.lat}`).join("|"));
   }
+  return params;
+}
+
+async function fetchKakaoViaSupabaseProxy(points) {
+  if (typeof hasSupabase !== "function" || !hasSupabase()) return null;
+  const base = String(window.SUPABASE_URL || "").replace(/\/$/, "");
+  const anon = String(window.SUPABASE_ANON_KEY || "");
+  if (!base || !anon) return null;
   try {
-    const r = await fetch(`https://apis-navi.kakaomobility.com/v1/directions?${params}`, {
-      headers: { Authorization: `KakaoAK ${key}` },
-    });
+    const r = await fetch(
+      `${base}/functions/v1/kakao-directions?${kakaoDirectionsParams(points)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${anon}`,
+          apikey: anon,
+        },
+      }
+    );
+    if (!r.ok) {
+      const detail = await r.text().catch(() => "");
+      console.warn("[Kakao proxy]", r.status, detail.slice(0, 200));
+      return null;
+    }
+    return r.json();
+  } catch (e) {
+    console.warn("[Kakao proxy] fetch failed", e);
+    return null;
+  }
+}
+
+async function fetchKakaoDirectionsDirect(points) {
+  const key = kakaoRestKey();
+  if (!key) return null;
+  try {
+    const r = await fetch(
+      `https://apis-navi.kakaomobility.com/v1/directions?${kakaoDirectionsParams(points)}`,
+      { headers: { Authorization: `KakaoAK ${key}` } }
+    );
     if (!r.ok) {
       const detail = await r.text().catch(() => "");
       console.warn("[Kakao Directions]", r.status, detail.slice(0, 200));
@@ -1432,9 +1460,95 @@ async function fetchKakaoDirectionsRaw(points) {
     }
     return r.json();
   } catch (e) {
-    console.warn("[Kakao Directions] fetch failed — REST 키·CORS·모빌리티 API 확인", e);
+    console.warn("[Kakao Directions] CORS/network — Supabase 프록시 또는 OSRM 폴백 사용", e);
     return null;
   }
+}
+
+async function fetchKakaoDirectionsRaw(points) {
+  if (points.length < 2) return null;
+  if (points.length > 7) {
+    console.warn("[Kakao Directions] 최대 7개 정거장(경유 5)");
+    return null;
+  }
+  return (await fetchKakaoViaSupabaseProxy(points)) || (await fetchKakaoDirectionsDirect(points));
+}
+
+async function fetchOsrmLeg(from, to) {
+  const coords = `${from.lng},${from.lat};${to.lng},${to.lat}`;
+  const url =
+    `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const data = await r.json();
+    const route = data.routes?.[0];
+    if (!route) return null;
+    const leg = route.legs?.[0];
+    return {
+      distance_m: leg?.distance ?? route.distance ?? 0,
+      duration_s: leg?.duration ?? route.duration ?? 0,
+      coordinates: route.geometry?.coordinates || [],
+    };
+  } catch (e) {
+    console.warn("[OSRM]", e);
+    return null;
+  }
+}
+
+function parseOsrmRoutePlan(spots, segments) {
+  const legs = [];
+  const polyline = [];
+  let totalDist = 0;
+  let totalDur = 0;
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const distM = seg.distance_m || 0;
+    const durS = seg.duration_s || 0;
+    const km = distM / 1000;
+    const driveMin = Math.max(1, Math.round(durS / 60));
+    totalDist += distM;
+    totalDur += durS;
+    for (const c of seg.coordinates || []) {
+      if (c.length >= 2) polyline.push({ lng: c[0], lat: c[1] });
+    }
+    legs.push({
+      from_name: spots[i].name,
+      to_name: spots[i + 1].name,
+      distance_km: km,
+      distance_m: distM,
+      duration_min: driveMin,
+      duration_s: durS,
+      summary: `${spots[i + 1].name}까지 ${fmtKm(km)} · 차량 약 ${fmtMin(driveMin)} (도로 추정)`,
+    });
+  }
+  return {
+    spots,
+    legs,
+    polyline,
+    totals: {
+      km: totalDist / 1000,
+      min: Math.max(1, Math.round(totalDur / 60)),
+      distance_m: totalDist,
+      duration_s: totalDur,
+    },
+    provider: "osrm",
+  };
+}
+
+async function buildOsrmRoutePlan(spots) {
+  const points = routePointsFromSpots(spots);
+  if (points.length < 2) return null;
+  const segments = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const seg = await fetchOsrmLeg(points[i], points[i + 1]);
+    if (!seg) return null;
+    segments.push(seg);
+  }
+  return parseOsrmRoutePlan(
+    points.map((p) => p.spot),
+    segments
+  );
 }
 
 function parseKakaoRoutePlan(spots, kakaoData) {
@@ -1485,26 +1599,37 @@ function parseKakaoRoutePlan(spots, kakaoData) {
   };
 }
 
-async function buildKakaoRoutePlan(spots) {
+async function buildRoutePlan(spots) {
   const points = routePointsFromSpots(spots);
   if (points.length < 2) return null;
-  const data = await fetchKakaoDirectionsRaw(points);
-  if (!data) return null;
-  return parseKakaoRoutePlan(
-    points.map((p) => p.spot),
-    data
-  );
+  const spotList = points.map((p) => p.spot);
+  const kakaoData = await fetchKakaoDirectionsRaw(points);
+  if (kakaoData) {
+    const plan = parseKakaoRoutePlan(spotList, kakaoData);
+    if (plan) return plan;
+  }
+  return buildOsrmRoutePlan(spots);
+}
+
+async function buildKakaoRoutePlan(spots) {
+  return buildRoutePlan(spots);
 }
 
 function formatRoutingContextForGemini(plan) {
   if (!plan?.legs?.length) {
     return (
       "# ROUTING DATA\n" +
-      "Kakao Directions unavailable. Write copy only; do not invent driving times.\n"
+      "Route planner unavailable. Write copy only; do not invent driving times.\n"
     );
   }
+  const engine =
+    plan.provider === "kakao"
+      ? "Kakao Mobility"
+      : plan.provider === "osrm"
+        ? "OSRM road estimate"
+        : "Route engine";
   const lines = [
-    "# ROUTING DATA (Kakao Mobility — IMMUTABLE)",
+    `# ROUTING DATA (${engine} — IMMUTABLE)`,
     "Pre-calculated driving times for Gangwon-do roads. Do NOT invent distance or duration.",
     "",
     `Total driving: ${fmtKm(plan.totals.km)}, ${fmtMin(plan.totals.min)}`,
@@ -1539,7 +1664,8 @@ function legsFromRoutePlan(routePlan, steps) {
         km: leg.distance_km,
         driveMin: leg.duration_min,
         note: leg.summary,
-        kakao: true,
+        kakao: routePlan.provider === "kakao",
+        provider: routePlan.provider || "kakao",
         transit: fromStep.kind === "origin",
       };
     })
@@ -1555,7 +1681,7 @@ function applyRoutePlanToState(routePlan, steps) {
     path: routePlan.polyline || [],
     legs: legsFromRoutePlan(routePlan, steps),
     stepsKey: stepsRouteKey(steps),
-    source: "kakao",
+    source: routePlan.provider || "kakao",
     loading: false,
   };
 }
@@ -1955,9 +2081,24 @@ function geminiFailToast(e) {
     toast("AI 호출 실패 — 잠시 후 다시 시도해 주세요.");
 }
 
+function normalizeGeminiRequestBody(body) {
+  const sys = body.systemInstruction || body.system_instruction;
+  const out = { contents: body.contents || [] };
+  if (sys) out.systemInstruction = sys;
+  return out;
+}
+
 async function callGemini(body, key, retries = 1, maxOutputTokens = 4096) {
+  const normalized = normalizeGeminiRequestBody(body);
   const primary = typeof GEMINI_MODEL !== "undefined" ? GEMINI_MODEL : "gemini-3.5-flash";
-  const models = [...new Set([primary, "gemini-3.5-flash", "gemini-2.5-flash"])];
+  const models = [
+    ...new Set([
+      primary,
+      "gemini-2.5-flash",
+      "gemini-3-flash-preview",
+      "gemini-3.5-flash",
+    ]),
+  ];
   let lastErr = null;
   for (const model of models) {
     const generationConfig = {
@@ -1965,10 +2106,7 @@ async function callGemini(body, key, retries = 1, maxOutputTokens = 4096) {
       maxOutputTokens,
       responseMimeType: "application/json",
     };
-    if (/gemini-3(?:\.\d+|-)/i.test(model)) {
-      generationConfig.thinkingConfig = { thinkingLevel: "MINIMAL" };
-    }
-    const reqBody = { ...body, generationConfig };
+    const reqBody = { ...normalized, generationConfig };
     const url =
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
       encodeURIComponent(key);
@@ -2005,10 +2143,12 @@ async function callGemini(body, key, retries = 1, maxOutputTokens = 4096) {
       }
     } catch (e) {
       lastErr = e;
+      console.warn("Gemini error", { model, status: e.status, detail: e.detail || e.message });
       const tryNextModel =
         e.status === 404 ||
+        e.status === 400 ||
         e.status === 503 ||
-        /not found|not supported|invalid.*model|unavailable|high demand/i.test(
+        /not found|not supported|invalid.*model|unavailable|high demand|thinking|responseMimeType/i.test(
           String(e.detail || e.message || "")
         );
       if (tryNextModel && model !== models[models.length - 1]) continue;
@@ -2573,14 +2713,16 @@ async function localCuration(prompt, source = "local") {
     move_to_next: routePlan?.legs?.[i]?.summary || "",
   }));
   const regionLabel = regions[0] || picks[0]?.region || "";
+  const routeLabel =
+    routePlan?.provider === "kakao" ? "카카오" : routePlan?.provider === "osrm" ? "도로 추정" : "경로";
   const driveLabel = routePlan?.totals
-    ? `총 ${fmtKm(routePlan.totals.km)} · 차량 ${fmtMin(routePlan.totals.min)} (카카오)`
+    ? `총 ${fmtKm(routePlan.totals.km)} · 차량 ${fmtMin(routePlan.totals.min)} (${routeLabel})`
     : "";
   return {
     title: regionLabel ? `${regionLabel} 맞춤 코스` : "🥔 로컬 추천 코스",
     summary:
       (regionLabel ? `${regionLabel} 중심 · ` : "") +
-      (driveLabel || "카카오 경로 데이터 없음 — 이동 시간은 지도에서 확인해 주세요."),
+      (driveLabel || "경로 데이터 없음 — 이동 시간은 지도에서 확인해 주세요."),
     duration: routePlan ? routeDurationLabel(routePlan.totals) : "당일 코스",
     steps,
     routePlan,
@@ -2639,7 +2781,7 @@ async function geminiCuration(prompt, key) {
       (regionFocus ? "\n\n" + regionFocus : "");
 
   const body = {
-    system_instruction: { parts: [{ text: sys }] },
+    systemInstruction: { parts: [{ text: sys }] },
     contents: [{ role: "user", parts: [{ text: prompt.slice(0, 600) }] }],
   };
   const d = await callGemini(body, key, 2, twoTrack ? 8192 : 4096);
@@ -2945,14 +3087,19 @@ function renderRouteSummary(legs) {
     <div class="route-stat"><strong>${fmtMin(sum.driveMin)}</strong><span>이동 시간</span></div>
     <div class="route-stat"><strong>${fmtMin(sum.totalMin)}</strong><span>예상 소요</span></div>`;
   if (state.kakaoRoute.loading) {
-    $("chip-route").textContent = "🧭 카카오 경로 계산 중…";
+    $("chip-route").textContent = "🧭 경로 계산 중…";
     return;
   }
-  const kakaoTag = state.kakaoRoute.source === "kakao" ? "🧭 카카오" : "";
+  const routeTag =
+    state.kakaoRoute.source === "kakao"
+      ? "🧭 카카오"
+      : state.kakaoRoute.source === "osrm"
+        ? "🗺️ 도로 추정"
+        : "";
   const routeLabel = sum.transitMin > 0
-    ? `🚆 ${fmtMin(sum.transitMin)}${kakaoTag ? ` + ${kakaoTag} ${fmtKm(sum.driveKm)}` : ""}`
-    : kakaoTag
-      ? `${kakaoTag} ${fmtKm(sum.driveKm)}`
+    ? `🚆 ${fmtMin(sum.transitMin)}${routeTag ? ` + ${routeTag} ${fmtKm(sum.driveKm)}` : ""}`
+    : routeTag
+      ? `${routeTag} ${fmtKm(sum.driveKm)}`
       : sum.driveKm > 0
         ? `🚗 ${fmtKm(sum.driveKm)}`
         : "경로 —";
@@ -3201,10 +3348,12 @@ function drawMapRoutes(mapEngine, map, steps) {
   const origin = steps.find((s) => s.kind === "origin");
   const destSteps = destinationSteps(steps);
   const kakaoPath = state.kakaoRoute.path || [];
-  const useKakaoRoad = kakaoPath.length >= 2 && state.kakaoRoute.source === "kakao";
+  const useRoadPath =
+    kakaoPath.length >= 2 &&
+    (state.kakaoRoute.source === "kakao" || state.kakaoRoute.source === "osrm");
 
   if (mapEngine === "kakao") {
-    if (useKakaoRoad) {
+    if (useRoadPath) {
       const path = kakaoPath.map((p) => new kakao.maps.LatLng(p.lat, p.lng));
       new kakao.maps.Polyline({
         path,
@@ -3241,7 +3390,7 @@ function drawMapRoutes(mapEngine, map, steps) {
     return;
   }
   if (mapEngine === "leaflet") {
-    if (useKakaoRoad) {
+    if (useRoadPath) {
       L.polyline(
         kakaoPath.map((p) => [p.lat, p.lng]),
         { color: "#006a61", weight: 5, opacity: 0.9, lineCap: "round" }
