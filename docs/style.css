@@ -600,6 +600,23 @@ button, input, textarea, select { font-family: inherit; }
   border-color: rgba(51, 65, 85, 0.25);
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.98));
 }
+.order-pin.destination {
+  background: #b45309;
+}
+.order-pin.destination.focus {
+  background: #92400e;
+  box-shadow: 0 0 0 5px rgba(180, 83, 9, 0.28), 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+.course-card.destination-card {
+  border-color: rgba(180, 83, 9, 0.28);
+  background: linear-gradient(180deg, rgba(255, 251, 235, 0.95), rgba(255, 255, 255, 0.98));
+}
+.route-endpoints-note {
+  margin: 0.35rem 0 0.55rem;
+  font-size: 0.78rem;
+  color: var(--on-surface-variant);
+  line-height: 1.45;
+}
 .course-leg.transit-leg { color: #475569; }
 .leaflet-container { font-family: "Inter", sans-serif; background: #eef3f2; }
 .leaflet-popup-content-wrapper { border-radius: 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14); }
