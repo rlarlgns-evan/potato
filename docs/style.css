@@ -736,6 +736,15 @@ button, input, textarea, select { font-family: inherit; }
   box-shadow: var(--shadow-lg);
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.toast-error {
+  border-radius: 14px;
+  max-width: min(92vw, 480px);
+  padding: 0.85rem 1.1rem;
+  line-height: 1.45;
+  font-weight: 500;
+  white-space: normal;
+  text-align: left;
+}
 .spinner {
   display: none; width: 18px; height: 18px; border-radius: 50%;
   border: 2.5px solid rgba(255, 255, 255, 0.35); border-top-color: #fff;

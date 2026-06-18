@@ -927,12 +927,18 @@ function submitAgentPrompt(raw) {
 
 /* ==================== Toast ==================== */
 let toastTimer = null;
-function toast(msg) {
+function toast(msg, opts = {}) {
   const el = $("toast");
+  if (!el) return;
+  const duration = opts.duration ?? (opts.error ? 6200 : 2600);
   el.textContent = msg;
+  el.classList.toggle("toast-error", !!opts.error);
   el.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+  toastTimer = setTimeout(() => {
+    el.classList.remove("show");
+    if (opts.error) el.classList.remove("toast-error");
+  }, duration);
 }
 
 /* ==================== View routing ==================== */
@@ -2234,29 +2240,92 @@ async function waitGeminiSlot() {
   lastGeminiAt = Date.now();
 }
 
-function geminiFailToast(e) {
-  const d = e.detail || e.message || "";
-  if (e.status === 429) {
-    if (isBilling429(d))
-      toast("AI 할당량(RPM/TPM) 초과 — Google AI Studio에서 사용량을 확인해 주세요.");
-    else
-      toast("요청 한도(429) — 1~2분 후 다시 시도해 주세요.");
-    return;
+function describeGeminiFailure(e) {
+  const d = String(e?.detail || e?.message || "");
+  const status = Number(e?.status) || 0;
+
+  if (status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(d)) {
+    if (isBilling429(d)) {
+      return {
+        reason: "Google AI 할당량(RPM/TPM)을 모두 썼기",
+        action: "Google AI Studio에서 사용량을 확인한 뒤 1~2분 후 다시 시도해 주세요",
+      };
+    }
+    return {
+      reason: "요청이 API 한도를 초과했기",
+      action: "1~2분 기다린 후 다시 시도해 주세요",
+    };
   }
-  if (e.status === 503 || /high demand|UNAVAILABLE|overloaded/i.test(d))
-    toast("Gemini 3.5 서버 과부하(503) — 토큰 한도가 아니라 구글 측 용량 문제예요. 잠시 후 재시도해 주세요.");
-  else if (e.status === 403)
-    toast("API 키 제한(리퍼러) — Google AI Studio에서 github.io 도메인을 허용했는지 확인하세요.");
-  else if (e.status === 400)
-    toast("AI 요청 형식 오류 — 잠시 후 다시 시도해 주세요.");
-  else if (/no spots matched/i.test(e.message || ""))
-    toast("AI가 등록된 장소명과 맞지 않아요 — 다시 시도해 주세요.");
-  else if (/empty response/i.test(e.message || ""))
-    toast("AI 응답이 비었어요 — 잠시 후 다시 시도해 주세요.");
-  else if (/invalid JSON|JSON/i.test(e.message || ""))
-    toast("AI 응답 파싱 실패 — 다시 시도하거나 다른 질문을 입력하세요.");
-  else
-    toast("AI 호출 실패 — 잠시 후 다시 시도해 주세요.");
+  if (status === 503 || /high demand|UNAVAILABLE|overloaded/i.test(d)) {
+    return {
+      reason: "Gemini 3.5 서버가 일시적으로 과부하 상태이기",
+      action: "토큰 한도와 무관하니 1~3분 후 다시 시도해 주세요",
+    };
+  }
+  if (status === 403) {
+    return {
+      reason: "API 키 HTTP 리퍼러 제한에 걸렸기",
+      action: "Google AI Studio에서 github.io 도메인을 허용한 뒤 다시 시도해 주세요",
+    };
+  }
+  if (status === 400) {
+    return {
+      reason: "AI 요청 형식에 문제가 있기",
+      action: "질문을 짧게 바꿔 다시 시도해 주세요",
+    };
+  }
+  if (status === 404) {
+    return {
+      reason: "AI 모델을 찾지 못했기",
+      action: "잠시 후 다시 시도해 주세요",
+    };
+  }
+  if (/token limit|MAX_TOKENS/i.test(d)) {
+    return {
+      reason: "응답 길이가 한도에 걸렸기",
+      action: "일정 일수를 줄이거나 질문을 나눠 다시 시도해 주세요",
+    };
+  }
+  if (/no spots matched/i.test(d)) {
+    return {
+      reason: "AI가 등록된 장소명과 맞지 않았기",
+      action: "다른 지역·조건으로 다시 질문해 주세요",
+    };
+  }
+  if (/empty response/i.test(d)) {
+    return {
+      reason: "AI 응답이 비어 있기",
+      action: "잠시 후 다시 시도해 주세요",
+    };
+  }
+  if (/invalid JSON|JSON/i.test(d)) {
+    return {
+      reason: "AI 응답을 해석하지 못했기",
+      action: "다시 시도하거나 질문을 나눠 입력해 주세요",
+    };
+  }
+  if (!status && /failed to fetch|network|load failed/i.test(d)) {
+    return {
+      reason: "네트워크 연결이 불안정하기",
+      action: "인터넷을 확인한 뒤 다시 시도해 주세요",
+    };
+  }
+  return {
+    reason: "AI 서버와 통신하지 못했기",
+    action: "잠시 후 다시 시도해 주세요",
+  };
+}
+
+function formatGeminiFailureNotice(e, { fallbackHint = false } = {}) {
+  const { reason, action } = describeGeminiFailure(e);
+  const attempts = e?.attemptsMade || e?.maxAttempts;
+  const prefix = attempts ? `${attempts}번 재시도했지만 실패했어요. ` : "";
+  const suffix = fallbackHint ? " 대신 로컬 일정을 보여드릴게요." : "";
+  return `${prefix}${reason} 때문에 ${action}.${suffix}`;
+}
+
+function geminiFailToast(e, opts = {}) {
+  toast(formatGeminiFailureNotice(e, opts), { error: true });
 }
 
 function normalizeGeminiRequestBody(body) {
@@ -2347,21 +2416,36 @@ async function callGemini(body, key, retries = 4, maxOutputTokens = 4096) {
       e.status = status;
       e.detail = detail;
       e.model = model;
+      e.attemptsMade = attempt + 1;
+      e.maxAttempts = maxAttempts;
+      e.retryExhausted = true;
       throw e;
     } catch (e) {
       lastErr = e;
       if (e.status) lastStatus = e.status;
-      if (e.status && !isGeminiRetryableStatus(e.status)) throw e;
+      if (!e.attemptsMade) {
+        e.attemptsMade = attempt + 1;
+        e.maxAttempts = maxAttempts;
+      }
+      if (e.status && !isGeminiRetryableStatus(e.status)) {
+        e.retryExhausted = true;
+        throw e;
+      }
       if (attempt < maxAttempts - 1) {
         const wait = geminiRetryDelayMs(attempt, 0);
         console.warn(`Gemini ${model} request failed, retry ${attempt + 1}/${maxAttempts - 1}`, e.message);
         await new Promise((res) => setTimeout(res, wait));
         continue;
       }
+      e.retryExhausted = true;
       throw e;
     }
   }
-  throw lastErr || new Error("Gemini call failed");
+  const err = lastErr || new Error("Gemini call failed");
+  err.attemptsMade = maxAttempts;
+  err.maxAttempts = maxAttempts;
+  err.retryExhausted = true;
+  throw err;
 }
 
 function extractGeminiText(candidate) {
@@ -3007,30 +3091,14 @@ async function geminiCuration(prompt, key) {
 }
 
 function buildComplexFailReply(e) {
-  const lines = [
+  const { reason, action } = describeGeminiFailure(e);
+  const attempts = e?.attemptsMade || e?.maxAttempts;
+  const retryLine = attempts ? `${attempts}번 재시도했지만 실패했어요.\n` : "";
+  return [
     "**AI 일정을 만들지 못했어요**",
     "출발·교통·숙박·기간 조건이 포함된 질문은 AI가 필요합니다.",
-  ];
-  if (e?.status === 429) {
-    lines.push("요청이 많거나 사용량 한도에 도달했을 수 있어요. 1~2분 후 다시 시도해 주세요.");
-  } else if (e?.status === 503) {
-    lines.push(
-      "Gemini 3.5 서버가 일시적으로 과부하(503) 상태예요. 토큰 한도(429)와는 별개이며, 1~3분 후 다시 시도해 보세요."
-    );
-  } else if (e?.status === 403) {
-    lines.push(
-      "API 키 HTTP 리퍼러 제한일 수 있어요. Google AI Studio → API 키 → " +
-        "`https://rlarlgns-evan.github.io/*` 를 허용 목록에 추가해 주세요."
-    );
-  } else if (e?.status === 404) {
-    lines.push("AI 모델을 찾지 못했어요. 잠시 후 다시 시도해 주세요.");
-  } else if (e?.detail || e?.message) {
-    console.warn("Gemini 상세:", e.detail || e.message);
-    lines.push("잠시 후 다시 시도하거나, 조건을 나눠서 질문해 보세요.");
-  } else {
-    lines.push("잠시 후 다시 시도하거나, 조건을 나눠서 질문해 보세요.");
-  }
-  return lines.join("\n");
+    `${retryLine}${reason} 때문에 ${action}.`,
+  ].join("\n");
 }
 
 function pushAgentFailure(text) {
@@ -3117,7 +3185,7 @@ async function runRegionTrip(prompt, key, complex) {
       result = await geminiCuration(prompt, key);
     } catch (e) {
       console.warn("Gemini 실패:", e);
-      geminiFailToast(e);
+      geminiFailToast(e, { fallbackHint: !complex });
       if (complex) {
         pushAgentFailure(buildComplexFailReply(e));
         return;
@@ -3149,7 +3217,7 @@ async function tryGeminiCurationWithFallback(prompt, key, complex) {
     saveCurationAndApply(prompt, result);
   } catch (e) {
     console.warn("Gemini 실패:", e);
-    geminiFailToast(e);
+    geminiFailToast(e, { fallbackHint: !complex });
     if (complex) {
       pushAgentFailure(buildComplexFailReply(e));
       return;
