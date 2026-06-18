@@ -356,6 +356,26 @@ button, input, textarea, select { font-family: inherit; }
 }
 .course-option-count { opacity: 0.85; font-weight: 500; }
 
+.route-summary-block { margin-bottom: 1rem; }
+.route-endpoints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0.55rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(102, 188, 176, 0.08);
+  border: 1px solid rgba(102, 188, 176, 0.18);
+  font-size: var(--text-sm);
+  color: var(--on-surface-variant);
+}
+.route-endpoints b { color: var(--on-secondary-container); margin-right: 0.25rem; }
+.route-endpoints-arrow { color: var(--primary); font-weight: 800; }
+.route-summary-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.55rem;
+}
+@media (max-width: 700px) { .route-summary-grid { grid-template-columns: repeat(2, 1fr); } }
 .route-summary {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.55rem; margin-bottom: 1rem;
 }
