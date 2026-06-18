@@ -130,13 +130,11 @@ def generate_data_js() -> str:
     blocks = [
         _js_array_block("SPOTS", spots),
         _js_array_block("GANGWON_CITIES", catalog["cities"]),
-        _js_array_block("FESTIVALS", catalog["festivals"]),
         _js_array_block("THEME_META", catalog["theme_meta"]),
         _js_array_block("SPOT_OVERRIDES", catalog["spot_overrides"]),
         _js_array_block("FESTIVAL_ICONS", catalog["festival_icons"]),
         _js_array_block("WEATHER_ICONS", weather_icons),
         _js_array_block("THEME_BADGE", catalog["theme_badge"]),
-        _js_array_block("SUGGESTIONS", catalog["suggestions"]),
         f'const GEMINI_MODEL = {json.dumps(catalog["gemini_model"], ensure_ascii=False)};',
         _js_array_block("TRANSIT_ORIGINS", catalog.get("transit_origins") or {}),
         f"const TOUR_VISITOR_STATS = {json.dumps(tour_stats, ensure_ascii=False, indent=2)};",

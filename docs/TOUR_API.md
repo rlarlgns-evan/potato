@@ -49,7 +49,7 @@ python scripts/import_sigungu_codes.py
 | `data/tour_relate_spots.json` | `TarRlteTarService1/areaBasedList1` | 툴팁·AI **연관 관광지** (기준→연관) |
 | `data/tour_region_photos.json` | `PhotoGalleryService1/gallerySearchList1` | 툴팁 사진·관광지 카드 썸네일 |
 | `data/tour_kor_spots.json` | `KorService2/areaBasedList2` | 툴팁 **공식 관광지**·카드 썸네일 |
-| `data/tour_kor_festivals.json` | `KorService2/searchFestival2` | 툴팁·축제 탭 (큐레이션과 병합) |
+| `data/tour_kor_festivals.json` | `KorService2/searchFestival2` | 축제 탭·지역 툴팁 |
 | `data/tour_eco_spots.json` | `GreenTourService1/areaBasedList1` | 지도 툴팁 **생태관광** |
 | `data/gangwon_sigungu_codes.json` | 엑셀 + `ldongCode2` + `areaCode1` | API 요청용 코드 |
 

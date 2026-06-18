@@ -833,17 +833,6 @@ function renderAgentChat() {
       '<div class="bubble-ai bubble-typing"><span></span><span></span><span></span></div>';
   }
   box.scrollTop = box.scrollHeight;
-  const starters = $("agent-starters");
-  if (starters) {
-    let hasUser = false;
-    for (let i = 0; i < state.chat.length; i++) {
-      if (state.chat[i].role === "user") {
-        hasUser = true;
-        break;
-      }
-    }
-    starters.classList.toggle("hidden", hasUser);
-  }
   if (state.steps.length && !state.chatTyping) appendPlannerOpenButton();
 }
 
@@ -1343,21 +1332,10 @@ async function renderWeather(force) {
 
 /* ==================== Festivals catalog ==================== */
 function getFestivalsCatalog() {
-  const local = FESTIVALS.map((f) => ({ ...f, source: "local" }));
-  const apiItems =
-    typeof TOUR_KOR_FESTIVALS !== "undefined" && Array.isArray(TOUR_KOR_FESTIVALS.items)
-      ? TOUR_KOR_FESTIVALS.items.map((f) => ({ ...f, source: "api" }))
-      : [];
-  const seen = new Set(local.map((f) => `${f.title}|${f.place}`));
-  const merged = [...local];
-  for (const item of apiItems) {
-    const key = `${item.title}|${item.place}`;
-    if (!seen.has(key)) {
-      merged.push(item);
-      seen.add(key);
-    }
+  if (typeof TOUR_KOR_FESTIVALS !== "undefined" && Array.isArray(TOUR_KOR_FESTIVALS.items)) {
+    return TOUR_KOR_FESTIVALS.items.map((f) => ({ ...f, source: "api" }));
   }
-  return merged;
+  return [];
 }
 
 function renderFestivals() {
@@ -1366,6 +1344,14 @@ function renderFestivals() {
   const catalog = getFestivalsCatalog();
   const totalEl = $("festivals-total");
   if (totalEl) totalEl.textContent = String(catalog.length);
+  if (!catalog.length) {
+    grid.innerHTML =
+      `<div class="festivals-empty">` +
+      `<p>KTO API에서 불러온 축제 정보가 없어요.</p>` +
+      `<p class="festivals-empty-hint">배포 시 TourAPI 키가 설정되면 자동으로 표시됩니다.</p>` +
+      `</div>`;
+    return;
+  }
   const grads = [
     "linear-gradient(135deg,#006a61,#66bcb0)",
     "linear-gradient(135deg,#38bdf8,#7dd3fc)",
@@ -3989,12 +3975,12 @@ function landingRegionWeather(region) {
 }
 
 function landingRegionFestival(region) {
-  const apiFest =
-    typeof TOUR_KOR_FESTIVALS !== "undefined"
-      ? TOUR_KOR_FESTIVALS?.regions?.[region]?.[0] || TOUR_KOR_FESTIVALS?.items?.find((f) => f.place === region)
-      : null;
-  if (apiFest) return apiFest;
-  return FESTIVALS.find((f) => f.place === region) || null;
+  if (typeof TOUR_KOR_FESTIVALS === "undefined") return null;
+  return (
+    TOUR_KOR_FESTIVALS?.regions?.[region]?.[0] ||
+    TOUR_KOR_FESTIVALS?.items?.find((f) => f.place === region) ||
+    null
+  );
 }
 
 function landingRegionSpots(region) {
@@ -5386,21 +5372,6 @@ function initAuth() {
   initSupabaseAuth().catch((err) => console.warn("initSupabaseAuth:", err));
 }
 
-function initSuggestions() {
-  const pillsEl = $("suggest-pills");
-  if (!pillsEl) return;
-  pillsEl.innerHTML = SUGGESTIONS.map(
-    (s) =>
-      `<button type="button" data-prompt="${pillPromptAttr(s.prompt)}">${esc(s.label)}</button>`
-  ).join("");
-  pillsEl.querySelectorAll("button").forEach((b) => {
-    b.addEventListener("click", () => {
-      submitAgentPrompt(decodeURIComponent(b.dataset.prompt || ""));
-    });
-  });
-}
-
-/* ==================== Init ==================== */
 function init() {
   try {
     initIcons();
@@ -5418,7 +5389,6 @@ function init() {
         `강원 온도(ON道) — 강원도 맞춤 여행 코스, ${n}곳 큐레이션, AI 일정·지도·날씨·축제를 한곳에서.`
       );
     }
-    initSuggestions();
     $("weather-refresh")?.addEventListener("click", () => {
       wxCache = null;
       wxCacheAt = 0;

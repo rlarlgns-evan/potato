@@ -1766,6 +1766,14 @@ body.mode-planner .wrap {
   grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
   gap: var(--grid-gap);
 }
+.festivals-empty {
+  grid-column: 1 / -1;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+.festivals-empty p { margin: 0 0 0.5rem; }
+.festivals-empty-hint { font-size: 0.88rem; opacity: 0.85; }
 .fest-card {
   display: flex;
   flex-direction: column;

@@ -325,57 +325,6 @@ const GANGWON_CITIES = [
   }
 ];
 
-const FESTIVALS = [
-  {
-    "title": "평창 송어축제",
-    "period": "1~2월",
-    "place": "평창군",
-    "desc": "얼음낚시·지역 먹거리"
-  },
-  {
-    "title": "화천 산천어축제",
-    "period": "1월",
-    "place": "화천군",
-    "desc": "빙어·얼음낚시"
-  },
-  {
-    "title": "강릉 커피축제",
-    "period": "10월",
-    "place": "강릉시",
-    "desc": "안목·경포 카페거리"
-  },
-  {
-    "title": "정선 아리랑제",
-    "period": "10월",
-    "place": "정선군",
-    "desc": "전통공연·레일바이크"
-  },
-  {
-    "title": "춘천 막국수 닭갈비 축제",
-    "period": "10월",
-    "place": "춘천시",
-    "desc": "로컬 먹거리"
-  },
-  {
-    "title": "속초 설악산 단풍제",
-    "period": "10월",
-    "place": "속초시",
-    "desc": "단풍·트레킹"
-  },
-  {
-    "title": "삼척 비치 페스티벌",
-    "period": "7~8월",
-    "place": "삼척시",
-    "desc": "해변·공연"
-  },
-  {
-    "title": "원주 댄싱카니발",
-    "period": "9월",
-    "place": "원주시",
-    "desc": "거리공연·문화"
-  }
-];
-
 const THEME_META = {
   "트레킹": {
     "stay_min": 90,
@@ -677,29 +626,6 @@ const THEME_BADGE = {
     "cls": "badge-drive"
   }
 };
-
-const SUGGESTIONS = [
-  {
-    "label": "1박2일 바다·대중교통",
-    "prompt": "의정부에서 대중교통으로 여자친구와 1박 2일 바다 여행"
-  },
-  {
-    "label": "강릉 카페 코스",
-    "prompt": "강릉 해안 드라이브와 분위기 좋은 카페가 있는 코스"
-  },
-  {
-    "label": "일몰 명소",
-    "prompt": "강원도 동해안 일몰 명소를 도는 반나절 코스"
-  },
-  {
-    "label": "가족 여행",
-    "prompt": "주차가 편하고 아이와 함께 가기 좋은 강원도 가족 코스"
-  },
-  {
-    "label": "단풍 트레킹",
-    "prompt": "설악산 단풍을 즐기는 가벼운 트레킹 코스"
-  }
-];
 
 const GEMINI_MODEL = "gemini-3.5-flash";
 
