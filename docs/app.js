@@ -526,7 +526,7 @@ function formatTwoTrackRegionXml(tag, region, prompt, split) {
   return `<${tag}${attrs}>\n${parts.join("\n")}\n</${tag}>`;
 }
 
-function buildTwoTrackKtoXml(prompt, maxEach = 5) {
+function buildTwoTrackKtoXml(prompt, maxEach = 3) {
   const main = pickMainDestination(prompt);
   if (!main) {
     return "<kto_data>\n<!-- region_required: include 시·군 name -->\n</kto_data>";
@@ -565,14 +565,14 @@ function buildThemePromptBlock(prompt) {
   );
 }
 
-function buildKtoDataXml(prompt, maxRows = 12) {
+function buildKtoDataXml(prompt, maxRows = 8) {
   const regions = regionsInPrompt(prompt);
   const provinceWide = isProvinceWidePrompt(prompt);
   if (!regions.length && !provinceWide) {
     return "<kto_data>\n<!-- region_required: include 시·군 name -->\n</kto_data>";
   }
   const targetRegions = provinceWide ? GANGWON_REGION_NAMES : regions;
-  const cap = provinceWide ? Math.max(maxRows, 18) : maxRows;
+  const cap = provinceWide ? Math.max(maxRows, 12) : maxRows;
   const lines = ["<kto_data>"];
   let count = 0;
   const regionList = provinceWide && !regions.length ? targetRegions : targetRegions;
@@ -2238,13 +2238,13 @@ function geminiFailToast(e) {
   const d = e.detail || e.message || "";
   if (e.status === 429) {
     if (isBilling429(d))
-      toast("AI 서비스 사용량이 초과됐어요. 잠시 후 다시 시도해 주세요.");
+      toast("AI 할당량(RPM/TPM) 초과 — Google AI Studio에서 사용량을 확인해 주세요.");
     else
-      toast("요청이 많아 잠시 기다려 주세요. (1~2분 후 재시도)");
+      toast("요청 한도(429) — 1~2분 후 다시 시도해 주세요.");
     return;
   }
   if (e.status === 503 || /high demand|UNAVAILABLE|overloaded/i.test(d))
-    toast("Gemini 3.5 서버 혼잡 — 자동 재시도 후에도 실패했어요. 1~2분 뒤 다시 시도해 주세요.");
+    toast("Gemini 3.5 서버 과부하(503) — 토큰 한도가 아니라 구글 측 용량 문제예요. 잠시 후 재시도해 주세요.");
   else if (e.status === 403)
     toast("API 키 제한(리퍼러) — Google AI Studio에서 github.io 도메인을 허용했는지 확인하세요.");
   else if (e.status === 400)
@@ -2283,22 +2283,39 @@ function isGeminiRetryableStatus(status) {
   return [408, 429, 500, 502, 503, 504].includes(Number(status));
 }
 
+function geminiOutputTokenBudget(twoTrack, tripDays) {
+  if (twoTrack) {
+    return Math.min(6144, 2600 + tripDays * 420);
+  }
+  return 2048;
+}
+
 async function callGemini(body, key, retries = 4, maxOutputTokens = 4096) {
   const normalized = normalizeGeminiRequestBody(body);
   const model = geminiModelId();
-  const generationConfig = {
-    temperature: 0.4,
-    maxOutputTokens,
-    responseMimeType: "application/json",
-  };
-  const reqBody = { ...normalized, generationConfig };
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
-    encodeURIComponent(key);
   const maxAttempts = Math.max(retries + 3, 6);
   let lastErr = null;
+  let lastStatus = 0;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const shrink =
+      lastStatus === 503 && attempt >= 2
+        ? Math.max(0.55, 1 - (attempt - 1) * 0.12)
+        : 1;
+    const effectiveMaxTokens = Math.max(1024, Math.floor(maxOutputTokens * shrink));
+    const generationConfig = {
+      temperature: 0.4,
+      maxOutputTokens: effectiveMaxTokens,
+      responseMimeType: "application/json",
+    };
+    const reqBody = { ...normalized, generationConfig };
+    const payloadChars = JSON.stringify(reqBody).length;
+    if (payloadChars > 48000) {
+      console.warn("Gemini large request payload", { model, chars: payloadChars, maxTokens: effectiveMaxTokens });
+    }
+    const url =
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
+      encodeURIComponent(key);
     try {
       const r = await fetch(url, {
         method: "POST",
@@ -2313,11 +2330,13 @@ async function callGemini(body, key, retries = 4, maxOutputTokens = 4096) {
       } catch (_) { /* ignore */ }
 
       const status = r.status;
+      lastStatus = status;
       const retryAfter = Number(r.headers?.get?.("retry-after")) || 0;
       if (isGeminiRetryableStatus(status) && attempt < maxAttempts - 1) {
         const wait = geminiRetryDelayMs(attempt, retryAfter);
         console.warn(
-          `Gemini ${model} HTTP ${status}, retry ${attempt + 1}/${maxAttempts - 1} in ${Math.round(wait / 1000)}s`,
+          `Gemini ${model} HTTP ${status}, retry ${attempt + 1}/${maxAttempts - 1} in ${Math.round(wait / 1000)}s` +
+            (shrink < 1 ? ` (maxTokens→${effectiveMaxTokens})` : ""),
           detail.slice(0, 160)
         );
         await new Promise((res) => setTimeout(res, wait));
@@ -2331,6 +2350,7 @@ async function callGemini(body, key, retries = 4, maxOutputTokens = 4096) {
       throw e;
     } catch (e) {
       lastErr = e;
+      if (e.status) lastStatus = e.status;
       if (e.status && !isGeminiRetryableStatus(e.status)) throw e;
       if (attempt < maxAttempts - 1) {
         const wait = geminiRetryDelayMs(attempt, 0);
@@ -2971,7 +2991,7 @@ async function geminiCuration(prompt, key) {
     contents: [{ role: "user", parts: [{ text: prompt.slice(0, 600) }] }],
   };
   const tripDays = detectTripDuration(prompt).days;
-  const maxTokens = twoTrack ? Math.min(8192, 4000 + tripDays * 800) : 4096;
+  const maxTokens = geminiOutputTokenBudget(twoTrack, tripDays);
   const d = await callGemini(body, key, 5, maxTokens);
   const c = d.candidates?.[0];
   const finish = c?.finishReason || "";
@@ -2994,7 +3014,9 @@ function buildComplexFailReply(e) {
   if (e?.status === 429) {
     lines.push("요청이 많거나 사용량 한도에 도달했을 수 있어요. 1~2분 후 다시 시도해 주세요.");
   } else if (e?.status === 503) {
-    lines.push("Gemini 서버가 일시적으로 혼잡합니다. 1~2분 후 다시 시도해 주세요.");
+    lines.push(
+      "Gemini 3.5 서버가 일시적으로 과부하(503) 상태예요. 토큰 한도(429)와는 별개이며, 1~3분 후 다시 시도해 보세요."
+    );
   } else if (e?.status === 403) {
     lines.push(
       "API 키 HTTP 리퍼러 제한일 수 있어요. Google AI Studio → API 키 → " +
