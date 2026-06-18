@@ -2361,7 +2361,7 @@ function normalizeGeminiRequestBody(body) {
   return out;
 }
 
-const GEMINI_MODEL_FALLBACK_ORDER = ["gemini-3.5-flash", "gemini-3-flash-preview", "gemini-2.5-flash"];
+const GEMINI_MODEL_FALLBACK_ORDER = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash"];
 const GEMINI_ATTEMPTS_PER_MODEL = 3;
 
 function geminiModelCandidates() {
