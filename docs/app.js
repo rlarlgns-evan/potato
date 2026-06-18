@@ -4548,6 +4548,80 @@ const COMMUNITY_LS = {
   nick: "voyageai_community_nick",
 };
 
+function postCreatedAt(post) {
+  if (post?.createdAt) {
+    const d = new Date(post.createdAt);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  const m = String(post?.id || "").match(/^user-(\d+)$/);
+  if (m) {
+    const d = new Date(Number(m[1]));
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+function formatRelativeTime(d) {
+  const sec = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (sec < 45) return "방금 전";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}일 전`;
+  const week = Math.floor(day / 7);
+  if (week < 5) return `${week}주 전`;
+  const month = Math.floor(day / 30);
+  if (month < 12) return `${month}개월 전`;
+  const year = Math.floor(day / 365);
+  return `${year}년 전`;
+}
+
+function formatCommunityPostTime(post) {
+  const d = postCreatedAt(post);
+  if (!d) return "시간 정보 없음";
+  const now = new Date();
+  const sameYear = d.getFullYear() === now.getFullYear();
+  const recorded = d.toLocaleString("ko-KR", {
+    year: sameYear ? undefined : "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return `${recorded} · ${formatRelativeTime(d)}`;
+}
+
+function communityPostTimeTitle(post) {
+  const d = postCreatedAt(post);
+  if (!d) return "";
+  return d.toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+let communityTimeTimer = null;
+
+function scheduleCommunityTimeRefresh() {
+  if (communityTimeTimer) clearInterval(communityTimeTimer);
+  communityTimeTimer = setInterval(() => {
+    if (state.view === "community") renderCommunityFeed();
+    else {
+      clearInterval(communityTimeTimer);
+      communityTimeTimer = null;
+    }
+  }, 60000);
+}
+
 function loadCommunityLikes() {
   try {
     const raw = localStorage.getItem(COMMUNITY_LS.likes);
@@ -4683,7 +4757,7 @@ function renderCommunityFeed() {
         `<span class="community-type type-${esc(p.type)}">${esc(typeLabel)}</span>` +
         `<span>${esc(p.author)} · ${esc(p.region || "강원")}</span>` +
         (p.isUser ? `<span class="community-mine">내 글</span>` : "") +
-        `<span class="community-ago">${esc(p.ago || "방금")}</span>` +
+        `<time class="community-ago" datetime="${esc(postCreatedAt(p)?.toISOString() || "")}" title="${esc(communityPostTimeTitle(p))}">${esc(formatCommunityPostTime(p))}</time>` +
         deleteBtn +
         `</div>` +
         title +
@@ -4716,6 +4790,7 @@ function renderCommunity() {
   renderCommunityCompose();
   renderCommunityFilters();
   renderCommunityFeed();
+  scheduleCommunityTimeRefresh();
 }
 
 function submitCommunityPost(e) {
@@ -4734,8 +4809,9 @@ function submitCommunityPost(e) {
   const nick = getCommunityAuthorName();
   const type = $("community-type")?.value || "tip";
   const posts = loadUserCommunityPosts();
+  const now = new Date();
   posts.unshift({
-    id: `user-${Date.now()}`,
+    id: `user-${now.getTime()}`,
     type,
     author: nick,
     region: "강원",
@@ -4743,7 +4819,7 @@ function submitCommunityPost(e) {
     body: text,
     tags: [],
     likes: 0,
-    ago: "방금",
+    createdAt: now.toISOString(),
     aiPrompt: `${text} — 이 조건으로 강원 여행 코스 추천해줘`,
     grad: "linear-gradient(135deg,#006a61,#88d6fd)",
   });

@@ -2733,7 +2733,13 @@ body.mode-planner .planner-grid {
   background: rgba(0, 106, 97, 0.1);
   color: var(--primary);
 }
-.community-ago { margin-left: auto; opacity: 0.75; }
+.community-ago {
+  margin-left: auto;
+  opacity: 0.85;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 .community-delete {
   margin-left: auto;
   font-family: inherit;
