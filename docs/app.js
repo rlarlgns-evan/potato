@@ -1383,17 +1383,20 @@ function renderFestivals() {
       `</div>`;
     return;
   }
-  const grads = [
-    "linear-gradient(135deg,#006a61,#66bcb0)",
-    "linear-gradient(135deg,#38bdf8,#7dd3fc)",
-    "linear-gradient(135deg,#a78bfa,#ddd6fe)",
-    "linear-gradient(135deg,#fb923c,#fed7aa)",
-  ];
+  const grads = FEST_FALLBACK_GRADS;
   grid.innerHTML = catalog.map((f, i) => {
     const prompt = pillPromptAttr(`${f.title}(${f.place}) 포함 강원 여행 코스 추천해줘`);
-    const thumb = f.image
-      ? `<img class="fest-card-thumb" src="${esc(f.image)}" alt="" loading="lazy" decoding="async" />`
-      : `<span class="fest-card-icon" style="background:${grads[i % 4]}">${FESTIVAL_ICONS[i % FESTIVAL_ICONS.length]}</span>`;
+    const grad = grads[i % grads.length];
+    const icon = FESTIVAL_ICONS[i % FESTIVAL_ICONS.length];
+    const festCandidates = collectFestivalImageCandidates(f);
+    const thumb = festCandidates.length
+      ? imgWithFallback(festCandidates, {
+          className: "fest-card-thumb",
+          fbKind: "fest",
+          fbGrad: grad,
+          fbIcon: icon,
+        })
+      : `<span class="fest-card-icon" style="background:${grad}">${icon}</span>`;
     return (
       `<button type="button" class="fest-card" data-fest-prompt="${prompt}">` +
       thumb +
@@ -3309,9 +3312,9 @@ function courseCardHtml(step, active, src) {
   }
   const t = THEME_BADGE[step.spot.theme] || { label: "SPOT", cls: "badge-nature" };
   const s = step.spot;
-  const apiImg = resolveSpotImage(s.region, s.name, s);
-  const mediaHtml = apiImg
-    ? `<img src="${esc(apiImg)}" alt="${esc(s.name)}" loading="lazy" decoding="async" />`
+  const apiImgCandidates = collectSpotImageCandidates(s.region, s.name, s);
+  const mediaHtml = apiImgCandidates.length
+    ? imgWithFallback(apiImgCandidates, { alt: s.name, fbKind: "course", fbCls: t.cls, fbLabel: t.label })
     : `<div class="course-img-fallback ${esc(t.cls)}" aria-hidden="true"><span>${esc(t.label)}</span></div>`;
   return `
 <a class="course-card${active ? " on" : ""}" data-order="${step.order}">
@@ -4150,32 +4153,197 @@ function normSpotTitle(s) {
   return String(s || "").replace(/\s/g, "");
 }
 
+/* ==================== Spot images + 404 fallback ==================== */
+const BAD_IMAGE_URLS = new Set();
+const FEST_FALLBACK_GRADS = [
+  "linear-gradient(135deg,#006a61,#66bcb0)",
+  "linear-gradient(135deg,#38bdf8,#7dd3fc)",
+  "linear-gradient(135deg,#a78bfa,#ddd6fe)",
+  "linear-gradient(135deg,#fb923c,#fed7aa)",
+];
+
+function imageUrlVariants(url) {
+  const u = String(url || "").trim();
+  if (!u) return [];
+  const out = [u];
+  if (u.startsWith("http://")) out.push("https://" + u.slice(7));
+  else if (u.startsWith("https://")) out.push("http://" + u.slice(8));
+  return out;
+}
+
+function pushImageCandidates(bucket, url) {
+  for (const v of imageUrlVariants(url)) {
+    if (!v || bucket.seen.has(v) || BAD_IMAGE_URLS.has(v)) continue;
+    bucket.seen.add(v);
+    bucket.list.push(v);
+  }
+}
+
+function uniqImageUrls(urls) {
+  const bucket = { seen: new Set(), list: [] };
+  for (const u of urls) pushImageCandidates(bucket, u);
+  return bucket.list;
+}
+
+function regionFromPlace(place) {
+  const p = String(place || "");
+  return GANGWON_REGION_NAMES.find((r) => p.includes(r) || p.includes(r.replace(/[시군]$/, ""))) || null;
+}
+
+function collectRegionImageCandidates(region) {
+  const bucket = { seen: new Set(), list: [] };
+  if (typeof TOUR_REGION_PHOTO_GALLERY !== "undefined") {
+    for (const u of TOUR_REGION_PHOTO_GALLERY[region] || []) pushImageCandidates(bucket, u);
+  }
+  if (typeof REGION_TOUR_PHOTOS !== "undefined" && REGION_TOUR_PHOTOS[region]) {
+    pushImageCandidates(bucket, REGION_TOUR_PHOTOS[region]);
+  }
+  for (const entry of collectKtoCatalogEntries(region)) {
+    if (entry.imageUrl) pushImageCandidates(bucket, entry.imageUrl);
+  }
+  if (typeof SPOT_TOUR_IMAGES !== "undefined") {
+    for (const s of ENRICHED_SPOTS) {
+      if (s.region === region && SPOT_TOUR_IMAGES[s.name]) {
+        pushImageCandidates(bucket, SPOT_TOUR_IMAGES[s.name]);
+      }
+    }
+  }
+  return bucket.list;
+}
+
+function collectSpotImageCandidates(region, spotName, spot) {
+  const bucket = { seen: new Set(), list: [] };
+  if (spot?.tourImage) pushImageCandidates(bucket, spot.tourImage);
+  if (typeof SPOT_TOUR_IMAGES !== "undefined" && spotName && SPOT_TOUR_IMAGES[spotName]) {
+    pushImageCandidates(bucket, SPOT_TOUR_IMAGES[spotName]);
+  }
+  const entries = collectKtoCatalogEntries(region);
+  const n = normSpotTitle(spotName);
+  if (n) {
+    for (const entry of entries) {
+      if (!entry.imageUrl) continue;
+      const t = normSpotTitle(entry.name);
+      if (t && (t.includes(n) || n.includes(t))) pushImageCandidates(bucket, entry.imageUrl);
+    }
+  }
+  for (const entry of entries) {
+    if (entry.imageUrl) pushImageCandidates(bucket, entry.imageUrl);
+  }
+  for (const u of collectRegionImageCandidates(region)) pushImageCandidates(bucket, u);
+  return bucket.list;
+}
+
+function collectFestivalImageCandidates(f) {
+  const bucket = { seen: new Set(), list: [] };
+  if (f?.image) pushImageCandidates(bucket, f.image);
+  const region = regionFromPlace(f?.place);
+  if (region) {
+    for (const u of collectRegionImageCandidates(region)) pushImageCandidates(bucket, u);
+  }
+  return bucket.list;
+}
+
+function imgWithFallback(candidates, opts = {}) {
+  const {
+    className = "",
+    alt = "",
+    fbKind = "spot",
+    fbCls = "badge-nature",
+    fbLabel = "SPOT",
+    fbGrad = "",
+    fbIcon = "🎉",
+  } = opts;
+  const list = uniqImageUrls(Array.isArray(candidates) ? candidates : [candidates].filter(Boolean));
+  if (!list.length) return "";
+  const [primary, ...rest] = list;
+  const restAttr = rest.length ? ` data-img-rest="${esc(JSON.stringify(rest))}"` : "";
+  const cls = className ? ` class="${esc(className)}"` : "";
+  return (
+    `<img src="${esc(primary)}" alt="${esc(alt)}" loading="lazy" decoding="async"` +
+    `${cls} data-img-fallback="1" data-img-fb-kind="${esc(fbKind)}"` +
+    ` data-img-fb-cls="${esc(fbCls)}" data-img-fb-label="${esc(fbLabel)}"` +
+    ` data-img-fb-grad="${esc(fbGrad)}" data-img-fb-icon="${esc(fbIcon)}"` +
+    `${restAttr} />`
+  );
+}
+
+function onSpotImgError(img) {
+  if (!img || img.dataset.imgDone === "1") return;
+  const failed = img.currentSrc || img.src;
+  if (failed) BAD_IMAGE_URLS.add(failed);
+
+  let rest = [];
+  try {
+    rest = JSON.parse(img.dataset.imgRest || "[]");
+  } catch (_) {
+    rest = [];
+  }
+  rest = rest.filter((u) => u && u !== failed && !BAD_IMAGE_URLS.has(u));
+  const next = rest.shift();
+  if (next) {
+    img.dataset.imgRest = JSON.stringify(rest);
+    img.src = next;
+    return;
+  }
+
+  img.dataset.imgDone = "1";
+  const kind = img.dataset.imgFbKind || "spot";
+  const fbCls = img.dataset.imgFbCls || "badge-nature";
+  const fbLabel = img.dataset.imgFbLabel || "SPOT";
+  const fbGrad = img.dataset.imgFbGrad || FEST_FALLBACK_GRADS[0];
+  const fbIcon = img.dataset.imgFbIcon || "🎉";
+
+  if (kind === "course") {
+    const el = document.createElement("div");
+    el.className = `course-img-fallback ${fbCls}`;
+    el.setAttribute("aria-hidden", "true");
+    el.innerHTML = `<span>${fbLabel}</span>`;
+    img.replaceWith(el);
+    return;
+  }
+  if (kind === "fest") {
+    const span = document.createElement("span");
+    span.className = "fest-card-icon";
+    span.style.background = fbGrad;
+    span.textContent = fbIcon;
+    img.replaceWith(span);
+    return;
+  }
+  if (kind === "region") {
+    const wrap = img.closest(".landing-region-tip-photo");
+    if (wrap) wrap.remove();
+    else img.remove();
+    return;
+  }
+  const span = document.createElement("span");
+  span.className = `spot-card-thumb spot-card-thumb-fallback ${fbCls}`;
+  span.textContent = "📍";
+  span.setAttribute("aria-hidden", "true");
+  img.replaceWith(span);
+}
+
+function initImageFallback() {
+  document.addEventListener(
+    "error",
+    (e) => {
+      const t = e.target;
+      if (t?.tagName === "IMG" && t.dataset?.imgFallback === "1") onSpotImgError(t);
+    },
+    true
+  );
+}
+
 function landingRegionPhoto(region) {
   const url = typeof REGION_TOUR_PHOTOS !== "undefined" ? REGION_TOUR_PHOTOS[region] : null;
   return url ? { image: url } : null;
 }
 
 function regionTourPhoto(region, spotName) {
-  if (typeof SPOT_TOUR_IMAGES !== "undefined" && spotName && SPOT_TOUR_IMAGES[spotName]) {
-    return SPOT_TOUR_IMAGES[spotName];
-  }
-  const entries = collectKtoCatalogEntries(region);
-  if (spotName) {
-    const n = normSpotTitle(spotName);
-    const hit = entries.find((entry) => {
-      const t = normSpotTitle(entry.name);
-      return t && (t.includes(n) || n.includes(t));
-    });
-    if (hit?.imageUrl) return hit.imageUrl;
-  }
-  const fallback = entries.find((e) => e.imageUrl);
-  if (fallback?.imageUrl) return fallback.imageUrl;
-  return typeof REGION_TOUR_PHOTOS !== "undefined" ? REGION_TOUR_PHOTOS[region] || null : null;
+  return collectSpotImageCandidates(region, spotName, null)[0] || null;
 }
 
 function resolveSpotImage(region, spotName, spot) {
-  if (spot?.tourImage) return spot.tourImage;
-  return regionTourPhoto(region, spotName);
+  return collectSpotImageCandidates(region, spotName, spot)[0] || null;
 }
 
 function buildLandingRegionTipHtml(region) {
@@ -4226,7 +4394,16 @@ function buildLandingRegionTipHtml(region) {
     : "";
 
   const photoHtml = photo?.image
-    ? `<div class="landing-region-tip-photo"><img src="${esc(photo.image)}" alt="${esc(photo.title || region)}" loading="lazy" decoding="async" /><span class="landing-region-tip-photo-cap">${esc(photo.title || "")}</span></div>`
+    ? (() => {
+        const regionCandidates = collectRegionImageCandidates(region);
+        const candidates = uniqImageUrls([photo.image, ...regionCandidates]);
+        return candidates.length
+          ? `<div class="landing-region-tip-photo">${imgWithFallback(candidates, {
+              alt: photo.title || region,
+              fbKind: "region",
+            })}<span class="landing-region-tip-photo-cap">${esc(photo.title || "")}</span></div>`
+          : "";
+      })()
     : "";
 
   const hubHtml = hubs?.length
@@ -4626,9 +4803,16 @@ function renderSpotsGrid() {
     .map((s) => {
       const prompt = pillPromptAttr(`${s.name}(${s.region}) 포함 강원 여행 코스 추천해줘`);
       const theme = SPOT_THEME_LABELS[spotThemeKey(s.theme)] || s.theme;
-      const thumb = resolveSpotImage(s.region, s.name, s);
-      const thumbHtml = thumb
-        ? `<img class="spot-card-thumb" src="${esc(thumb)}" alt="" loading="lazy" decoding="async" />`
+      const themeKey = spotThemeKey(s.theme);
+      const badge = THEME_BADGE[themeKey] || { label: "SPOT", cls: "badge-nature" };
+      const thumbCandidates = collectSpotImageCandidates(s.region, s.name, s);
+      const thumbHtml = thumbCandidates.length
+        ? imgWithFallback(thumbCandidates, {
+            className: "spot-card-thumb",
+            fbKind: "spot",
+            fbCls: badge.cls,
+            fbLabel: badge.label,
+          })
         : "";
       return (
         `<button type="button" class="spot-card" data-spot-prompt="${prompt}">` +
@@ -5753,6 +5937,7 @@ function init() {
         renderWeather(true).catch((err) => console.warn("renderWeather visibility:", err));
       }
     });
+    initImageFallback();
     initSpots();
     initCommunity();
     initTrips();

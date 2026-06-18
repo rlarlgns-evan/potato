@@ -73,6 +73,21 @@ def build_region_tour_photos(tour_photos: dict) -> dict[str, str]:
     return out
 
 
+def build_region_photo_gallery(tour_photos: dict) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    for region, items in (tour_photos.get("regions") or {}).items():
+        urls: list[str] = []
+        seen: set[str] = set()
+        for item in items or []:
+            img = str(item.get("image") or "").strip()
+            if img and img not in seen:
+                seen.add(img)
+                urls.append(img)
+        if urls:
+            out[region] = urls
+    return out
+
+
 def _js_array_block(name: str, data: object) -> str:
     return f"const {name} = {json.dumps(data, ensure_ascii=False, indent=2)};"
 
@@ -119,6 +134,7 @@ def generate_data_js() -> str:
 
     spot_tour_images = build_spot_tour_images(spots, tour_aggregated, tour_photos)
     region_tour_photos = build_region_tour_photos(tour_photos)
+    region_photo_gallery = build_region_photo_gallery(tour_photos)
 
     prompts_path = DATA_DIR / "prompts.json"
     tour_prompts = (
@@ -144,6 +160,7 @@ def generate_data_js() -> str:
         f"const TOUR_PROMPTS = {json.dumps(tour_prompts, ensure_ascii=False, indent=2)};",
         f"const SPOT_TOUR_IMAGES = {json.dumps(spot_tour_images, ensure_ascii=False, indent=2)};",
         f"const REGION_TOUR_PHOTOS = {json.dumps(region_tour_photos, ensure_ascii=False, indent=2)};",
+        f"const TOUR_REGION_PHOTO_GALLERY = {json.dumps(region_photo_gallery, ensure_ascii=False, indent=2)};",
     ]
 
     runtime = """

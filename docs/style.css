@@ -1458,6 +1458,18 @@ body.mode-planner .wrap {
   margin-bottom: 0.35rem;
   border: 1px solid rgba(102, 188, 176, 0.16);
 }
+.spot-card-thumb-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  object-fit: unset;
+  font-size: 1.75rem;
+  background: linear-gradient(135deg, #006a61, #66bcb0);
+  color: rgba(255, 255, 255, 0.92);
+}
+.spot-card-thumb-fallback.badge-culture { background: linear-gradient(135deg, #7c3aed, #c4b5fd); }
+.spot-card-thumb-fallback.badge-night { background: linear-gradient(135deg, #1e3a5f, #38bdf8); }
+.spot-card-thumb-fallback.badge-drive { background: linear-gradient(135deg, #ea580c, #fed7aa); }
 .spot-card-theme {
   font-size: var(--text-xs);
   font-weight: 800;

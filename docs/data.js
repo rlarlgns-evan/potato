@@ -4683,6 +4683,69 @@ const REGION_TOUR_PHOTOS = {
   "횡성군": "http://tong.visitkorea.or.kr/cms2/website/50/2802750.jpeg",
   "평창군": "http://tong.visitkorea.or.kr/cms2/website/53/3583953.jpg"
 };
+
+const TOUR_REGION_PHOTO_GALLERY = {
+  "강릉시": [
+    "http://tong.visitkorea.or.kr/cms2/website/58/2775758.jpg",
+    "http://tong.visitkorea.or.kr/cms2/website/53/2775753.jpg"
+  ],
+  "고성군": [
+    "http://tong.visitkorea.or.kr/cms2/website/77/3590077.jpg",
+    "http://tong.visitkorea.or.kr/cms2/website/78/3590078.jpg"
+  ],
+  "삼척시": [
+    "http://tong.visitkorea.or.kr/cms2/website/50/2474450.jpg",
+    "http://tong.visitkorea.or.kr/cms2/website/49/2474449.jpg"
+  ],
+  "속초시": [
+    "http://tong.visitkorea.or.kr/cms2/website/62/3566462.jpg",
+    "http://tong.visitkorea.or.kr/cms2/website/61/3566461.jpg"
+  ],
+  "양구군": [
+    "http://tong.visitkorea.or.kr/cms2/website/68/3513168.jpg",
+    "http://tong.visitkorea.or.kr/cms2/website/69/3513169.jpg"
+  ],
+  "영월군": [
+    "https://tong.visitkorea.or.kr/cms/resource_photo/48/4073248_image2_1.jpg",
+    "https://tong.visitkorea.or.kr/cms/resource_photo/49/4073249_image2_1.jpg"
+  ],
+  "원주시": [
+    "https://tong.visitkorea.or.kr/cms/resource_photo/01/2765601_image2_1.jpg",
+    "https://tong.visitkorea.or.kr/cms/resource_photo/03/2765603_image2_1.jpg"
+  ],
+  "인제군": [
+    "https://tong.visitkorea.or.kr/cms/resource_photo/47/4062547_image2_1.jpg",
+    "https://tong.visitkorea.or.kr/cms/resource_photo/48/4062548_image2_1.jpg"
+  ],
+  "정선군": [
+    "https://tong.visitkorea.or.kr/cms/resource_photo/87/4073387_image2_1.jpg",
+    "https://tong.visitkorea.or.kr/cms/resource_photo/93/4073393_image2_1.jpg"
+  ],
+  "철원군": [
+    "https://tong.visitkorea.or.kr/cms/resource_photo/02/2830702_image2_1.jpg",
+    "https://tong.visitkorea.or.kr/cms/resource_photo/04/2830704_image2_1.jpg"
+  ],
+  "춘천시": [
+    "http://tong.visitkorea.or.kr/cms2/website/51/2802451.jpeg",
+    "http://tong.visitkorea.or.kr/cms2/website/50/2802450.jpeg"
+  ],
+  "태백시": [
+    "http://tong.visitkorea.or.kr/cms2/website/07/2802507.jpeg",
+    "http://tong.visitkorea.or.kr/cms2/website/06/2802506.jpeg"
+  ],
+  "화천군": [
+    "http://tong.visitkorea.or.kr/cms2/website/09/3554509.JPG",
+    "http://tong.visitkorea.or.kr/cms2/website/08/3554508.JPG"
+  ],
+  "횡성군": [
+    "http://tong.visitkorea.or.kr/cms2/website/50/2802750.jpeg",
+    "http://tong.visitkorea.or.kr/cms2/website/49/2802749.jpeg"
+  ],
+  "평창군": [
+    "http://tong.visitkorea.or.kr/cms2/website/53/3583953.jpg",
+    "http://tong.visitkorea.or.kr/cms2/website/52/3583952.jpg"
+  ]
+};
 function enrichSpot(raw) {
   const theme = THEME_META[raw.theme] || {};
   const extra = SPOT_OVERRIDES[raw.name] || {};
